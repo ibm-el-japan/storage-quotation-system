@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quotation Request Form — Storage Expert Labs 支援依頼</title>
+<title>見積もり依頼記入シート — Storage Expert Labs 支援依頼</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -305,7 +306,8 @@
   <!-- Top Navigation -->
   <div class="top-nav">
     <a href="index.html" class="nav-back">← システムポータルへ戻る</a>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="btn btn-submit" style="padding:5px 14px;font-size:12px;cursor:pointer;background:#059669">📊 Excelをアップロード (.xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleExcelUpload(this)"></label>
       <label class="btn btn-json" style="padding:4px 12px;font-size:12px;cursor:pointer">📂 保存した依頼JSONを読込<input type="file" accept=".json" style="display:none" onchange="loadFormJsonFile(this)"></label>
     </div>
   </div>
@@ -314,10 +316,16 @@
   <div class="header">
     <div class="header-top">
       <div>
-        <h1>📋 Storage Expert Labs 支援依頼フォーム</h1>
+        <h1>📋 見積もり依頼記入シート</h1>
         <p>Storage Sales および Storage Tech Sales から Expert Labs Storage 部門への見積もり・支援依頼入力シート</p>
       </div>
-      <button class="btn btn-copy" style="font-size:12px;padding:6px 12px" onclick="downloadJsonData()">💾 現在の入力を保存(JSON)</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="btn" style="background:#059669;color:#fff;font-size:12px;padding:6px 14px;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:6px;border-radius:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2)">
+          📥 原本Excelをアップロード (.xlsx)
+          <input type="file" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleExcelUpload(this)">
+        </label>
+        <button class="btn btn-copy" style="font-size:12px;padding:6px 12px" onclick="downloadJsonData()">💾 現在の入力を保存(JSON)</button>
+      </div>
     </div>
     <div class="notice">
       ※ 注：当ファイルには社内情報が含まれています。社外関係者へご利用になりたい場合は Expert Labs 担当者へ事前相談ください。
@@ -371,49 +379,68 @@
           <p class="err-msg" id="e-customer">お客様名を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">案件名<span class="req">*</span></label>
-          <input type="text" id="f-project" placeholder="例）Storage Ceph基盤 導入・設計構築支援" />
-          <p class="err-msg" id="e-project">案件名を入力してください</p>
+          <label class="field-label">お客様番号<span class="hint">S-LINK登録用（任意/8桁）</span></label>
+          <input type="text" id="f-cust-no" placeholder="例）1234ABCD" />
         </div>
       </div>
 
-      <div class="row3">
+      <div class="row2">
+        <div class="form-row">
+          <label class="field-label">サービス名（案件名）<span class="req">*</span></label>
+          <input type="text" id="f-project" placeholder="例）Storage Ceph基盤 導入・設計構築支援" />
+          <p class="err-msg" id="e-project">サービス名（案件名）を入力してください</p>
+        </div>
         <div class="form-row">
           <label class="field-label">DNSO #<span class="hint">任意</span></label>
           <input type="text" id="f-dnso" placeholder="例）DNSO-123456" />
         </div>
+      </div>
+
+      <div class="row2">
         <div class="form-row">
           <label class="field-label">Opportunity No（HW/SW製品）<span class="req">*</span></label>
           <input type="text" id="f-opno-hw" placeholder="例）006gR0000045s0hQAA" />
           <p class="err-msg" id="e-opno-hw">製品の Opportunity No を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">Opportunity No（サービス）<span class="req">*</span></label>
+          <label class="field-label">Opportunity No（サービス）<span class="req">*</span><span class="hint">製品と同一でも可</span></label>
           <input type="text" id="f-opno-svc" placeholder="例）006gR000005I1M9QAK" />
-          <p class="err-msg" id="e-opno-svc">サービスの Opportunity No を入力してください（製品と同一でも可）</p>
+          <p class="err-msg" id="e-opno-svc">サービスの Opportunity No を入力してください</p>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="form-row">
+          <label class="field-label">ビジネス・パートナー様名<span class="hint">BP商流の場合</span></label>
+          <input type="text" id="f-bp" placeholder="例）△△システムズ株式会社" />
+        </div>
+        <div class="form-row">
+          <label class="field-label">BP お客様番号<span class="hint">BP商流時（任意）</span></label>
+          <input type="text" id="f-bp-no" placeholder="例）ABCD1234" />
         </div>
       </div>
 
       <div class="row3">
         <div class="form-row">
-          <label class="field-label">担当営業名<span class="req">*</span><span class="hint">未定時: TBD</span></label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label class="field-label" style="margin-bottom:0">担当営業名<span class="req">*</span></label>
+            <button type="button" class="quick-insert-btn" style="padding:1px 5px;font-size:10px" onclick="document.getElementById('f-sales').value='TBD'">TBD</button>
+          </div>
           <input type="text" id="f-sales" placeholder="例）佐藤 健一" />
           <p class="err-msg" id="e-sales">担当営業名を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">担当テクニカル・セールス名<span class="req">*</span><span class="hint">未定時: TBD</span></label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label class="field-label" style="margin-bottom:0">担当テクニカル・セールス名<span class="req">*</span></label>
+            <button type="button" class="quick-insert-btn" style="padding:1px 5px;font-size:10px" onclick="document.getElementById('f-ts').value='TBD'">TBD</button>
+          </div>
           <input type="text" id="f-ts" placeholder="例）鈴木 花子" />
           <p class="err-msg" id="e-ts">担当TS名を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">ビジネス・パートナー様名<span class="hint">BP商流時</span></label>
-          <input type="text" id="f-bp" placeholder="例）△△システムズ株式会社" />
+          <label class="field-label">その他案件関係者名<span class="hint">SSR、AP等</span></label>
+          <input type="text" id="f-others" placeholder="例）高橋 次郎 (SSR)" />
         </div>
-      </div>
-
-      <div class="form-row">
-        <label class="field-label">その他案件関係者名<span class="hint">SSR、AP、Technology Sales 等</span></label>
-        <input type="text" id="f-others" placeholder="例）高橋 次郎 (SSR)、田中 一郎 (AP)" />
       </div>
 
       <div class="btn-row">
@@ -480,18 +507,21 @@
       </div>
 
       <div class="form-row">
-        <label class="field-label">支援（作業実施）場所<span class="req">*</span></label>
-        <div class="check-grid" style="grid-template-columns:repeat(auto-fill, minmax(190px, 1fr))">
-          <label class="check-item"><input type="radio" name="place" value="リモート" checked> <span>リモート中心</span></label>
+        <label class="field-label">サービス提供場所（支援実施場所）<span class="req">*</span></label>
+        <div class="check-grid" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr))">
+          <label class="check-item selected"><input type="radio" name="place" value="リモート" checked> <span>リモート中心</span></label>
           <label class="check-item"><input type="radio" name="place" value="お客様先（オンサイト）"> <span>お客様先（オンサイト）</span></label>
           <label class="check-item"><input type="radio" name="place" value="リモート＋オンサイト"> <span>リモート ＋ オンサイト</span></label>
           <label class="check-item"><input type="radio" name="place" value="IBM社内"> <span>IBM社内</span></label>
+        </div>
+        <div style="margin-top:6px">
+          <input type="text" id="f-place-detail" placeholder="場所詳細・オンサイト時の最寄り駅（例: 東京都〇〇区 / 最寄り駅: 〇〇駅）" />
         </div>
         <p class="err-msg" id="e-place">支援場所を選択してください</p>
       </div>
 
       <div class="form-row">
-        <label class="field-label">支援内容（詳細・規模・タスク）<span class="req">*</span></label>
+        <label class="field-label">サービス内容（詳細・規模・タスク）<span class="req">*</span></label>
         
         <div class="template-helper-box">
           <div class="title">
@@ -506,15 +536,34 @@
           </div>
         </div>
 
-        <textarea id="f-detail" rows="7" placeholder="例）以下の製品の設計、構築支援
-・対象システム: Storage Ceph (Node x 5台, Switch x 2台)
-・作業スコープ:
-  - 基本設計 / パラメータ策定 (40h)
-  - クラスター構築・OS/Ceph設定 (32h)
-  - 正常系/障害系テスト (24h)
-  - ドキュメント作成 (設計書・導入手順書) (16h)
-・打合せ: 週1回 1時間 (リモート)"></textarea>
+        <textarea id="f-detail" rows="6" placeholder="例）以下の製品の支援
+① SSS6000 x 1セット（設計・構築・稼動テスト・ドキュメント・Q&A）
+② Storage Protect x 1台（設計・構築・稼動テスト・ドキュメント・Q&A）"></textarea>
         <p class="err-msg" id="e-detail">支援内容の詳細を入力してください</p>
+      </div>
+
+      <div class="row2">
+        <div class="form-row">
+          <label class="field-label">提出ドキュメント<span class="hint">原本Excel準拠（複数選択可）</span></label>
+          <div class="check-grid" id="fg-doc" style="grid-template-columns:1fr 1fr">
+            <label class="check-item selected"><input type="checkbox" value="基本設計書" checked> <span>基本設計書</span></label>
+            <label class="check-item selected"><input type="checkbox" value="詳細設計書" checked> <span>詳細設計書</span></label>
+            <label class="check-item selected"><input type="checkbox" value="テスト計画書兼結果報告書" checked> <span>テスト計画兼報告書</span></label>
+            <label class="check-item selected"><input type="checkbox" value="操作手順書（導入手順書）" checked> <span>操作手順書</span></label>
+          </div>
+          <input type="text" id="f-doc-other" placeholder="その他の提出ドキュメント（任意）" style="margin-top:6px" />
+        </div>
+
+        <div class="form-row">
+          <label class="field-label">打合せ回数・頻度<span class="hint">S-LINK/仕様書反映</span></label>
+          <input type="text" id="f-meeting-cnt" placeholder="例）週2回（各1時間）2名出席 @リモート" style="margin-bottom:8px" />
+          
+          <label class="field-label">サービス除外事項<span class="hint">原本Excel準拠</span></label>
+          <textarea id="f-exclude" rows="3" placeholder="・ネットワーク関連作業
+・機器搬入・敷設（ケーブル含む）
+・サーバ構築・OS導入
+・性能テスト / 運用設計"></textarea>
+        </div>
       </div>
 
       <div class="row2">
@@ -535,14 +584,14 @@
         <div class="form-row">
           <label class="field-label">社内関係者との打合せ調整<span class="req">*</span></label>
           <div style="display:flex;gap:12px;margin-top:6px">
-            <label class="check-item" style="flex:1"><input type="radio" name="meeting-in" value="調整します" checked> <span>調整します</span></label>
+            <label class="check-item selected" style="flex:1"><input type="radio" name="meeting-in" value="調整します" checked> <span>調整します</span></label>
             <label class="check-item" style="flex:1"><input type="radio" name="meeting-in" value="不要"> <span>不要</span></label>
           </div>
         </div>
         <div class="form-row">
           <label class="field-label">社外関係者との打合せ調整<span class="req">*</span></label>
           <div style="display:flex;gap:12px;margin-top:6px">
-            <label class="check-item" style="flex:1"><input type="radio" name="meeting-out" value="調整します" checked> <span>調整します</span></label>
+            <label class="check-item selected" style="flex:1"><input type="radio" name="meeting-out" value="調整します" checked> <span>調整します</span></label>
             <label class="check-item" style="flex:1"><input type="radio" name="meeting-out" value="不要"> <span>不要</span></label>
           </div>
         </div>
@@ -643,21 +692,26 @@
       </div>
 
       <!-- Action Cards -->
-      <div class="action-deck">
+      <div class="action-deck" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr))">
         <div class="action-card primary">
           <div>
             <h4>⚡ Expert Labs 向け見積もりツール自動生成</h4>
-            <p>入力された全データを自動解析し、基本情報・対象製品工数・チェックシート・交通費がセットされた `quotation-tool.html` 互換ツールを開きます。</p>
+            <p>入力された全データ（顧客番号・製品・期間・場所・打合せ・除外等）をもとに、初期工数とチェックシートが構成された概算見積シートを起動します。</p>
           </div>
-          <button class="btn btn-gen-tool" onclick="launchQuotationGenerator()">🚀 見積もりツールを生成・起動</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn btn-gen-tool" onclick="launchQuotationGenerator()">🚀 概算見積シートを生成・起動</button>
+            <button class="btn btn-json" onclick="downloadStandaloneToolHtml()">⬇️ 案件別HTMLを直接保存</button>
+          </div>
         </div>
 
         <div class="action-card">
           <div>
             <h4>📑 S-LINK / 仕様書・別紙 出力ツールへ連携</h4>
-            <p>入力された案件基本情報および契約条件をもとに、S-LINK 登録用メタデータやサービス仕様書・別紙ドラフトを直接生成します。</p>
+            <p>入力された案件基本情報および契約条件をもとに、S-LINK 登録用メタデータやサービス仕様書・別紙ドラフトを直接生成・出力します。</p>
           </div>
-          <button class="btn btn-json" onclick="launchSlinkGenerator()">📄 S-LINK・仕様書生成を開く</button>
+          <div style="margin-top:10px">
+            <button class="btn btn-json" onclick="launchSlinkGenerator()">📄 S-LINK・仕様書生成を開く</button>
+          </div>
         </div>
       </div>
 
@@ -857,6 +911,14 @@ function getSelectedProducts(){
   });
   return list;
 }
+function getSelectedDocs(){
+  const checks = document.querySelectorAll('#fg-doc input[type=checkbox]:checked');
+  const list = [];
+  checks.forEach(c => list.push(c.value));
+  const other = val("f-doc-other");
+  if(other) list.push(other);
+  return list;
+}
 function getCT(){
   const v = radio("contract-type");
   return v === "__other_ct__" ? (val("f-ct-other") || "その他") : v;
@@ -879,15 +941,17 @@ function getYNList(){
 // Build complete data object
 function getFormDataObject() {
   return {
-    version: "2.0",
+    version: "2.1",
     createdDate: val("f-date"),
     author: val("f-author"),
     customerName: val("f-customer"),
+    customerNo: val("f-cust-no"),
     projectName: val("f-project"),
     dnsoNo: val("f-dnso"),
     oppNoProduct: val("f-opno-hw"),
     oppNoService: val("f-opno-svc"),
     bpName: val("f-bp"),
+    bpCustomerNo: val("f-bp-no"),
     salesName: val("f-sales"),
     tsName: val("f-ts"),
     otherMembers: val("f-others"),
@@ -896,7 +960,11 @@ function getFormDataObject() {
     startDate: val("f-start"),
     endDate: val("f-end"),
     workLocation: radio("place"),
+    workLocationDetail: val("f-place-detail"),
     workDetail: val("f-detail"),
+    docs: getSelectedDocs(),
+    meetingFrequency: val("f-meeting-cnt"),
+    serviceExclusions: val("f-exclude"),
     confidential: radio("confidential"),
     confidentialNote: val("f-conf-note"),
     meetingInternal: radio("meeting-in"),
@@ -915,11 +983,13 @@ function restoreFormData(d){
   if(d.createdDate) document.getElementById('f-date').value = d.createdDate;
   if(d.author) document.getElementById('f-author').value = d.author;
   if(d.customerName) document.getElementById('f-customer').value = d.customerName;
+  if(d.customerNo) document.getElementById('f-cust-no').value = d.customerNo;
   if(d.projectName) document.getElementById('f-project').value = d.projectName;
   if(d.dnsoNo) document.getElementById('f-dnso').value = d.dnsoNo;
   if(d.oppNoProduct) document.getElementById('f-opno-hw').value = d.oppNoProduct;
   if(d.oppNoService) document.getElementById('f-opno-svc').value = d.oppNoService;
   if(d.bpName) document.getElementById('f-bp').value = d.bpName;
+  if(d.bpCustomerNo) document.getElementById('f-bp-no').value = d.bpCustomerNo;
   if(d.salesName) document.getElementById('f-sales').value = d.salesName;
   if(d.tsName) document.getElementById('f-ts').value = d.tsName;
   if(d.otherMembers) document.getElementById('f-others').value = d.otherMembers;
@@ -957,8 +1027,20 @@ function restoreFormData(d){
     const plRad = document.querySelector(`input[name="place"][value="${d.workLocation}"]`);
     if(plRad) plRad.checked = true;
   }
+  if(d.workLocationDetail) document.getElementById('f-place-detail').value = d.workLocationDetail;
 
   if(d.workDetail) document.getElementById('f-detail').value = d.workDetail;
+
+  if(d.docs && Array.isArray(d.docs)){
+    const docChecks = document.querySelectorAll('#fg-doc input[type=checkbox]');
+    docChecks.forEach(c => c.checked = d.docs.includes(c.value));
+    const knownDocs = Array.from(docChecks).map(c => c.value);
+    const otherDocs = d.docs.filter(item => !knownDocs.includes(item));
+    if(otherDocs.length > 0) document.getElementById('f-doc-other').value = otherDocs.join(', ');
+  }
+
+  if(d.meetingFrequency) document.getElementById('f-meeting-cnt').value = d.meetingFrequency;
+  if(d.serviceExclusions) document.getElementById('f-exclude').value = d.serviceExclusions;
 
   if(d.confidential){
     const confRad = document.querySelector(`input[name="confidential"][value="${d.confidential}"]`);
@@ -1036,19 +1118,20 @@ function prow(k, v){
 // ============================================================
 function buildPreviewAndOutputs(){
   const d = getFormDataObject();
-  const prodsStr = d.products.join("、 ");
+  const prodsStr = d.products.join("、 ") || "—";
+  const docsStr = d.docs.join("、 ") || "—";
 
   const previewHtml = `
     <div class="preview-section">
       <h3>① 案件基本情報</h3>
       ${prow("記入日", d.createdDate)}
       ${prow("記入者", d.author)}
-      ${prow("お客様名", d.customerName)}
-      ${prow("案件名", d.projectName)}
+      ${prow("お客様名", d.customerName + (d.customerNo ? ` (番号: ${d.customerNo})` : ''))}
+      ${prow("サービス名（案件名）", d.projectName)}
       ${prow("DNSO #", d.dnsoNo)}
       ${prow("Opportunity No（製品）", d.oppNoProduct)}
       ${prow("Opportunity No（サービス）", d.oppNoService)}
-      ${prow("ビジネス・パートナー名", d.bpName)}
+      ${prow("ビジネス・パートナー様名", d.bpName + (d.bpCustomerNo ? ` (番号: ${d.bpCustomerNo})` : ''))}
       ${prow("担当営業名", d.salesName)}
       ${prow("担当TS名", d.tsName)}
       ${prow("その他関係者", d.otherMembers)}
@@ -1057,9 +1140,12 @@ function buildPreviewAndOutputs(){
       <h3>② 支援対象・内容</h3>
       ${prow("Offering", d.offering)}
       ${prow("支援対象製品", prodsStr)}
-      ${prow("支援期間", d.startDate + " ～ " + d.endDate)}
-      ${prow("支援実施場所", d.workLocation)}
+      ${prow("支援期間", (d.startDate || '') + " ～ " + (d.endDate || ''))}
+      ${prow("支援実施場所", d.workLocation + (d.workLocationDetail ? ` (${d.workLocationDetail})` : ''))}
       ${prow("支援内容（詳細）", d.workDetail)}
+      ${prow("提出ドキュメント", docsStr)}
+      ${prow("打合せ回数・頻度", d.meetingFrequency)}
+      ${prow("サービス除外事項", d.serviceExclusions)}
       ${prow("機密情報取扱い", d.confidential + (d.confidentialNote ? " (" + d.confidentialNote + ")" : ""))}
       ${prow("打合せ調整", "社内: " + d.meetingInternal + " / 社外: " + d.meetingExternal)}
     </div>
@@ -1086,23 +1172,28 @@ function buildPreviewAndOutputs(){
   // JSON and Excel representation
   const jsonStr = JSON.stringify(d, null, 2);
   const excelLines = [
-    "=== Storage Expert Labs 支援依頼フォーム ===",
+    "=== 見積もり依頼記入シート ===",
     `記入日\t${d.createdDate}`,
     `記入者\t${d.author}`,
     `お客様名\t${d.customerName}`,
-    `案件名\t${d.projectName}`,
+    `お客様番号\t${d.customerNo}`,
+    `サービス名（案件名）\t${d.projectName}`,
     `DNSO #\t${d.dnsoNo}`,
     `Opportunity No（HW/SW製品）\t${d.oppNoProduct}`,
     `Opportunity No（サービス）\t${d.oppNoService}`,
     `ビジネス・パートナー様名\t${d.bpName}`,
+    `BP お客様番号\t${d.bpCustomerNo}`,
     `担当営業名\t${d.salesName}`,
     `担当テクニカル・セールス名\t${d.tsName}`,
     `その他案件関係者名\t${d.otherMembers}`,
     `Offering\t${d.offering}`,
     `支援対象製品\t${prodsStr}`,
     `支援期間\t${d.startDate}～${d.endDate}`,
-    `支援(作業実施)場所\t${d.workLocation}`,
-    `支援内容（詳細）\t${d.workDetail.replace(/\n/g, " / ")}`,
+    `支援(作業実施)場所\t${d.workLocation}\t${d.workLocationDetail}`,
+    `支援内容（詳細）\t${(d.workDetail||'').replace(/\n/g, " / ")}`,
+    `提出ドキュメント\t${docsStr}`,
+    `打合せ回数\t${d.meetingFrequency}`,
+    `サービス除外事項\t${(d.serviceExclusions||'').replace(/\n/g, " / ")}`,
     `機密情報取扱い\t${d.confidential}\t${d.confidentialNote}`,
     `社内打合せ調整\t${d.meetingInternal}`,
     `社外打合せ調整\t${d.meetingExternal}`,
@@ -1124,12 +1215,39 @@ function buildPreviewAndOutputs(){
 }
 
 // ============================================================
-// Actions & Handoff
+// Actions & Handoff & Tool Generation
 // ============================================================
 function launchQuotationGenerator() {
   const d = getFormDataObject();
   sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(d));
   window.location.href = "quotation-generator.html?src=request_form";
+}
+
+async function downloadStandaloneToolHtml() {
+  const d = getFormDataObject();
+  try {
+    showToast("案件別見積もりツールHTMLを生成中...");
+    const res = await fetch('quotation-generator.html');
+    let html = await res.text();
+
+    // Inject request data directly into standalone HTML
+    const injectData = `<script>sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", ${JSON.stringify(JSON.stringify(d))});<\/script>`;
+    html = html.replace('</head>', injectData + '\n</head>');
+
+    const safeName = (d.customerName || '案件').replace(/[\\/:*?"<>|]/g, '_');
+    const safeDate = (d.createdDate || '').replace(/[-/]/g, '') || '20260901';
+    const fileName = `${safeName}_${safeDate}_QuotationTool.html`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(`案件別ツールを保存しました: ${fileName}`);
+  } catch(e) {
+    alert("HTMLの自動生成に失敗しました: " + e.message);
+  }
 }
 
 function launchSlinkGenerator() {
@@ -1157,6 +1275,210 @@ function downloadJsonData() {
   showToast("JSONファイルを保存しました: " + fileName);
 }
 
+function parseQuotationRequestExcel(wb) {
+  const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error("シートが見つかりません");
+
+  // Helper to read cell
+  const getCell = (col, row) => {
+    const c = ws[col + row];
+    return c ? (c.w || String(c.v || "")).trim() : "";
+  };
+
+  const data = {
+    version: "2.1",
+    createdDate: "",
+    author: "",
+    customerName: "",
+    customerNo: "",
+    projectName: "",
+    dnsoNo: "",
+    oppNoProduct: "",
+    oppNoService: "",
+    bpName: "",
+    bpCustomerNo: "",
+    salesName: "",
+    tsName: "",
+    otherMembers: "",
+    offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
+    products: [],
+    startDate: "",
+    endDate: "",
+    workLocation: "リモート",
+    workLocationDetail: "",
+    workDetail: "",
+    docs: [],
+    meetingFrequency: "",
+    serviceExclusions: "",
+    confidential: "無し",
+    confidentialNote: "",
+    meetingInternal: "調整します",
+    meetingExternal: "調整します",
+    preChecks: [],
+    contractType: "支援契約（Expert Labsの単独契約）",
+    dealType: "直販（エンドユーザ様-IBM）",
+    paymentPlan: "各月（標準）",
+    monthlyReport: "無"
+  };
+
+  // Convert sheet to array of rows for fuzzy scanning
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const rowNum = R + 1;
+    const bVal = getCell('B', rowNum);
+    const cVal = getCell('C', rowNum);
+    const dVal = getCell('D', rowNum);
+
+    if (bVal.includes("記入日")) {
+      const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (match) {
+        data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      } else {
+        data.createdDate = cVal;
+      }
+    } else if (bVal.includes("記入者")) {
+      data.author = cVal;
+    } else if (bVal.includes("お客様名")) {
+      data.customerName = cVal;
+    } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
+      data.projectName = cVal;
+    } else if (bVal.includes("お客様番号")) {
+      if (!data.customerNo) data.customerNo = cVal;
+      else data.bpCustomerNo = cVal;
+    } else if (bVal.includes("DNSO")) {
+      data.dnsoNo = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+      data.oppNoProduct = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
+      data.oppNoService = cVal;
+    } else if (bVal.includes("ビジネス・パートナー")) {
+      data.bpName = cVal;
+    } else if (bVal.includes("担当営業名")) {
+      data.salesName = cVal;
+    } else if (bVal.includes("担当テクニカル")) {
+      data.tsName = cVal;
+    } else if (bVal.includes("その他案件関係者")) {
+      data.otherMembers = cVal;
+    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (rowNum >= 27 && rowNum <= 41) {
+      // Product candidates
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
+        if (pName && !data.products.includes(pName)) data.products.push(pName);
+      }
+    } else if (bVal.includes("サービス期間")) {
+      const parts = cVal.split(/～|~/);
+      if (parts.length >= 1) {
+        const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m1) data.startDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+      }
+      if (parts.length >= 2) {
+        const m2 = parts[1].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m2) data.endDate = `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+      }
+    } else if (bVal.includes("サービス提供場所")) {
+      data.workLocationDetail = cVal;
+      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
+      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
+      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
+      data.workDetail = cVal;
+    } else if (bVal.includes("提出ドキュメント")) {
+      const lines = cVal.split(/\n|・|,|、/);
+      lines.forEach(l => {
+        const t = l.trim();
+        if (t && !data.docs.includes(t)) data.docs.push(t);
+      });
+    } else if (bVal.includes("打合せ回数")) {
+      data.meetingFrequency = cVal;
+    } else if (bVal.includes("サービス除外事項")) {
+      data.serviceExclusions = cVal;
+    } else if (bVal.includes("機密情報取扱い")) {
+      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) {
+        data.confidential = "有り";
+      } else {
+        data.confidential = "無し";
+      }
+      data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingInternal = "不要";
+    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingExternal = "不要";
+    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
+        data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
+        data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
+        data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
+      else data.monthlyReport = "無";
+    }
+
+    // Pre-checks scanning (rows 55 - 70)
+    if (rowNum >= 55 && rowNum <= 70) {
+      if (bVal && !bVal.includes("事前確認事項") && !bVal.includes("確認事項")) {
+        const ans = (dVal || cVal).trim();
+        if (ans === "Y" || ans === "N" || ans === "N/A" || bVal.includes("相談者名")) {
+          // matched precheck
+          const matchedItem = YN_ITEMS.find(it => bVal.includes(it.label.slice(0, 10)) || it.label.includes(bVal.slice(0, 10)));
+          if (matchedItem) {
+            data.preChecks.push({
+              id: matchedItem.id,
+              category: matchedItem.category,
+              label: matchedItem.label,
+              yn: ans === "Y" || ans === "N" || ans === "N/A" ? ans : "",
+              note: matchedItem.type === "text" ? ans : ""
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return data;
+}
+
+function handleExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const parsedData = parseQuotationRequestExcel(workbook);
+
+      restoreFormData(parsedData);
+      buildPreviewAndOutputs();
+
+      // Store in sessionStorage for all pages
+      sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
+
+      showToast(`📊 Excel「${file.name}」の内容を全自動反映しました！`);
+    } catch (err) {
+      alert("Excelの解析に失敗しました: " + err.message);
+      console.error(err);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 function loadFormJsonFile(input){
   const f = input.files[0];
   if(!f) return;
@@ -1165,6 +1487,8 @@ function loadFormJsonFile(input){
     try {
       const data = JSON.parse(e.target.result);
       restoreFormData(data);
+      buildPreviewAndOutputs();
+      sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(data));
       showToast("保存された依頼データを読み込みました: " + f.name);
     } catch(err){
       alert("JSONの読み込みに失敗しました: " + err.message);
