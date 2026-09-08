@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>見積もり作成ツール</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13px;line-height:1.5;color:#1a2b45;background:#eef2f8}
+#app{display:flex;flex-direction:column;min-height:100vh}
+#header{background:#1a56a0;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(26,86,160,.3);flex-wrap:wrap}
+#header h1{font-size:15px;font-weight:700;letter-spacing:.03em;flex:1;min-width:160px}
+#header .ver{font-size:11px;opacity:.7}
+#header .header-btns{display:flex;gap:6px;align-items:center}
+#tabs{display:flex;border-bottom:3px solid #1a56a0;padding:0 12px;background:#dce6f4;overflow-x:auto}
+.tab-btn{padding:10px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#3d5a80;border-bottom:3px solid transparent;margin-bottom:-3px;white-space:nowrap}
+.tab-btn:hover{color:#1a56a0}
+.tab-btn.active{color:#1a56a0;border-bottom-color:#1a56a0}
+#content{flex:1;padding:16px 20px;max-width:1400px;width:100%}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.card{background:#fff;border:1px solid #c8d6ea;border-radius:8px;margin-bottom:16px;overflow:hidden}
+.card-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eaf1fb;border-bottom:1px solid #c8d6ea;cursor:pointer;user-select:none}
+.card-header h3{font-size:13px;font-weight:700;flex:1;color:#1a3a5c}
+.card-header .ti{font-size:12px;color:#4a6fa5;transition:transform .2s}
+.card-header.collapsed .ti{transform:rotate(-90deg)}
+.card-body{padding:12px 14px}.card-body.hidden{display:none}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.info-row{display:flex;flex-direction:column;gap:3px}
+.info-row label{font-size:11px;font-weight:600;color:#4a6fa5}
+.info-row input,.info-row select{border:1px solid #b0c4de;border-radius:4px;padding:5px 8px;font-size:13px;width:100%;background:#f7faff}
+.info-row input:focus,.info-row select:focus{outline:none;border-color:#1a56a0;background:#fff}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12px}
+table th,table td{border:1px solid #c8d6ea;padding:5px 7px;text-align:center;white-space:nowrap}
+table th{background:#dce6f4;font-weight:700;font-size:11px;color:#1a3a5c}
+td.lc{text-align:left;font-weight:600;background:#eaf1fb;padding-left:8px;min-width:140px}
+td.sl{text-align:left;padding-left:20px;min-width:140px;background:#fff}
+td.sh{text-align:left;font-weight:700;background:#d0e0f5;color:#1a56a0;padding-left:8px}
+td.tc{background:#e8f4fd;font-weight:700;color:#1a3a5c}
+td.gt{background:#cfe2f3;font-weight:700;color:#0c3566}
+td.st{background:#d6eaf8;font-weight:700;color:#0c4a6e}
+table td input[type=number],table td input[type=text]{border:1px solid #b0c4de;border-radius:3px;padding:3px 5px;font-size:12px;width:100%;min-width:55px;background:#f7faff}
+table td input[type=text].w{min-width:110px;text-align:left}
+table td input[type=number]{text-align:right;-moz-appearance:textfield}
+table td input[type=number]::-webkit-inner-spin-button,table td input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+table td input:focus{outline:none;border-color:#1a56a0;background:#fff}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.bp{background:#1a56a0;color:#fff}.bs{background:#6b7280;color:#fff}.bg{background:#059669;color:#fff}
+.bd{background:#dc2626;color:#fff}.bw{background:#d97706;color:#fff}.bv{background:#7c5cd8;color:#fff}
+.bsm{padding:3px 7px;font-size:11px}
+.bg-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.mi{min-width:60px!important}
+.ctbl{width:100%;border-collapse:collapse}
+.ctbl td,.ctbl th{border:1px solid #c8d6ea;padding:5px 8px;font-size:12px}
+.ctbl th{background:#dce6f4;font-weight:700;font-size:11px;color:#1a3a5c}
+.ctbl input[type=checkbox]{width:14px;height:14px;cursor:pointer}
+.ctbl input[type=text]{width:100%;border:1px solid #b0c4de;border-radius:3px;padding:3px 6px;font-size:12px;background:#f7faff}
+.ctbl input[type=text]:focus{outline:none;border-color:#1a56a0;background:#fff}
+.oc{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:#eaf1fb;border:1px solid #c8d6ea;border-radius:6px}
+.oc label{font-size:12px;font-weight:600;color:#1a3a5c}
+.od{background:#fff;border:1px solid #c8d6ea;border-radius:6px;padding:20px 24px;font-size:13px;line-height:1.7;position:relative}
+.od h2{font-size:15px;font-weight:700;border-bottom:2px solid #1a56a0;padding-bottom:5px;margin:18px 0 10px;color:#1a56a0;display:flex;align-items:center;gap:6px}
+.od h3{font-size:13px;font-weight:700;margin:10px 0 5px;color:#1a3a5c;display:flex;align-items:center;gap:5px}
+.od ul{margin:4px 0 8px 18px}
+.od li{margin-bottom:2px;display:flex;align-items:flex-start;gap:5px}
+.od li span.lt{flex:1}
+.od table{margin:8px 0;font-size:12px}
+.od table th{background:#dce6f4}
+.od [contenteditable=true]:hover{outline:1px dashed #7aabe0;border-radius:2px}
+.od [contenteditable=true]:focus{outline:2px solid #1a56a0;border-radius:2px}
+.del-btn{background:none;border:none;cursor:pointer;color:#dc2626;font-size:12px;padding:1px 4px;border-radius:3px;flex-shrink:0;line-height:1}
+.del-btn:hover{background:#fee2e2}
+.sec-del{background:none;border:none;cursor:pointer;color:#dc2626;font-size:11px;padding:2px 6px;border-radius:3px;margin-left:4px}
+.sec-del:hover{background:#fee2e2}
+.sheet-del{background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:auto}
+.sheet-del:hover{background:#fca5a5}
+.sheet-block{margin-bottom:24px;border:1px solid #c8d6ea;border-radius:8px;overflow:hidden}
+.sheet-header{background:#dce6f4;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #c8d6ea}
+.sheet-header strong{font-size:14px;font-weight:700;flex:1;color:#1a3a5c}
+.sheet-body{padding:16px 14px}
+.np{margin-top:0}
+.hint{font-size:11px;color:#4a6fa5;margin-bottom:8px}
+.req{background:#dce6f4;color:#1a3a5c;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:700;border:1px solid #b0c4de}
+.sb{display:flex;gap:14px;flex-wrap:wrap;background:#dce6f4;border:1px solid #b0c4de;border-radius:6px;padding:10px 14px;margin-bottom:12px}
+.sb .si{display:flex;flex-direction:column;align-items:center;gap:2px}
+.sb .sl2{font-size:10px;color:#4a6fa5;font-weight:600}
+.sb .sv{font-size:15px;font-weight:700;color:#1a56a0}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a3a5c;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* ── 差分サマリーモーダル ── */
+#diff-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:none;align-items:center;justify-content:center}
+#diff-modal-overlay.open{display:flex}
+#diff-modal{background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.25);width:640px;max-width:96vw;max-height:92vh;overflow-y:auto;font-size:13px}
+#diff-modal .dm-head{display:flex;align-items:center;gap:8px;padding:14px 18px;background:#1a3a5c;color:#fff;border-radius:10px 10px 0 0}
+#diff-modal .dm-head h2{font-size:14px;font-weight:700;flex:1}
+#diff-modal .dm-body{padding:16px 18px}
+#diff-modal .dm-footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid #e5e7eb;background:#f7f8fa;border-radius:0 0 10px 10px}
+#diff-modal .dm-section{margin-bottom:16px}
+#diff-modal .dm-section-title{font-size:12px;font-weight:700;color:#1a3a5c;background:#eaf1fb;border:1px solid #c8d6ea;border-radius:5px;padding:5px 10px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+#diff-modal .dm-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px}
+#diff-modal .dm-add{background:#dcfce7;color:#166534}
+#diff-modal .dm-del{background:#fee2e2;color:#991b1b}
+#diff-modal .dm-chg{background:#dbeafe;color:#1e40af}
+#diff-modal .dm-row{display:flex;gap:8px;align-items:baseline;font-size:12px;padding:3px 6px;border-radius:4px;margin-bottom:3px}
+#diff-modal .dm-row.add{background:#f0fdf4}
+#diff-modal .dm-row.del{background:#fff1f2}
+#diff-modal .dm-row.chg{background:#eff6ff}
+#diff-modal .dm-key{color:#57606a;min-width:120px;flex-shrink:0;font-weight:600}
+#diff-modal .dm-val-del{color:#991b1b;text-decoration:line-through;margin-right:6px}
+#diff-modal .dm-val-new{color:#166534;font-weight:600}
+#diff-modal .dm-none{font-size:12px;color:#57606a;font-style:italic;padding:4px 6px}
+/* ── GitHub 連携モーダル ── */
+#gh-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:none;align-items:center;justify-content:center}
+#gh-modal-overlay.open{display:flex}
+#gh-modal{background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.22);width:480px;max-width:95vw;max-height:92vh;overflow-y:auto;font-size:13px}
+#gh-modal .gh-mhead{display:flex;align-items:center;gap:8px;padding:14px 18px;background:#1a56a0;color:#fff;border-radius:10px 10px 0 0}
+#gh-modal .gh-mhead h2{font-size:14px;font-weight:700;flex:1}
+#gh-modal .gh-mbody{padding:16px 18px}
+#gh-modal .gh-mfooter{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid #e5e7eb;background:#f7f8fa;border-radius:0 0 10px 10px}
+#gh-modal .frow{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+#gh-modal .frow label{font-size:11px;font-weight:700;color:#1a3a5c}
+#gh-modal .frow input,#gh-modal .frow textarea{border:1px solid #b0c4de;border-radius:4px;padding:6px 8px;font-size:12px;width:100%}
+#gh-modal .frow input:focus,#gh-modal .frow textarea:focus{outline:none;border-color:#1a56a0}
+#gh-modal .frow .hint2{font-size:11px;color:#57606a;margin-top:2px}
+#gh-modal .gh-file-list{max-height:240px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;margin-top:4px}
+#gh-modal .gh-file-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .12s}
+#gh-modal .gh-file-item:last-child{border-bottom:none}
+#gh-modal .gh-file-item:hover{background:#eef2f8}
+#gh-modal .gh-file-name{flex:1;font-size:12px;color:#1a3a5c;font-weight:600}
+#gh-modal .gh-file-date{font-size:11px;color:#57606a}
+#gh-modal .gh-spinner{text-align:center;padding:16px;color:#57606a;font-size:12px}
+#gh-modal .gh-info-box{background:#eaf1fb;border:1px solid #b0c4de;border-radius:6px;padding:9px 12px;font-size:11px;color:#1a3a5c;line-height:1.7;margin-bottom:12px}
+#gh-modal .gh-warn-box{background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:9px 12px;font-size:11px;color:#78350f;line-height:1.7;margin-bottom:12px}
+/* ── 工数 sticky header & col-resize ── */
+#tab-kosu .tbl-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 200px)}
+#tab-kosu table thead tr{position:sticky;top:0;z-index:4}
+#tab-kosu table thead th{position:sticky;top:0;z-index:3;background:#dce6f4;resize:horizontal;overflow:hidden;min-width:55px}
+#tab-kosu table thead th:first-child{z-index:5;left:0}
+/* 工数 odd/even month column colouring */
+.kosu-month-odd{background:#eef2f8}
+.kosu-month-even{background:#d6e8f7}
+td.kosu-month-odd{background:#eef2f8}
+td.kosu-month-even{background:#d6e8f7}
+td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-color:#b0c4de}
+/* 工数 sticky first column */
+#tab-kosu table td:first-child,#tab-kosu table th:first-child{position:sticky;left:0;z-index:2}
+/* 交通費等 col-resize */
+#tab-travel table thead th{resize:horizontal;overflow:hidden;min-width:55px}
+/* チェックシート 「トップへ戻る」 button */
+#cl-back-top{display:none;position:fixed;bottom:28px;right:28px;z-index:8888;background:#1a56a0;color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(26,86,160,.35)}
+#cl-back-top:hover{background:#154a8a}
+/* ── お客様提出用 output styles ── */
+.co-wrap{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13px;color:#1a2b45}
+.co-title{font-size:20px;font-weight:700;margin:0 0 20px;padding-bottom:10px;border-bottom:3px solid #1a56a0;color:#1a56a0;text-align:center}
+.co-section-heading{font-size:13px;font-weight:700;background:#1a56a0;color:#fff;padding:5px 10px;margin:16px 0 4px;letter-spacing:.04em}
+.co-item{padding:3px 6px 3px 18px;font-size:13px;line-height:1.6;border-bottom:1px solid #c8d6ea}
+.co-item:last-child{border-bottom:none}
+.co-quote-tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+.co-quote-tbl td{border:1px solid #c8d6ea;padding:5px 10px;vertical-align:top}
+.co-quote-sec{background:#1a56a0;color:#fff;font-weight:700;padding:5px 10px;text-align:left}
+.co-quote-sub{padding:4px 10px 4px 24px;background:#fff;text-align:left}
+.co-quote-sub:nth-child(even){background:#f0f5fc}
+.co-total-row td{background:#dce6f4;font-weight:700;font-size:14px;padding:7px 10px;color:#0c3566}
+.co-note{font-size:11px;color:#4a6fa5;padding:3px 10px;background:#eaf1fb;border-top:1px solid #c8d6ea;line-height:1.6}
+.co-disclaimer{font-size:12px;background:#eaf1fb;border:1px solid #b0c4de;border-radius:4px;padding:8px 12px;margin-bottom:14px;color:#1a3a5c;line-height:1.6}
+/* ── お客様提出用 シートタイトル ── */
+.co-sheet-title{font-size:18px!important;font-weight:700;flex:1;text-align:center;color:#1a3a5c;letter-spacing:.06em}
+/* ── 管理者モード ── */
+.admin-lock{opacity:.38;pointer-events:none;user-select:none}
+#admin-bar{display:flex;align-items:center;gap:8px;padding:5px 12px;background:#1e3a5f;color:#fff;font-size:11px;font-weight:600;border-bottom:2px solid #f59e0b}
+#admin-badge{background:#f59e0b;color:#1e3a5f;border-radius:8px;padding:1px 8px;font-size:10px;font-weight:700}
+/* ── バージョン・CHANGELOG タブ ── */
+#tab-changelog .card-body{font-size:12px;line-height:1.8}
+#tab-changelog table{max-width:900px}
+#tab-changelog td{text-align:left;white-space:normal}
+@media print{
+  /* ── お客様提出用 印刷モード ── */
+  body.print-customer > *{display:none!important}
+  body.print-customer > #co-print-wrap{display:block!important;padding:20px;box-sizing:border-box}
+  body.print-customer > #co-print-wrap .sheet-block{page-break-inside:avoid;margin-bottom:0!important}
+  body.print-customer > #co-print-wrap .sheet-block+.sheet-block{margin-top:0!important}
+  body.print-customer > #co-print-wrap .co-quote-sheet{page-break-before:always}
+  body.print-customer > #co-print-wrap *{margin-top:0!important;margin-bottom:0!important}
+  body.print-customer > #co-print-wrap .sheet-body{padding-bottom:0!important}
+  /* ── 通常の印刷モード ── */
+  #header,#tabs,.np,.btn,.bg-row,.oc,.del-btn,.sec-del,.sheet-del,#admin-bar{display:none!important}
+  #content{padding:0;max-width:none}
+  .tab-panel{display:block!important}
+  .card{border:none;margin-bottom:8px}
+  body{background:#fff}
+  #cl-back-top{display:none!important}
+}
+</style>
+</head>
+<body>
+<!-- ── 管理者バー (管理者モード時のみ表示) ── -->
+<div id="admin-bar" style="display:none">
+  <span id="admin-badge">🔑 管理者モード</span>
+  <span style="flex:1">フォーマットの変更・管理が可能です</span>
+  <button class="btn bw bsm" onclick="lockAdmin()">🔒 管理者ログアウト</button>
+</div>
+
+<div id="app">
+  <div id="header">
+    <h1>📋 見積もり作成ツール</h1>
+    <span class="ver" id="ver-badge">v1.4.0</span>
+    <div class="header-btns">
+      <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
+      <button class="btn bp" style="background:#6366f1" onclick="openGhLoadModal()">📂 GitHubから開く</button>
+      <button class="btn bv" onclick="saveProject()">💾 ローカル保存</button>
+      <button class="btn bp" onclick="document.getElementById('load-file').click()">📂 ローカルから開く</button>
+      <input type="file" id="load-file" accept=".html" style="display:none" onchange="loadProject(this)">
+      <button class="btn bg" id="gh-api-save-btn" style="display:none" onclick="openGhSaveModal()" title="管理者: GitHub API保存">☁️ API保存</button>
+      <button class="btn bg" onclick="window.print()">🖨️ 印刷/PDF</button>
+      <button class="btn bs bsm" id="admin-login-btn" onclick="promptAdminLogin()" title="管理者ログイン">🔑</button>
+    </div>
+  </div>
+
+  <div id="tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-basic')">基本情報</button>
+    <button class="tab-btn" onclick="switchTab('tab-checklist')">チェックシート</button>
+    <button class="tab-btn" onclick="switchTab('tab-kosu')">工数</button>
+    <button class="tab-btn" onclick="switchTab('tab-travel')">交通費等</button>
+    <button class="tab-btn" onclick="switchTab('tab-output')">作成・出力</button>
+    <button class="tab-btn" onclick="switchTab('tab-changelog')">📋 バージョン情報</button>
+  </div>
+
+  <div id="content">
+
+    <!-- TAB 1: 基本情報 -->
+    <div id="tab-basic" class="tab-panel active">
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>📌 基本情報</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-row">
+              <label>お客様名</label>
+              <input type="text" id="customer-name" placeholder="例: 株式会社〇〇 様" oninput="syncBasicInfo()">
+            </div>
+            <div class="info-row">
+              <label>案件名</label>
+              <input type="text" id="project-name" placeholder="例: ×× 導入支援案件" oninput="syncBasicInfo()">
+            </div>
+            <div class="info-row">
+              <label>Labor 単価（円/時間）</label>
+              <input type="number" id="labor-rate" value="17600" oninput="recalcAll()">
+            </div>
+            <div class="info-row">
+              <label>Contingency（例: 0.10 = 10%）</label>
+              <input type="number" id="contingency" value="0.10" step="0.01" oninput="recalcAll()">
+            </div>
+            <div class="info-row">
+              <label>GP（例: 0.36 = 36%）</label>
+              <input type="number" id="gp" value="0.36" step="0.01" oninput="recalcAll()">
+            </div>
+            <div class="info-row">
+              <label>eDOU での契約</label>
+              <select id="is-dou" onchange="recalcAll()">
+                <option value="false">いいえ</option>
+                <option value="true">はい</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>📅 見積もり期間設定</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <p class="hint">プロジェクト開始月と期間（月数）を設定してください。工数シートの月ラベルが自動更新されます。</p>
+          <div class="info-grid">
+            <div class="info-row">
+              <label>開始年</label>
+              <input type="number" id="start-year" value="2026" min="2020" max="2040" oninput="rebuildKosuMonths()">
+            </div>
+            <div class="info-row">
+              <label>開始月</label>
+              <select id="start-month" onchange="rebuildKosuMonths()">
+                <option value="4">4月</option>
+                <option value="5">5月</option>
+                <option value="6">6月</option>
+                <option value="7">7月</option>
+                <option value="8">8月</option>
+                <option value="9">9月</option>
+                <option value="10">10月</option>
+                <option value="11">11月</option>
+                <option value="12">12月</option>
+                <option value="1">1月</option>
+                <option value="2">2月</option>
+                <option value="3">3月</option>
+              </select>
+            </div>
+            <div class="info-row">
+              <label>期間（月数）</label>
+              <input type="number" id="period-months" value="12" min="1" max="60" oninput="rebuildKosuMonths()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb">
+        <div class="si"><span class="sl2">総工数 (h)</span><span class="sv" id="sum-hours">0</span></div>
+        <div class="si"><span class="sl2">Labor コスト</span><span class="sv" id="sum-labor">¥0</span></div>
+        <div class="si"><span class="sl2">その他費用</span><span class="sv" id="sum-other">¥0</span></div>
+        <div class="si"><span class="sl2">Contingency</span><span class="sv" id="sum-cont">¥0</span></div>
+        <div class="si"><span class="sl2">GP</span><span class="sv" id="sum-gp-val">¥0</span></div>
+        <div class="si"><span class="sl2">参考見積もり額</span><span class="sv" id="sum-total">¥0</span></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: チェックシート -->
+    <div id="tab-checklist" class="tab-panel">
+      <p class="hint">各項目の左のチェックボックスで有効/無効を切り替えます。テキストは直接編集できます。行の追加・削除が可能です。</p>
+      <div id="checklist-sections"></div>
+    </div>
+    <button id="cl-back-top" onclick="document.getElementById('tab-checklist').scrollIntoView({behavior:'smooth'})">▲ トップへ戻る</button>
+
+    <!-- TAB 3: 工数 -->
+    <div id="tab-kosu" class="tab-panel">
+      <div class="sb" style="margin-bottom:12px">
+        <div class="si"><span class="sl2">総工数 (h)</span><span class="sv" id="kosu-total-h">0</span></div>
+        <div class="si"><span class="sl2">参考 Labor コスト</span><span class="sv" id="kosu-total-cost">¥0</span></div>
+      </div>
+      <div id="kosu-table-wrap"></div>
+    </div>
+
+    <!-- TAB 4: 交通費等 -->
+    <div id="tab-travel" class="tab-panel">
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>💴 その他費用</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="bg-row">
+            <button class="btn bp bsm" onclick="addTravelRow()">＋ 行を追加</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>費用種別</th>
+                  <th>場所</th>
+                  <th>単価（円）</th>
+                  <th>人数</th>
+                  <th>回数</th>
+                  <th>合計（円）</th>
+                  <th>見積もり方針</th>
+                  <th class="np"></th>
+                </tr>
+              </thead>
+              <tbody id="travel-tbody"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" style="text-align:right;font-weight:700;background:#f0f3f7">その他費用合計</td>
+                  <td id="travel-grand-total" style="font-weight:700;color:#78350f;background:#fef3c7">¥0</td>
+                  <td colspan="2" style="background:#f0f3f7"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>📖 参考情報</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="tbl-wrap">
+            <table style="max-width:500px">
+              <thead>
+                <tr><th>種別</th><th>条件</th><th>金額（円）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="lc">中距離出張手当</td><td>—</td><td>1,500</td></tr>
+                <tr><td class="lc">長距離出張手当</td><td>—</td><td>3,500</td></tr>
+                <tr><td class="lc">宿泊出張手当</td><td>朝食×夕食×</td><td>4,000</td></tr>
+                <tr><td class="lc">宿泊出張手当</td><td>朝食○夕食×</td><td>3,200</td></tr>
+                <tr><td class="lc">宿泊出張手当</td><td>朝食×夕食○</td><td>1,300</td></tr>
+                <tr><td class="lc">宿泊出張手当</td><td>朝食○夕食○</td><td>500</td></tr>
+                <tr><td class="lc">宿泊費上限（全国）</td><td>—</td><td>10,000</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: 作成・出力 -->
+    <div id="tab-output" class="tab-panel">
+      <div class="oc np">
+        <label>出力オプション:</label>
+        <button class="btn bp" onclick="generateOutput('both')">📄 前提と見積もりの作成</button>
+        <button class="btn bs" onclick="generateOutput('premise')">📋 前提のみ作成</button>
+        <button class="btn bw" onclick="generateOutput('quote')">💴 見積もりのみ作成</button>
+        <button class="btn bg" onclick="window.print()">🖨️ 印刷/PDF</button>
+        <button class="btn" style="background:#0f766e;color:#fff" onclick="generateCustomerOutput()">📋 お客様提出用</button>
+        <button class="btn" style="background:#0f766e;color:#fff" onclick="printCustomerOutput()">🖨️ お客様提出用 印刷/PDF</button>
+      </div>
+
+      <!-- 価格詳細パネル -->
+      <div style="background:#fff;border:1px solid #d8dde3;border-radius:8px;margin-bottom:14px;overflow:hidden;max-width:400px">
+        <div style="background:#1a56a0;color:#fff;padding:7px 14px;font-size:13px;font-weight:700;letter-spacing:.04em">価格詳細</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tbody>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:6px 14px;color:#374151">Labor cost</td>
+              <td style="padding:6px 14px;text-align:right;font-weight:600" id="pd-labor">¥0</td>
+            </tr>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:6px 14px;color:#374151">Other cost</td>
+              <td style="padding:6px 14px;text-align:right;font-weight:600" id="pd-other">¥0</td>
+            </tr>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:6px 14px;color:#374151">Contingency</td>
+              <td style="padding:6px 14px;text-align:right;font-weight:600" id="pd-cont">¥0</td>
+            </tr>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:6px 14px;color:#374151">GP</td>
+              <td style="padding:6px 14px;text-align:right;font-weight:600" id="pd-gp">¥0</td>
+            </tr>
+            <tr style="border-bottom:2px solid #d8dde3;background:#f5f7fa">
+              <td style="padding:6px 14px;font-weight:700;color:#1f2328">合計</td>
+              <td style="padding:6px 14px;text-align:right;font-weight:700;color:#1f2328" id="pd-total">¥0</td>
+            </tr>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:6px 14px;color:#374151">丸め度</td>
+              <td style="padding:6px 14px;text-align:right">
+                <select id="rounding-unit" onchange="recalcAll()" style="border:1px solid #d0d7de;border-radius:4px;padding:4px 8px;font-size:12px">
+                  <option value="0">丸めない</option>
+                  <option value="10000">万円</option>
+                  <option value="50000">五万円</option>
+                  <option value="100000" selected>十万円</option>
+                  <option value="500000">五十万円</option>
+                  <option value="1000000">百万円</option>
+                </select>
+              </td>
+            </tr>
+            <tr style="background:#fef3c7">
+              <td style="padding:8px 14px;font-weight:700;font-size:14px;color:#78350f">参考見積もり</td>
+              <td style="padding:8px 14px;text-align:right;font-weight:700;font-size:14px;color:#78350f" id="pd-rounded">¥0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="hint np">生成されたドキュメントはすべて直接編集可能です。クリックして内容を変更してください。削除ボタンで各シート・セクション・行を削除できます。</p>
+      <div id="output-area"></div>
+    </div>
+
+    <!-- TAB 6: バージョン情報 / CHANGELOG -->
+    <div id="tab-changelog" class="tab-panel">
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>📋 リリースバージョン情報</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <table style="max-width:700px">
+            <thead><tr><th>項目</th><th>内容</th></tr></thead>
+            <tbody>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v1.4.0</strong></td></tr>
+              <tr><td class="lc">リリース日</td><td style="text-align:left">2025-09-01</td></tr>
+              <tr><td class="lc">チームポータル</td><td style="text-align:left"><a href="https://ibm-el-japan.github.io/quotation-tool/" target="_blank">https://ibm-el-japan.github.io/quotation-tool/</a></td></tr>
+              <tr><td class="lc">GitHub リポジトリ</td><td style="text-align:left"><a href="https://github.com/ibm-el-japan/quotation-tool" target="_blank">https://github.com/ibm-el-japan/quotation-tool</a></td></tr>
+              <tr><td class="lc">ファイル名</td><td style="text-align:left">quotation-tool.html</td></tr>
+              <tr><td class="lc">管理者</td><td style="text-align:left">ibmkevin (ibm-el-japan org)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>🗒️ 変更履歴 (Change History)</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:70px">Version</th>
+                <th style="min-width:90px">日付</th>
+                <th style="min-width:80px">変更者</th>
+                <th style="min-width:100px">変更種別</th>
+                <th>変更内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>v1.4.0</strong></td>
+                <td>2025-09-01</td>
+                <td>ibmkevin</td>
+                <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">機能追加</span></td>
+                <td style="text-align:left;white-space:normal">
+                  GitHub ユーザー登録フローを一般ユーザー／管理者で分離。一般ユーザーはバージョン情報タブの「登録申請」ガイドから自己申請可能（ステップ1〜4形式）。
+                  管理者専用の「ユーザー登録・権限管理」カードを追加（管理者モードでのみ表示）。
+                  差分表示のバグ修正: ファイルロード後に __SAVED_STATE__ を更新することで、次回保存時の prevState が正しく設定されるよう修正。
+                </td>
+              </tr>
+              <tr>
+                <td>v1.3.0</td>
+                <td>2025-09-01</td>
+                <td>ibmkevin</td>
+                <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">機能追加</span></td>
+                <td style="text-align:left;white-space:normal">
+                  ファイル開封時に変更内容を自動表示する「🔍 変更履歴ビュー」機能を追加。
+                  前回保存時のスナップショット（prevState）と現在の内容を比較し、基本情報・工数・交通費・チェックシートの変更差分をモーダルで視覚的に表示。
+                  管理者ロック機能を削除（全フィールドを全ユーザーが編集可能に変更）。工数シートの移動・宿泊列を削除。文字化け修正（UTF-8デコード対応）。
+                </td>
+              </tr>
+              <tr>
+                <td>v1.2.0</td>
+                <td>2025-08-31</td>
+                <td>ibmkevin</td>
+                <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">機能追加</span></td>
+                <td style="text-align:left;white-space:normal">
+                  GitHub連携機能を追加。「☁️ GitHubへ保存」ボタンでwork/フォルダに直接コミット（担当者名・変更コメントをコミットメッセージとして記録）。
+                  「📂 GitHubから開く」ボタンでwork/フォルダのファイル一覧を取得し、クリックで直接読み込み。
+                  GitHub Pages経由でクリックのみでツールを開けるよう整備。ibm-el-japan/quotation-toolリポジトリに全リンクを統一。
+                </td>
+              </tr>
+              <tr>
+                <td>v1.1.0</td>
+                <td>2025-07-11</td>
+                <td>ibmkevin</td>
+                <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">機能追加</span></td>
+                <td style="text-align:left;white-space:normal">
+                  管理者/一般ユーザー権限モード実装（当時はLabor単価・Contingency・GP・フォーマット変更は管理者のみ操作可能。v1.4.0以降は全ユーザーが編集可能に変更）。
+                  バージョン情報・変更履歴タブ追加。GitHub コラボレーター設定ドキュメント追加。
+                </td>
+              </tr>
+              <tr>
+                <td>v1.0.0</td>
+                <td>2025-07-01</td>
+                <td>ibmkevin</td>
+                <td><span style="background:#dcfce7;color:#166534;border-radius:4px;padding:1px 6px;font-size:11px">初版リリース</span></td>
+                <td style="text-align:left;white-space:normal">
+                  基本情報・チェックシート・工数・交通費等・作成出力の5タブ構成で初版リリース。
+                  CostPlanSheet2026.xlsm 対応。保存/読み込み機能、お客様提出用出力機能を実装。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── 一般ユーザー向け: GitHub アカウント登録申請 ── -->
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>🙋 GitHub アカウント登録申請（一般ユーザー）</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <p class="hint" style="margin-bottom:12px">このツールの「☁️ GitHubへ保存」「📂 GitHubから開く」機能を利用するには、GitHub アカウントを持ち、管理者にリポジトリへの招待を依頼する必要があります。</p>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#1a3a5c">📋 ステップ1 — GitHub アカウントの作成（未作成の場合）</p>
+          <ol style="margin:0 0 14px 18px;font-size:12px;line-height:2">
+            <li><a href="https://github.com/signup" target="_blank">https://github.com/signup</a> にアクセスし、無料アカウントを作成する</li>
+            <li>メールアドレス・パスワード・ユーザー名を設定し、メール認証を完了する</li>
+            <li>作成した <strong>GitHub ユーザー名</strong>（例: <code>taro-ibm</code>）を控えておく</li>
+          </ol>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#1a3a5c">📩 ステップ2 — 管理者へ招待依頼を送る</p>
+          <p style="font-size:12px;margin-bottom:8px;color:#374151">以下のボタンから管理者宛てにメールを送信してください。件名・本文は自動で入力されます。<strong>GitHub ユーザー名</strong>の部分だけ書き換えて送ってください。</p>
+          <button class="btn bp" style="font-size:12px;margin-bottom:14px" onclick="openGhRegisterRequestMail()">📧 管理者へ招待を申請する</button>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#1a3a5c">🔑 ステップ3 — 招待承認後: Personal Access Token (PAT) の取得</p>
+          <p style="font-size:12px;margin-bottom:6px;color:#374151">管理者から招待メールが届いたら承認し、その後 PAT を発行してツールで使用します。</p>
+          <ol style="margin:0 0 14px 18px;font-size:12px;line-height:2">
+            <li>GitHub にログインし、右上のアイコン → <strong>Settings</strong> を開く</li>
+            <li>左メニュー最下部 <strong>Developer settings</strong> → <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong> を開く</li>
+            <li><strong>Generate new token (classic)</strong> をクリック</li>
+            <li>Note に「見積もりツール用」などを入力、Expiration は「No expiration」または任意の期間を設定</li>
+            <li>スコープで <strong>repo</strong>（最上位のチェックボックス）にチェックを入れる</li>
+            <li><strong>Generate token</strong> をクリック → 表示されたトークン（<code>ghp_...</code>）をコピーして安全な場所に保存する<br>
+              <span style="color:#dc2626;font-size:11px">⚠️ このページを離れるとトークンは二度と表示されません</span></li>
+          </ol>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#1a3a5c">💡 ステップ4 — ツールでの使い方</p>
+          <ol style="margin:0 0 6px 18px;font-size:12px;line-height:2">
+            <li>「☁️ GitHubへ保存」または「📂 GitHubから開く」ボタンをクリックする</li>
+            <li>担当者名（イニシャル）と取得した PAT を入力する</li>
+            <li>PAT はセッション中のみ保持され、ブラウザを閉じると削除される（再入力が必要）</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- ── 一般ユーザー向け: ファイル共同編集フロー ── -->
+      <div class="card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>🔄 ファイル共同編集フロー</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <ol style="margin:0 0 12px 18px;font-size:12px;line-height:2.2">
+            <li><a href="https://ibm-el-japan.github.io/quotation-tool/" target="_blank">チームポータル</a> から「ツールを開く」をクリック（URLコピー不要）</li>
+            <li>データを入力後、「💾 保存 → GitHubへ」または「☁️ API保存」ボタンをクリック<br>
+              <span style="font-size:11px;color:#57606a">ファイル名（例: ABC社_20250901_v1_KS.html）・担当者イニシャル・PAT・変更コメントを入力して保存</span></li>
+            <li>別のメンバーは「📂 GitHubから開く」ボタン → 一覧からファイルを選択して編集継続</li>
+            <li>ファイルを開くと、<strong>前バージョンからの差分が自動表示</strong>される（変更内容をすぐ確認可能）</li>
+            <li>変更履歴は <a href="https://github.com/ibm-el-japan/quotation-tool/commits/main" target="_blank">GitHub コミット履歴</a> で「誰が・いつ・何を変更したか」を確認可能</li>
+          </ol>
+          <p style="font-weight:700;font-size:12px;margin-bottom:6px;color:#1a3a5c">ファイル命名規則</p>
+          <p style="font-size:12px;font-family:monospace;background:#f0f3f7;border:1px solid #c8d6ea;border-radius:4px;padding:6px 10px;color:#1a3a5c">
+            [案件略称]_[YYYYMMDD]_v[番号]_[担当者イニシャル].html<br>
+            <span style="color:#57606a">例: ABC社_20250901_v1_KS.html</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- ── 管理者専用: ユーザー登録管理（管理者ログイン時のみ表示） ── -->
+      <div class="card" id="admin-user-mgmt-card" style="display:none;border-color:#d97706">
+        <div class="card-header" onclick="toggleCard(this)" style="background:#fef9c3;border-bottom-color:#fde68a">
+          <h3 style="color:#92400e">🔑 【管理者専用】ユーザー登録・権限管理</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body" style="background:#fffef0">
+          <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:14px">
+            ⚠️ このセクションは管理者のみに表示されます。ユーザー登録は管理者が GitHub から直接行ってください。一般ユーザーには登録方法を案内しないでください。
+          </div>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#92400e">📋 一般ユーザーの登録手順（Write 権限）</p>
+          <ol style="margin:0 0 14px 18px;font-size:12px;line-height:2">
+            <li>GitHub の <a href="https://github.com/ibm-el-japan/quotation-tool/settings/access" target="_blank" style="color:#1a56a0">Settings → Collaborators and teams</a> を開く</li>
+            <li>「<strong>Add people</strong>」をクリック</li>
+            <li>登録したいメンバーの GitHub ユーザー名またはメールアドレスを入力する</li>
+            <li>ロールを <strong>Write</strong>（通常メンバー）に設定する</li>
+            <li>「Add [username] to this repository」をクリック → 招待メールが自動送信される</li>
+            <li>招待されたメンバーがメール内の承認リンクをクリックするとアクセス可能になる</li>
+          </ol>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#92400e">👑 管理者（Admin）の登録手順</p>
+          <ol style="margin:0 0 14px 18px;font-size:12px;line-height:2">
+            <li>GitHub の <a href="https://github.com/ibm-el-japan/quotation-tool/settings/access" target="_blank" style="color:#1a56a0">Settings → Collaborators and teams</a> を開く</li>
+            <li>「<strong>Add people</strong>」をクリック</li>
+            <li>登録したいメンバーの GitHub ユーザー名またはメールアドレスを入力する</li>
+            <li>ロールを <strong>Admin</strong> に設定する</li>
+            <li>「Add [username] to this repository」をクリック → 招待メールが自動送信される</li>
+            <li><strong>ツール内管理者パスワードも別途伝達すること</strong>（口頭または安全な方法で）</li>
+          </ol>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#92400e">📊 権限一覧</p>
+          <table style="max-width:700px;margin-bottom:14px">
+            <thead><tr><th>GitHub ロール</th><th>権限範囲</th><th>用途</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="lc">Admin</td>
+                <td style="text-align:left;white-space:normal">リポジトリの全設定・削除・コラボレーター管理・ブランチ保護・全ファイル変更</td>
+                <td style="text-align:left">フォーマット管理者（ibmkevin 等）</td>
+              </tr>
+              <tr>
+                <td class="lc">Write</td>
+                <td style="text-align:left;white-space:normal">ファイルの作成・編集・コミット（一般ユーザー）</td>
+                <td style="text-align:left">担当SE等のチームメンバー</td>
+              </tr>
+              <tr>
+                <td class="lc">Read</td>
+                <td style="text-align:left">ファイルの閲覧・ダウンロードのみ</td>
+                <td style="text-align:left">参照のみのメンバー</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p style="font-weight:700;font-size:12px;margin-bottom:8px;color:#92400e">🔗 管理リンク</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="https://github.com/ibm-el-japan/quotation-tool/settings/access" target="_blank"
+               style="display:inline-block;background:#92400e;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">
+              👥 コラボレーター管理 →
+            </a>
+            <a href="https://github.com/ibm-el-japan/quotation-tool/commits/main" target="_blank"
+               style="display:inline-block;background:#1a56a0;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">
+              📜 コミット履歴 →
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- #content -->
+</div><!-- #app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ── 差分サマリーモーダル ── -->
+<div id="diff-modal-overlay">
+  <div id="diff-modal">
+    <div class="dm-head">
+      <span style="font-size:18px">🔍</span>
+      <h2 id="diff-modal-title">変更内容の確認</h2>
+      <button onclick="document.getElementById('diff-modal-overlay').classList.remove('open')" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px">✕</button>
+    </div>
+    <div class="dm-body" id="diff-modal-body"></div>
+    <div class="dm-footer">
+      <button class="btn bs" onclick="document.getElementById('diff-modal-overlay').classList.remove('open')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── GitHub 連携モーダル ── -->
+<div id="gh-modal-overlay" onclick="if(event.target===this)closeGhModal()">
+  <div id="gh-modal">
+    <div class="gh-mhead">
+      <span style="font-size:18px">☁️</span>
+      <h2 id="gh-modal-title">GitHub 保存</h2>
+      <button onclick="closeGhModal()" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px">✕</button>
+    </div>
+    <div class="gh-mbody" id="gh-modal-body">
+      <!-- 動的に生成 -->
+    </div>
+    <div class="gh-mfooter" id="gh-modal-footer">
+      <!-- 動的に生成 -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== VERSION =====================
+const APP_VERSION = 'v1.4.0';
+const APP_RELEASE_DATE = '2025-09-01';
+
+// ===================== ADMIN MODE =====================
+let _isAdmin = false;
+const ADMIN_PASSWORD = 'P@ssw0rd!';
+
+function promptAdminLogin() {
+  if (_isAdmin) { lockAdmin(); return; }
+  const pw = prompt('管理者パスワードを入力してください:');
+  if (pw === ADMIN_PASSWORD) {
+    _isAdmin = true;
+    document.getElementById('admin-bar').style.display = 'flex';
+    document.getElementById('admin-login-btn').textContent = '🔓';
+    document.getElementById('admin-login-btn').title = '管理者ログアウト';
+    document.querySelectorAll('.admin-lock').forEach(el => {
+      el.classList.remove('admin-lock');
+      el.dataset.adminLocked = '1';
+    });
+    document.getElementById('gh-api-save-btn').style.display = '';
+    // 管理者専用カードを表示
+    const adminCard = document.getElementById('admin-user-mgmt-card');
+    if (adminCard) adminCard.style.display = '';
+    showToast('管理者モードでログインしました');
+  } else if (pw !== null) {
+    showToast('パスワードが違います');
+  }
+}
+
+function lockAdmin() {
+  _isAdmin = false;
+  document.getElementById('admin-bar').style.display = 'none';
+  document.getElementById('admin-login-btn').textContent = '🔑';
+  document.getElementById('admin-login-btn').title = '管理者ログイン';
+  document.querySelectorAll('[data-admin-locked="1"]').forEach(el => {
+    el.classList.add('admin-lock');
+    el.removeAttribute('data-admin-locked');
+  });
+  document.getElementById('gh-api-save-btn').style.display = 'none';
+  // 管理者専用カードを非表示
+  const adminCard = document.getElementById('admin-user-mgmt-card');
+  if (adminCard) adminCard.style.display = 'none';
+  showToast('管理者モードからログアウトしました');
+}
+
+// 一般ユーザー: 管理者への招待申請メールを開く
+function openGhRegisterRequestMail() {
+  const to = 'ibmkevin@ibm.com'; // ← 管理者メールアドレス（必要に応じて変更）
+  const subject = encodeURIComponent('[見積もりツール] GitHub アカウント登録申請');
+  const body = encodeURIComponent(
+    '管理者様\n\n' +
+    '見積もり作成ツールの GitHub リポジトリへの参加を申請します。\n\n' +
+    '【申請者情報】\n' +
+    '氏名: （ここに氏名を記入）\n' +
+    '部署: （ここに部署を記入）\n' +
+    'GitHub ユーザー名: （ここに GitHub ユーザー名を記入）\n\n' +
+    'ご対応よろしくお願いします。'
+  );
+  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
+
+// ===================== DATA DEFINITIONS =====================
+
+const CHECKLIST_DEFAULT = [
+  {
+    title: "サービス内容",
+    items: [
+      {checked:true, text:"（サンプル）", tag:""},
+      {checked:true, text:"1. 設計作業（xxxx年xx月～xxxx年xx月）", tag:""},
+      {checked:true, text:"2. 導入・構築作業（xxxx年xx月～xxxx年xx月）", tag:""},
+      {checked:true, text:"3. テスト作業（xxxx年xx月～xxxx年xx月）", tag:""},
+      {checked:true, text:"4. ドキュメント作成作業（xxxx年xx月～xxxx年xx月）", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "サービス対象",
+    items: [
+      {checked:true, text:"（サンプル）", tag:""},
+      {checked:true, text:"・xxxxx（xx環境：xx台/xx環境：xx台）", tag:""},
+      {checked:true, text:"・xxxxx（xx環境：xx台/xx環境：xx台）", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "提出ドキュメント",
+    items: [
+      {checked:false, text:"基本設計書", tag:""},
+      {checked:false, text:"詳細設計書", tag:""},
+      {checked:false, text:"スクリプト設計書", tag:""},
+      {checked:false, text:"xxテスト計画兼報告書", tag:""},
+      {checked:false, text:"導入手順書", tag:""},
+      {checked:false, text:"xxテスト手順書", tag:""},
+      {checked:false, text:"運用手順書", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "前提",
+    items: [
+      {checked:false, text:"本サービスは、お客様の業務を支援する作業として提供されるものです。", tag:""},
+      {checked:false, text:"本サービスは、 xxx 支援を行うものです。", tag:""},
+      {checked:false, text:"作業の対応時間は、平日標準勤務時間（9:00～18:00）です。", tag:""},
+      {checked:false, text:"土日祝日対応がある場合は要相談となります。", tag:""},
+      {checked:false, text:"サービスはリモートサポートとなります。", tag:""},
+      {checked:false, text:"必要な場合はオンサイトでの作業を実施します。", tag:""},
+      {checked:false, text:"作業場所は xxx を想定しています。", tag:""},
+      {checked:false, text:"プロジェクトの打ち合わせ場所は xxx で 週xx回 程度を想定しています。", tag:""},
+      {checked:false, text:"サービス期間は xxx ～ xxx を想定しています。", tag:""},
+      {checked:false, text:"対象製品に関しては保守契約を締結されていることを前提とさせていただきます。", tag:""},
+      {checked:false, text:"対象製品の障害発生時、その具体的な解決（収集資料の特定、問題解析、修正モジュールの作成、等）は、お客様からの要請によりテクニカルサポートにておこなわれます。当支援は、問題判別や資料収集、テクニカルサポートとの窓口としての役割を遂行されるお客様担当者様をお手伝いさせていただき、障害の早期解決が円滑におこなわれるための技術支援となります。", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:true, text:"お客様には、IBMが本サービスを実施するにあたり、IBMが必要とする情報を書面にて提供していただきます。", tag:"必須"},
+      {checked:true, text:"お客様には、IBMが本サービスを実施するにあたり、必要となる作業場所、付帯設備、事務消耗品および電話使用などの庶務サービス、ならびに必要なシステムや施設へのアクセスが可能な環境を提供していただきます。", tag:"必須"},
+      {checked:true, text:"お客様には、作業にともなう既存システムのデータのバックアップおよびリストアの作業を提供していただきます。（お客様が必要と判断された場合のみ）", tag:"必須"},
+      {checked:true, text:"本サービスの対象は、お客様への直接の支援に限定させていただきます。", tag:"必須"},
+      {checked:true, text:"IBMが本サービスを実施するために必要な範囲で、お客様の設備、ソフトウェア、ハードウェア、ネットワーク、および他の同様の資源をIBMおよびIBMの従契約者に使用可能にしていただく前提として、必要な全てのライセンスおよび承認はお客様にて取得して頂きます。お客様がこれらのライセンスおよび承認を遅滞なく取得することを怠ったことにより、IBMが本サービスを実施することに支障が発生した場合、その範囲でIBMは本サービスの責任を免除されるものとします。お客様がこれらのライセンスおよび承認を遅滞なく取得することを怠ったことにより、もし第三者がIBMに対して権利を主張した場合、その権利に関連してIBMが被ったコストおよび損害をお客様はIBMに対して補償することに同意いただきます。", tag:"必須"}
+    ]
+  },
+  {
+    title: "サービスの適用除外 — 全体",
+    items: [
+      {checked:false, text:"サービス終了後にお客様にて実施された作業に起因した問題の復旧作業", tag:""},
+      {checked:false, text:"他社製品の性能、機能および品質等の保証および他社製品の導入の保証", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "サービスの適用除外 — ソフトウェア",
+    items: [
+      {checked:false, text:"ライセンスの準備と適用作業", tag:""},
+      {checked:false, text:"仮想マシンの作成、設定作業", tag:""},
+      {checked:false, text:"OSの導入、OS修正パッケージの適用、ドライバの導入、セットアップ作業", tag:""},
+      {checked:false, text:"OS、システムソフトウェア、ファームウェア等の更新作業", tag:""},
+      {checked:false, text:"アプリケーションの導入、セキュリティパッチの適用、設定作業", tag:""},
+      {checked:false, text:"プログラムの開発・改変にかかわるサービス", tag:""},
+      {checked:false, text:"お客様によるプログラム変更に起因する障害に対するサービス", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "サービスの適用除外 — ハードウェア",
+    items: [
+      {checked:false, text:"機器搬入設置、キッティング、ラッキング、ケーブリング作業", tag:""},
+      {checked:false, text:"工事をともなう電源関連の作業、耐震工事、ネットワーク・ケーブルなどの敷設作業、ルーターなどのネットワーク構成機器の設置作業およびプリンターの設置作業", tag:""},
+      {checked:false, text:"ハードウェア障害またはデバイスドライバーの障害対応", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "サービスの適用除外 — 設計・構築",
+    items: [
+      {checked:false, text:"キャパシティー・プランニング", tag:""},
+      {checked:false, text:"スクリプト作成", tag:""},
+      {checked:false, text:"運用設計（監視設計、データ保管設計、等を含む）", tag:""},
+      {checked:false, text:"パフォーマンス・チューニング", tag:""},
+      {checked:false, text:"データ移行", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "サービスの適用除外 — テスト",
+    items: [
+      {checked:false, text:"単体テスト", tag:""},
+      {checked:false, text:"結合テスト", tag:""},
+      {checked:false, text:"パフォーマンステスト", tag:""},
+      {checked:false, text:"ベンチマークテスト", tag:""},
+      {checked:false, text:"負荷テスト", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  },
+  {
+    title: "注意点",
+    items: [
+      {checked:false, text:"プロジェクトマネージメントが必要か？", tag:""},
+      {checked:false, text:"事前検証が必要か？", tag:""},
+      {checked:false, text:"土日祝日作業があるか？", tag:""},
+      {checked:false, text:"深夜作業があるか？", tag:""},
+      {checked:false, text:"構築やテスト作業を2名体制で実施する必要があるか？", tag:""},
+      {checked:false, text:"システムバックアップとリストアを設計構築する必要があるか？", tag:""},
+      {checked:false, text:"監視設計をする必要があるか？", tag:""},
+      {checked:false, text:"運用設計をする必要があるか？", tag:""},
+      {checked:false, text:"提出するドキュメントのレベルは合意してあるか？", tag:""},
+      {checked:false, text:"スクリプトを作成する必要があるか？", tag:""},
+      {checked:false, text:"パフォーマンスについて要件がないか？", tag:""},
+      {checked:false, text:"QA支援の時はお客様の要件とスキルレベルを直接会話して確認する", tag:""},
+      {checked:false, text:"", tag:""},
+      {checked:false, text:"", tag:""}
+    ]
+  }
+];
+
+const KOSU_SECTIONS_DEFAULT = [
+  {id:"pm", label:"プロジェクト管理", rows:[
+    {id:"pm1", label:"情報共有・進捗管理", hint:"チームでプロジェクトを進める場合の情報共有等"},
+    {id:"pm2", label:"契約管理", hint:"S-LINK等の契約関連の管理工数を5%程度計上する"},
+    {id:"pm3", label:"その他（PM）", hint:""},
+    {id:"pm4", label:"（予備）", hint:""},
+    {id:"pm5", label:"（予備）", hint:""}
+  ]},
+  {id:"mtg", label:"打ち合わせ", rows:[
+    {id:"mtg1", label:"定例打ち合わせ", hint:"打ち合わせ時間×人数×頻度で時間を決定する"},
+    {id:"mtg2", label:"移動時間", hint:"遠距離出張時は移動時間×0.5程度を目安に追加する"},
+    {id:"mtg3", label:"その他（打ち合わせ）", hint:""},
+    {id:"mtg4", label:"（予備）", hint:""}
+  ]},
+  {id:"design", label:"設計", rows:[
+    {id:"des1", label:"基本機能設計", hint:"お客様向け設計書の作成時間は含めない（ドキュメントに含める）"},
+    {id:"des2", label:"オプション機能設計", hint:""},
+    {id:"des3", label:"非機能設計", hint:""},
+    {id:"des4", label:"運用設計", hint:""},
+    {id:"des5", label:"（予備）", hint:""},
+    {id:"des6", label:"（予備）", hint:""},
+    {id:"des7", label:"（予備）", hint:""},
+    {id:"des8", label:"（予備）", hint:""},
+    {id:"des9", label:"（予備）", hint:""},
+    {id:"des10", label:"（予備）", hint:""},
+    {id:"des11", label:"（予備）", hint:""}
+  ]},
+  {id:"build", label:"構築", rows:[
+    {id:"bld1", label:"準備・事前検証", hint:"作業人数を確認すること"},
+    {id:"bld2", label:"基本構築", hint:"基本的な社内検証作業は含めない（必要な場合はPoCを提案する）"},
+    {id:"bld3", label:"オプション機能構築", hint:"障害対応の猶予時間は含めない"},
+    {id:"bld4", label:"非機能構築", hint:"リスクの高い作業に関してはContingencyで対応する"},
+    {id:"bld5", label:"スクリプト作成", hint:"スクリプト作成には、ローカルでの動作テストを含む"},
+    {id:"bld6", label:"移動時間（構築）", hint:"遠距離出張時は移動時間×0.5程度を目安に追加する"},
+    {id:"bld7", label:"（予備）", hint:""},
+    {id:"bld8", label:"（予備）", hint:""},
+    {id:"bld9", label:"（予備）", hint:""},
+    {id:"bld10", label:"（予備）", hint:""},
+    {id:"bld11", label:"（予備）", hint:""}
+  ]},
+  {id:"test", label:"テスト", rows:[
+    {id:"tst1", label:"テスト計画", hint:"テスト計画の立案を含むが、お客様向け計画書や報告書作成は含めない（ドキュメントに含まれる）"},
+    {id:"tst2", label:"設定確認テスト", hint:"性能要件がある場合は性能テストを実施する"},
+    {id:"tst3", label:"正常系テスト", hint:"作業人数を確認すること"},
+    {id:"tst4", label:"異常系テスト", hint:""},
+    {id:"tst5", label:"性能テスト", hint:""},
+    {id:"tst6", label:"移動時間（テスト）", hint:"遠距離出張時は移動時間×0.5程度を目安に追加する"},
+    {id:"tst7", label:"（予備）", hint:""},
+    {id:"tst8", label:"（予備）", hint:""},
+    {id:"tst9", label:"（予備）", hint:""},
+    {id:"tst10", label:"（予備）", hint:""}
+  ]},
+  {id:"handover", label:"引継ぎ", rows:[
+    {id:"hnd1", label:"引継ぎ準備", hint:"遠距離出張時は移動時間×0.5程度を目安に追加する"},
+    {id:"hnd2", label:"引継ぎ実施", hint:""},
+    {id:"hnd3", label:"（予備）", hint:""},
+    {id:"hnd4", label:"（予備）", hint:""}
+  ]},
+  {id:"doc", label:"ドキュメント", rows:[
+    {id:"doc1", label:"基本設計書", hint:"お客様向けドキュメントの作成とレビュー。ドキュメントのフォーマットとレベル感を予めお客様と確認する"},
+    {id:"doc2", label:"詳細設計書", hint:""},
+    {id:"doc3", label:"スクリプト設計書", hint:""},
+    {id:"doc4", label:"テスト計画兼報告書", hint:""},
+    {id:"doc5", label:"導入手順書", hint:""},
+    {id:"doc6", label:"テスト手順書", hint:""},
+    {id:"doc7", label:"運用手順書", hint:""},
+    {id:"doc8", label:"レビュー", hint:""},
+    {id:"doc9", label:"（予備）", hint:""},
+    {id:"doc10", label:"（予備）", hint:""}
+  ]},
+  {id:"qa", label:"QA", rows:[
+    {id:"qa1", label:"QA支援（リモート）", hint:"1回2時間のインシデント制とする。基本的に構築完了後の支援。お客様の経験が少ない場合等は積むことを推奨する。基本的にリモート支援とする"},
+    {id:"qa2", label:"QA支援（オンサイト）", hint:""},
+    {id:"qa3", label:"（予備）", hint:""},
+    {id:"qa4", label:"（予備）", hint:""}
+  ]},
+  {id:"other", label:"その他", rows:[
+    {id:"oth1", label:"（予備）", hint:""},
+    {id:"oth2", label:"（予備）", hint:""},
+    {id:"oth3", label:"（予備）", hint:""},
+    {id:"oth4", label:"（予備）", hint:""}
+  ]}
+];
+
+const TRAVEL_DEFAULT = [
+  {id:"tr0", type:"交通費（記入例：大阪）", place:"", unit:"", qty:1, cnt:0, hint:""},
+  {id:"tr1", type:"宿泊費（記入例：大阪）", place:"", unit:"", qty:1, cnt:0, hint:""},
+  {id:"tr2", type:"出張手当（記入例：大阪）", place:"", unit:"", qty:1, cnt:0, hint:""},
+  {id:"tr3", type:"記入例：PC借用費", place:"", unit:"", qty:1, cnt:1, hint:""},
+  {id:"tr4", type:"その他", place:"", unit:"", qty:1, cnt:1, hint:""}
+];
+
+// ===================== STATE =====================
+let CHECKLIST_DATA = JSON.parse(JSON.stringify(CHECKLIST_DEFAULT));
+let KOSU_SECTIONS = JSON.parse(JSON.stringify(KOSU_SECTIONS_DEFAULT));
+let travelRows = TRAVEL_DEFAULT.map(r => ({...r}));
+let kosuData = {};
+let _extraRowCounter = 1000;
+
+// ===================== UTILS =====================
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('ja-JP');
+}
+
+let _toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ===================== TABS =====================
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const tabIds = ['tab-basic','tab-checklist','tab-kosu','tab-travel','tab-output','tab-changelog'];
+  const idx = tabIds.indexOf(id);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+}
+
+function toggleCard(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('hidden');
+  header.classList.toggle('collapsed');
+}
+
+// ===================== PERIOD / MONTHS =====================
+function getMonthLabels() {
+  const n = parseInt(document.getElementById('period-months').value) || 12;
+  let y = parseInt(document.getElementById('start-year').value) || 2026;
+  let m = parseInt(document.getElementById('start-month').value) || 4;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result.push({y, m, label: y + '/' + String(m).padStart(2,'0')});
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return result;
+}
+
+// ===================== KOSU DATA =====================
+function initKosuData() {
+  KOSU_SECTIONS.forEach(sec => {
+    sec.rows.forEach(row => {
+      if (!kosuData[row.id]) {
+        kosuData[row.id] = {label: row.label, hint: row.hint, values: new Array(60).fill(0)};
+      }
+    });
+  });
+}
+
+function buildKosuTable() {
+  initKosuData();
+  renderKosuTable(getMonthLabels());
+}
+
+function rebuildKosuMonths() {
+  renderKosuTable(getMonthLabels());
+  recalcAll();
+}
+
+function renderKosuTable(months) {
+  const n = months.length;
+  const wrap = document.getElementById('kosu-table-wrap');
+  let h = '<div class="bg-row np"><button class="btn bp bsm np" onclick="addKosuMonths()">＋ 月を追加</button><button class="btn bs bsm np" onclick="removeKosuMonth()">－ 月を削除</button></div>';
+  h += '<div class="tbl-wrap"><table><thead><tr>';
+  h += '<th style="min-width:160px;position:sticky;left:0;z-index:5">作業項目</th>';
+  h += '<th style="min-width:160px;resize:horizontal;overflow:hidden">見積もり方針</th>';
+  months.forEach((ml, mi) => {
+    const mc = (mi % 2 === 0) ? 'kosu-month-odd' : 'kosu-month-even';
+    h += '<th class="' + mc + '" style="text-align:center">' + escHtml(ml.label) + '</th>';
+  });
+  h += '<th style="background:#d6eaf8;color:#0c4a6e">合計(h)</th>';
+  h += '<th class="np"></th>';
+  h += '</tr></thead><tbody>';
+
+  KOSU_SECTIONS.forEach(sec => {
+    h += '<tr>';
+    h += '<td colspan="2" class="sh" style="position:sticky;left:0;z-index:1">';
+    h += escHtml(sec.label);
+    h += ' <button class="btn bp bsm np" style="margin-left:6px" onclick="addKosuRow(\'' + sec.id + '\')">＋</button>';
+    h += ' <button class="btn bd bsm np" style="margin-left:2px" onclick="deleteKosuSection(\'' + sec.id + '\')">✕ 区分削除</button>';
+    h += '</td>';
+    for (let mi = 0; mi < n; mi++) {
+      const mc = (mi % 2 === 0) ? 'kosu-month-odd' : 'kosu-month-even';
+      h += '<td class="tc ' + mc + '" id="sec-month-' + sec.id + '-' + mi + '">0</td>';
+    }
+    h += '<td class="tc" id="sec-total-' + sec.id + '">0</td>';
+    h += '<td class="np"></td>';
+    h += '</tr>';
+
+    sec.rows.forEach(row => {
+      const d = kosuData[row.id] || {label: row.label, hint: row.hint, values: new Array(60).fill(0)};
+      h += '<tr>';
+      h += '<td style="position:sticky;left:0;z-index:1;background:#fff;text-align:left;padding:3px 5px">';
+      h += '<input type="text" class="w" value="' + escHtml(d.label) + '" onchange="kosuData[\'' + row.id + '\'].label=this.value">';
+      h += '</td>';
+      h += '<td style="text-align:left;padding:3px 5px"><input type="text" class="w" style="min-width:150px" value="' + escHtml(d.hint) + '" onchange="kosuData[\'' + row.id + '\'].hint=this.value"></td>';
+      for (let mi = 0; mi < n; mi++) {
+        const v = d.values[mi] || 0;
+        const mc = (mi % 2 === 0) ? 'kosu-month-odd' : 'kosu-month-even';
+        h += '<td class="' + mc + '" style="padding:2px 3px"><input type="number" step="0.5" min="0" value="' + v + '" style="min-width:44px" oninput="onKosuInput(\'' + row.id + '\',' + mi + ',this.value)"></td>';
+      }
+      h += '<td class="st" id="row-total-' + row.id + '">0</td>';
+      h += '<td class="np"><button class="btn bp bsm np" style="margin-right:2px" onclick="addKosuRowAfter(\'' + row.id + '\',\'' + sec.id + '\')">＋</button><button class="btn bd bsm np" onclick="deleteKosuRow(\'' + row.id + '\',\'' + sec.id + '\')">✕</button></td>';
+      h += '</tr>';
+    });
+  });
+
+  h += '<tr>';
+  h += '<td colspan="2" style="text-align:right;font-weight:700;background:#cfe2f3;color:#0c3566">合計</td>';
+  for (let mi = 0; mi < n; mi++) {
+    const mc = (mi % 2 === 0) ? 'kosu-month-odd' : 'kosu-month-even';
+    h += '<td class="gt ' + mc + '" id="grand-month-' + mi + '">0</td>';
+  }
+  h += '<td class="gt" id="grand-total-h">0</td>';
+  h += '<td class="np"></td>';
+  h += '</tr>';
+
+  h += '</tbody></table></div>';
+  wrap.innerHTML = h;
+  recalcKosu(n);
+}
+
+function sumRow(rid, n) {
+  const d = kosuData[rid];
+  if (!d) return 0;
+  let s = 0;
+  for (let i = 0; i < n; i++) s += (parseFloat(d.values[i]) || 0);
+  return s;
+}
+
+function getSectionMonthTotal(sec, n, mIdx) {
+  let s = 0;
+  sec.rows.forEach(row => { s += parseFloat((kosuData[row.id] || {values:[]}).values[mIdx] || 0); });
+  return s;
+}
+
+function getGrandMonthTotal(n, mIdx) {
+  let s = 0;
+  KOSU_SECTIONS.forEach(sec => { s += getSectionMonthTotal(sec, n, mIdx); });
+  return s;
+}
+
+function recalcKosu(n) {
+  if (!n) n = getMonthLabels().length;
+  let grandH = 0;
+
+  KOSU_SECTIONS.forEach(sec => {
+    let secTotal = 0;
+    sec.rows.forEach(row => {
+      const rTotal = sumRow(row.id, n);
+      const el = document.getElementById('row-total-' + row.id);
+      if (el) el.textContent = rTotal % 1 === 0 ? rTotal : rTotal.toFixed(1);
+      secTotal += rTotal;
+    });
+    const stEl = document.getElementById('sec-total-' + sec.id);
+    if (stEl) stEl.textContent = secTotal % 1 === 0 ? secTotal : secTotal.toFixed(1);
+    for (let mi = 0; mi < n; mi++) {
+      const smEl = document.getElementById('sec-month-' + sec.id + '-' + mi);
+      if (smEl) {
+        const v = getSectionMonthTotal(sec, n, mi);
+        smEl.textContent = v % 1 === 0 ? v : v.toFixed(1);
+      }
+    }
+    grandH += secTotal;
+  });
+
+  for (let mi = 0; mi < n; mi++) {
+    const gmEl = document.getElementById('grand-month-' + mi);
+    if (gmEl) {
+      const v = getGrandMonthTotal(n, mi);
+      gmEl.textContent = v % 1 === 0 ? v : v.toFixed(1);
+    }
+  }
+  const gtEl = document.getElementById('grand-total-h');
+  if (gtEl) gtEl.textContent = grandH % 1 === 0 ? grandH : grandH.toFixed(1);
+
+  // summary bar
+  const khEl = document.getElementById('kosu-total-h');
+  if (khEl) khEl.textContent = grandH % 1 === 0 ? grandH : grandH.toFixed(1);
+  const rate = parseFloat(document.getElementById('labor-rate').value) || 0;
+  const kcEl = document.getElementById('kosu-total-cost');
+  if (kcEl) kcEl.textContent = '¥' + fmt(Math.round(grandH * rate));
+
+  return grandH;
+}
+
+function onKosuInput(rid, idx, val) {
+  if (!kosuData[rid]) kosuData[rid] = {label:'', hint:'', values: new Array(60).fill(0)};
+  kosuData[rid].values[idx] = parseFloat(val) || 0;
+  const n = getMonthLabels().length;
+  recalcKosu(n);
+  recalcAll();
+}
+
+function addKosuRow(secId) {
+  const sec = KOSU_SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  const newId = 'extra_' + secId + '_' + (_extraRowCounter++);
+  sec.rows.push({id: newId, label:'（新規）', hint:''});
+  kosuData[newId] = {label:'（新規）', hint:'', values: new Array(60).fill(0)};
+  rebuildKosuMonths();
+}
+
+function addKosuRowAfter(afterRowId, secId) {
+  const sec = KOSU_SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  const newId = 'extra_' + secId + '_' + (_extraRowCounter++);
+  const idx = sec.rows.findIndex(r => r.id === afterRowId);
+  if (idx === -1) {
+    sec.rows.push({id: newId, label:'（新規）', hint:''});
+  } else {
+    sec.rows.splice(idx + 1, 0, {id: newId, label:'（新規）', hint:''});
+  }
+  kosuData[newId] = {label:'（新規）', hint:'', values: new Array(60).fill(0)};
+  rebuildKosuMonths();
+}
+
+function deleteKosuRow(rid, secId) {
+  const sec = KOSU_SECTIONS.find(s => s.id === secId);
+  if (sec) sec.rows = sec.rows.filter(r => r.id !== rid);
+  delete kosuData[rid];
+  rebuildKosuMonths();
+}
+
+function deleteKosuSection(secId) {
+  const sec = KOSU_SECTIONS.find(s => s.id === secId);
+  if (sec) {
+    sec.rows.forEach(row => {
+      delete kosuData[row.id];
+    });
+  }
+  KOSU_SECTIONS = KOSU_SECTIONS.filter(s => s.id !== secId);
+  rebuildKosuMonths();
+}
+
+function addKosuMonths() {
+  const el = document.getElementById('period-months');
+  el.value = (parseInt(el.value) || 12) + 1;
+  rebuildKosuMonths();
+}
+
+function removeKosuMonth() {
+  const el = document.getElementById('period-months');
+  const cur = parseInt(el.value) || 12;
+  if (cur > 1) { el.value = cur - 1; rebuildKosuMonths(); }
+}
+
+// ===================== CHECKLIST =====================
+let CHECKLIST_DATA_REF = null;
+
+function buildChecklist() {
+  const container = document.getElementById('checklist-sections');
+  container.innerHTML = '';
+  CHECKLIST_DATA.forEach((sec, si) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<div class="card-header" onclick="toggleCard(this)"><h3>' + escHtml(sec.title) + '</h3><span class="ti">▼</span></div>' +
+      '<div class="card-body"><div class="bg-row np"><button class="btn bp bsm np" onclick="addChecklistRow(' + si + ')">＋ 行を追加</button></div>' +
+      '<div class="tbl-wrap"><table class="ctbl"><thead><tr><th style="width:30px">✓</th><th>内容</th><th style="width:60px">タグ</th><th class="np" style="width:30px"></th></tr></thead>' +
+      '<tbody id="cl-tbody-' + si + '">' + sec.items.map((item, ii) => checklistRowHtml(si, ii, item)).join('') + '</tbody></table></div></div>';
+    container.appendChild(card);
+  });
+}
+
+function checklistRowHtml(si, ii, item) {
+  const chk = item.checked ? 'checked' : '';
+  const tagHtml = item.tag ? ' <span class="req" style="float:right;margin-top:2px">' + escHtml(item.tag) + '</span>' : '';
+  return '<tr>' +
+    '<td style="text-align:center"><input type="checkbox" ' + chk + ' onchange="CHECKLIST_DATA[' + si + '].items[' + ii + '].checked=this.checked"></td>' +
+    '<td style="display:flex;align-items:center;gap:4px"><input type="text" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value">' + tagHtml + '</td>' +
+    '<td><input type="text" value="' + escHtml(item.tag) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].tag=this.value" placeholder="タグ"></td>' +
+    '<td class="np"><button class="btn bd bsm np" onclick="deleteChecklistRow(' + si + ',' + ii + ')">✕</button></td>' +
+    '</tr>';
+}
+
+function addChecklistRow(si) {
+  const sec = CHECKLIST_DATA[si];
+  const firstReqIdx = sec.items.findIndex(item => item.tag === '必須');
+  if (firstReqIdx !== -1) {
+    sec.items.splice(firstReqIdx, 0, {checked:false, text:'', tag:''});
+  } else {
+    sec.items.push({checked:false, text:'', tag:''});
+  }
+  rebuildChecklistSection(si);
+}
+
+function deleteChecklistRow(si, ii) {
+  CHECKLIST_DATA[si].items.splice(ii, 1);
+  rebuildChecklistSection(si);
+}
+
+function rebuildChecklistSection(si) {
+  const tbody = document.getElementById('cl-tbody-' + si);
+  if (!tbody) return;
+  tbody.innerHTML = CHECKLIST_DATA[si].items.map((item, ii) => checklistRowHtml(si, ii, item)).join('');
+}
+
+// ===================== TRAVEL =====================
+let _travelCounter = 100;
+
+function buildTravelTable() {
+  const tbody = document.getElementById('travel-tbody');
+  tbody.innerHTML = travelRows.map(r => travelRowHtml(r)).join('');
+  recalcTravel();
+}
+
+function travelRowHtml(r) {
+  return '<tr id="trow-' + r.id + '">' +
+    '<td><input type="text" class="w" value="' + escHtml(r.type) + '" oninput="updateTravel(\'' + r.id + '\',\'type\',this.value)"></td>' +
+    '<td><input type="text" style="min-width:70px" value="' + escHtml(r.place) + '" oninput="updateTravel(\'' + r.id + '\',\'place\',this.value)"></td>' +
+    '<td><input type="number" min="0" value="' + escHtml(r.unit) + '" oninput="updateTravel(\'' + r.id + '\',\'unit\',this.value)"></td>' +
+    '<td><input type="number" min="1" value="' + escHtml(r.qty) + '" oninput="updateTravel(\'' + r.id + '\',\'qty\',this.value)"></td>' +
+    '<td><input type="number" min="0" value="' + escHtml(r.cnt) + '" oninput="updateTravel(\'' + r.id + '\',\'cnt\',this.value)"></td>' +
+    '<td id="travel-total-' + r.id + '" style="font-weight:700">¥0</td>' +
+    '<td><input type="text" class="w" value="' + escHtml(r.hint) + '" oninput="updateTravel(\'' + r.id + '\',\'hint\',this.value)"></td>' +
+    '<td class="np"><button class="btn bd bsm np" onclick="deleteTravelRow(\'' + r.id + '\')">✕</button></td>' +
+    '</tr>';
+}
+
+function updateTravel(rid, field, val) {
+  const r = travelRows.find(x => x.id === rid);
+  if (!r) return;
+  if (field === 'unit' || field === 'qty' || field === 'cnt') r[field] = parseFloat(val) || 0;
+  else r[field] = val;
+  recalcTravel();
+}
+
+function recalcTravel() {
+  let grand = 0;
+  travelRows.forEach(r => {
+    const total = (parseFloat(r.unit)||0) * (parseFloat(r.qty)||0) * (parseFloat(r.cnt)||0);
+    const el = document.getElementById('travel-total-' + r.id);
+    if (el) el.textContent = '¥' + fmt(total);
+    grand += total;
+  });
+  const gtEl = document.getElementById('travel-grand-total');
+  if (gtEl) gtEl.textContent = '¥' + fmt(grand);
+  return grand;
+}
+
+function addTravelRow() {
+  const newId = 'tr' + (_travelCounter++);
+  const r = {id: newId, type:'', place:'', unit:'', qty:1, cnt:1, hint:''};
+  travelRows.push(r);
+  const tbody = document.getElementById('travel-tbody');
+  tbody.innerHTML = travelRows.map(x => travelRowHtml(x)).join('');
+  recalcTravel();
+}
+
+function deleteTravelRow(rid) {
+  travelRows = travelRows.filter(r => r.id !== rid);
+  const tbody = document.getElementById('travel-tbody');
+  tbody.innerHTML = travelRows.map(r => travelRowHtml(r)).join('');
+  recalcTravel();
+  recalcAll();
+}
+
+// ===================== RECALC ALL =====================
+function recalcAll() {
+  const n = getMonthLabels().length;
+  const grandH = recalcKosu(n);
+  const travelGrand = recalcTravel();
+
+  const rate = parseFloat(document.getElementById('labor-rate').value) || 0;
+  const contRate = parseFloat(document.getElementById('contingency').value) || 0;
+  const gpRate = parseFloat(document.getElementById('gp').value) || 0;
+  const isDou = document.getElementById('is-dou').value === 'true';
+
+  const laborCost = grandH * rate;
+  const baseCost = laborCost + travelGrand;
+  const contCost = isDou ? 0 : baseCost * contRate;
+  const gpBase = baseCost + contCost;
+  const gpCost = isDou ? 0 : gpBase * gpRate / (1 - gpRate);
+  const total = gpBase + gpCost;
+  const ruEl = document.getElementById('rounding-unit');
+  const ru = ruEl ? (parseInt(ruEl.value) || 0) : 0;
+  const totalRd = ru > 0 ? Math.ceil(total / ru) * ru : Math.round(total);
+
+  document.getElementById('sum-hours').textContent = grandH % 1 === 0 ? grandH : grandH.toFixed(1);
+  document.getElementById('sum-labor').textContent = '¥' + fmt(Math.round(laborCost));
+  document.getElementById('sum-other').textContent = '¥' + fmt(Math.round(travelGrand));
+  document.getElementById('sum-cont').textContent = isDou ? '—（eDOU）' : '¥' + fmt(Math.round(contCost));
+  document.getElementById('sum-gp-val').textContent = isDou ? '—（eDOU）' : '¥' + fmt(Math.round(gpCost));
+  document.getElementById('sum-total').textContent = '¥' + fmt(totalRd);
+
+  const contLabel = isDou ? '—（eDOU）' : '¥' + fmt(Math.round(contCost));
+  const gpLabel   = isDou ? '—（eDOU）' : '¥' + fmt(Math.round(gpCost));
+  const pdLabor = document.getElementById('pd-labor');   if (pdLabor)   pdLabor.textContent   = '¥' + fmt(Math.round(laborCost));
+  const pdOther = document.getElementById('pd-other');   if (pdOther)   pdOther.textContent   = '¥' + fmt(Math.round(travelGrand));
+  const pdCont  = document.getElementById('pd-cont');    if (pdCont)    pdCont.textContent    = contLabel;
+  const pdGp    = document.getElementById('pd-gp');      if (pdGp)      pdGp.textContent      = gpLabel;
+  const pdTotal = document.getElementById('pd-total');   if (pdTotal)   pdTotal.textContent   = '¥' + fmt(Math.round(total));
+  const pdRound = document.getElementById('pd-rounded'); if (pdRound)   pdRound.textContent   = '¥' + fmt(totalRd);
+}
+
+function syncBasicInfo() { recalcAll(); }
+
+// ===================== OUTPUT GENERATION =====================
+function generateOutput(mode) {
+  const area = document.getElementById('output-area');
+  area.innerHTML = '';
+  if (mode === 'both' || mode === 'premise') area.appendChild(buildPremiseSheet());
+  if (mode === 'both' || mode === 'quote') {
+    area.appendChild(buildKosuSheet());
+    area.appendChild(buildTravelSheet());
+    area.appendChild(buildPriceSheet());
+  }
+}
+
+function makeSheetBlock(title, bodyHtml) {
+  const div = document.createElement('div');
+  div.className = 'sheet-block od';
+  div.innerHTML = '<div class="sheet-header"><strong>' + escHtml(title) + '</strong>' +
+    '<button class="sheet-del btn bd bsm np" onclick="this.closest(\'.sheet-block\').remove()">このシートを削除</button></div>' +
+    '<div class="sheet-body">' + bodyHtml + '</div>';
+  return div;
+}
+
+function buildPremiseSheet() {
+  let html = '';
+  CHECKLIST_DATA.forEach((sec, si) => {
+    const checkedItems = sec.items.filter(item => item.checked && item.text.trim() !== '');
+    if (checkedItems.length === 0) return;
+    html += '<div class="sec-block" style="margin-bottom:12px">';
+    html += '<h3 contenteditable="true">' + escHtml(sec.title) +
+      '<button class="sec-del np" onclick="this.closest(\'.sec-block\').remove()">✕ セクション削除</button></h3>';
+    html += '<ul>';
+    checkedItems.forEach(item => {
+      const tagHtml = item.tag ? '<span class="req">' + escHtml(item.tag) + '</span>' : '';
+      html += '<li><span class="lt" contenteditable="true">' + escHtml(item.text) + '</span>' + tagHtml +
+        '<button class="del-btn np" onclick="this.closest(\'li\').remove()">✕</button></li>';
+    });
+    html += '</ul></div>';
+  });
+  if (!html) html = '<p style="color:#57606a">チェックされた項目がありません。</p>';
+  return makeSheetBlock('前提・適用範囲シート', html);
+}
+
+function buildKosuSheet() {
+  const months = getMonthLabels();
+  const n = months.length;
+  let html = '<h2 contenteditable="true">工数詳細</h2>';
+  html += '<div style="overflow-x:auto"><table><thead><tr>';
+  html += '<th>区分</th><th>作業項目</th>';
+  months.forEach(ml => { html += '<th>' + escHtml(ml.label) + '</th>'; });
+  html += '<th style="background:#e0f2fe;color:#0c4a6e">合計(h)</th>';
+  html += '<th class="np"></th>';
+  html += '</tr></thead><tbody id="out-kosu-tbody">';
+
+  let grandH = 0;
+  const grandMonths = new Array(n).fill(0);
+
+  KOSU_SECTIONS.forEach(sec => {
+    let secTotal = 0;
+    const secMonths = new Array(n).fill(0);
+    const subRows = [];
+
+    sec.rows.forEach(row => {
+      const d = kosuData[row.id];
+      if (!d) return;
+      const rowTotal = sumRow(row.id, n);
+      if (rowTotal === 0) return;
+      const rowMonths = [];
+      for (let mi = 0; mi < n; mi++) {
+        const v = parseFloat(d.values[mi]) || 0;
+        rowMonths.push(v);
+        secMonths[mi] += v;
+        grandMonths[mi] += v;
+      }
+      secTotal += rowTotal;
+      grandH += rowTotal;
+      subRows.push({label: d.label, rowMonths, rowTotal});
+    });
+
+    if (secTotal === 0) return;
+
+    html += '<tr style="background:#e8edf5;font-weight:700;color:#1a56a0">';
+    html += '<td colspan="2">' + escHtml(sec.label) + '</td>';
+    secMonths.forEach(v => { html += '<td>' + (v % 1 === 0 ? v : v.toFixed(1)) + '</td>'; });
+    html += '<td>' + (secTotal % 1 === 0 ? secTotal : secTotal.toFixed(1)) + '</td>';
+    html += '<td class="np"><button class="del-btn np" onclick="deleteOutputSection(this)">✕ 区分削除</button></td>';
+    html += '</tr>';
+
+    subRows.forEach(sr => {
+      html += '<tr>';
+      html += '<td></td>';
+      html += '<td contenteditable="true" style="text-align:left">' + escHtml(sr.label) + '</td>';
+      sr.rowMonths.forEach(v => { html += '<td contenteditable="true">' + (v % 1 === 0 ? v : v.toFixed(1)) + '</td>'; });
+      html += '<td>' + (sr.rowTotal % 1 === 0 ? sr.rowTotal : sr.rowTotal.toFixed(1)) + '</td>';
+      html += '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+      html += '</tr>';
+    });
+  });
+
+  html += '<tr style="background:#fef3c7;font-weight:700;color:#78350f">';
+  html += '<td colspan="2" style="text-align:right">合計</td>';
+  grandMonths.forEach(v => { html += '<td>' + (v % 1 === 0 ? v : v.toFixed(1)) + '</td>'; });
+  html += '<td>' + (grandH % 1 === 0 ? grandH : grandH.toFixed(1)) + '</td>';
+  html += '<td class="np"></td>';
+  html += '</tr>';
+
+  html += '</tbody></table></div>';
+  return makeSheetBlock('工数詳細シート', html);
+}
+
+function buildTravelSheet() {
+  let html = '<h2 contenteditable="true">その他費用詳細</h2>';
+  html += '<div style="overflow-x:auto"><table id="out-travel-table"><thead><tr>';
+  html += '<th>費用種別</th><th>場所</th><th>単価（円）</th><th>人数</th><th>回数</th><th>合計（円）</th><th class="np"></th>';
+  html += '</tr></thead><tbody id="out-travel-tbody">';
+
+  let grand = 0;
+  travelRows.forEach(r => {
+    const total = (parseFloat(r.unit)||0) * (parseFloat(r.qty)||0) * (parseFloat(r.cnt)||0);
+    grand += total;
+    html += '<tr>';
+    html += '<td contenteditable="true" style="text-align:left">' + escHtml(r.type) + '</td>';
+    html += '<td contenteditable="true">' + escHtml(r.place) + '</td>';
+    html += '<td contenteditable="true" style="text-align:right">' + escHtml(String(r.unit)) + '</td>';
+    html += '<td contenteditable="true" style="text-align:right">' + escHtml(String(r.qty)) + '</td>';
+    html += '<td contenteditable="true" style="text-align:right">' + escHtml(String(r.cnt)) + '</td>';
+    html += '<td style="font-weight:700;text-align:right">¥' + fmt(total) + '</td>';
+    html += '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+    html += '</tr>';
+  });
+
+  html += '<tr style="background:#fef3c7;font-weight:700"><td colspan="5" style="text-align:right">その他費用合計</td>';
+  html += '<td style="text-align:right">¥' + fmt(grand) + '</td><td class="np"></td></tr>';
+  html += '</tbody></table></div>';
+  html += '<button class="btn bp bsm np" style="margin-top:8px" onclick="addOutputTravelRow(this)">＋ 行を追加</button>';
+  return makeSheetBlock('その他費用シート', html);
+}
+
+function buildPriceSheet() {
+  const n = getMonthLabels().length;
+  let grandH = 0;
+  KOSU_SECTIONS.forEach(sec => { sec.rows.forEach(row => { grandH += sumRow(row.id, n); }); });
+
+  const rate = parseFloat(document.getElementById('labor-rate').value) || 0;
+  const contRate = parseFloat(document.getElementById('contingency').value) || 0;
+  const gpRate = parseFloat(document.getElementById('gp').value) || 0;
+  const isDou = document.getElementById('is-dou').value === 'true';
+
+  let travelGrand = 0;
+  travelRows.forEach(r => { travelGrand += (parseFloat(r.unit)||0)*(parseFloat(r.qty)||0)*(parseFloat(r.cnt)||0); });
+
+  const laborCost = grandH * rate;
+  const baseCost = laborCost + travelGrand;
+  const contCost = isDou ? 0 : baseCost * contRate;
+  const gpBase = baseCost + contCost;
+  const gpCost = isDou ? 0 : gpBase * gpRate / (1 - gpRate);
+  const total = gpBase + gpCost;
+  const ruEl = document.getElementById('rounding-unit');
+  const ru = ruEl ? (parseInt(ruEl.value) || 0) : 0;
+  const totalRd = ru > 0 ? Math.ceil(total / ru) * ru : Math.round(total);
+
+  const contLabel = isDou ? '—（eDOU契約）' : '¥' + fmt(Math.round(contCost));
+  const gpLabel = isDou ? '—（eDOU契約）' : '¥' + fmt(Math.round(gpCost));
+
+  let html = '<h2 contenteditable="true">価格詳細</h2>';
+  html += '<table style="max-width:440px"><thead><tr><th>項目</th><th>金額（円）</th><th class="np"></th></tr></thead><tbody>';
+  html += '<tr><td contenteditable="true" style="text-align:left">Labor コスト（' + (grandH%1===0?grandH:grandH.toFixed(1)) + 'h × ¥' + fmt(rate) + '/h）</td>' +
+    '<td contenteditable="true" style="text-align:right">¥' + fmt(Math.round(laborCost)) + '</td>' +
+    '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';
+  html += '<tr><td contenteditable="true" style="text-align:left">その他費用</td>' +
+    '<td contenteditable="true" style="text-align:right">¥' + fmt(Math.round(travelGrand)) + '</td>' +
+    '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';
+  html += '<tr><td contenteditable="true" style="text-align:left">Contingency（' + Math.round(contRate*100) + '%）</td>' +
+    '<td contenteditable="true" style="text-align:right">' + contLabel + '</td>' +
+    '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';
+  html += '<tr><td contenteditable="true" style="text-align:left">GP（' + Math.round(gpRate*100) + '%）</td>' +
+    '<td contenteditable="true" style="text-align:right">' + gpLabel + '</td>' +
+    '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';
+  html += '<tr style="background:#fef3c7;font-weight:700"><td contenteditable="true" style="text-align:left">参考見積もり額</td>' +
+    '<td contenteditable="true" style="text-align:right">¥' + fmt(totalRd) + '</td>' +
+    '<td class="np"></td></tr>';
+  html += '</tbody></table>';
+  return makeSheetBlock('価格詳細シート', html);
+}
+
+// ===================== お客様提出用 OUTPUT =====================
+function printCustomerOutput() {
+  const coArea = document.getElementById('customer-output-area');
+  if (!coArea || coArea.children.length === 0) {
+    showToast('先に「お客様提出用」ボタンで出力を生成してください');
+    return;
+  }
+  const printWrap = document.createElement('div');
+  printWrap.id = 'co-print-wrap';
+  printWrap.style.cssText = 'font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13px;color:#1a2b45';
+  const children = Array.from(coArea.children);
+  children.forEach(c => printWrap.appendChild(c));
+  document.body.appendChild(printWrap);
+  document.body.classList.add('print-customer');
+  window.print();
+  document.body.classList.remove('print-customer');
+  Array.from(printWrap.children).forEach(c => coArea.appendChild(c));
+  document.body.removeChild(printWrap);
+}
+
+function generateCustomerOutput() {
+  recalcAll();
+  const area = document.getElementById('output-area');
+  area.innerHTML = '';
+
+  let coArea = document.getElementById('customer-output-area');
+  if (!coArea) {
+    coArea = document.createElement('div');
+    coArea.id = 'customer-output-area';
+  } else {
+    coArea.innerHTML = '';
+  }
+  area.appendChild(coArea);
+
+  const customerName = document.getElementById('customer-name').value || '';
+  const projectName  = document.getElementById('project-name').value  || '';
+  const n = getMonthLabels().length;
+
+  let grandH = 0;
+  KOSU_SECTIONS.forEach(sec => { sec.rows.forEach(row => { grandH += sumRow(row.id, n); }); });
+  const rate     = parseFloat(document.getElementById('labor-rate').value)  || 0;
+  const contRate = parseFloat(document.getElementById('contingency').value) || 0;
+  const gpRate   = parseFloat(document.getElementById('gp').value)          || 0;
+  const isDou    = document.getElementById('is-dou').value === 'true';
+  let travelGrand = 0;
+  travelRows.forEach(r => { travelGrand += (parseFloat(r.unit)||0)*(parseFloat(r.qty)||0)*(parseFloat(r.cnt)||0); });
+  const laborCost = grandH * rate;
+  const baseCost  = laborCost + travelGrand;
+  const contCost  = isDou ? 0 : baseCost * contRate;
+  const gpBase    = baseCost + contCost;
+  const gpCost    = isDou ? 0 : gpBase * gpRate / (1 - gpRate);
+  const total     = gpBase + gpCost;
+  const ruEl2 = document.getElementById('rounding-unit');
+  const ru = ruEl2 ? (parseInt(ruEl2.value) || 0) : 0;
+  const totalRounded = ru > 0 ? Math.ceil(total / ru) * ru : Math.round(total);
+
+  const coMenuBar = document.createElement('div');
+  coMenuBar.className = 'np';
+  coMenuBar.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#f0f7f4;border:1px solid #6ee7b7;border-radius:8px;margin-bottom:14px';
+  coMenuBar.innerHTML =
+    '<span style="font-size:13px;font-weight:700;color:#065f46">📋 お客様提出用</span>' +
+    '<span style="font-size:12px;color:#374151;margin-left:4px">収録シート:</span>' +
+    '<span style="font-size:12px;background:#fff;border:1px solid #d1fae5;border-radius:4px;padding:2px 10px;color:#065f46;font-weight:600">前提シート</span>' +
+    '<span style="font-size:12px;background:#fff;border:1px solid #d1fae5;border-radius:4px;padding:2px 10px;color:#065f46;font-weight:600">見積もりシート</span>' +
+    '<button style="margin-left:auto;background:#0f766e;color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="printCustomerOutput()">🖨️ 印刷 / PDF 出力</button>';
+  coArea.appendChild(coMenuBar);
+
+  // SHEET 1: 前提シート
+  const premise = document.createElement('div');
+  premise.className = 'sheet-block od';
+  const premiseBody = document.createElement('div');
+  premiseBody.className = 'sheet-body co-wrap';
+  const titleText = [customerName, projectName].filter(Boolean).join(' ') + ' 概算見積もり';
+  premiseBody.innerHTML =
+    '<div style="text-align:right" class="np"><button class="sheet-del btn bd bsm np" onclick="this.closest(\'.sheet-block\').remove()">このシートを削除</button></div>' +
+    '<p class="co-title" contenteditable="true">' + escHtml(titleText) + '</p>';
+
+  const exclusionTitles = [
+    'サービスの適用除外 — 全体','サービスの適用除外 — ソフトウェア',
+    'サービスの適用除外 — ハードウェア','サービスの適用除外 — 設計・構築',
+    'サービスの適用除外 — テスト'
+  ];
+  const exclusionItems = [];
+  CHECKLIST_DATA.forEach(sec => {
+    if (exclusionTitles.indexOf(sec.title) !== -1) {
+      sec.items.forEach(item => { if (item.checked && item.text.trim()) exclusionItems.push(item.text.trim()); });
+    }
+  });
+
+  CHECKLIST_DATA.forEach(sec => {
+    if (exclusionTitles.indexOf(sec.title) !== -1) return;
+    if (sec.title === '注意点') return;
+    const active = sec.items.filter(i => i.checked && i.text.trim());
+    if (active.length === 0) return;
+    const secBlock = document.createElement('div');
+    secBlock.className = 'sec-block';
+    secBlock.innerHTML = '<div class="co-section-heading" contenteditable="true">' + escHtml(sec.title) + '</div>' +
+      active.map(item => '<div class="co-item" contenteditable="true">' + escHtml(item.text) + '</div>').join('');
+    premiseBody.appendChild(secBlock);
+  });
+
+  if (exclusionItems.length > 0) {
+    const excBlock = document.createElement('div');
+    excBlock.className = 'sec-block';
+    excBlock.innerHTML = '<div class="co-section-heading" contenteditable="true">サービスの適用除外</div>' +
+      exclusionItems.map(text => '<div class="co-item" contenteditable="true">' + escHtml(text) + '</div>').join('');
+    premiseBody.appendChild(excBlock);
+  }
+
+  const premiseFooter = document.createElement('div');
+  premiseFooter.style.cssText = 'margin-top:20px;padding:8px 10px;background:#dce6f4;font-weight:700;font-size:14px;border-top:2px solid #1a56a0;display:flex;justify-content:space-between;align-items:center;gap:8px;color:#0c3566';
+  premiseFooter.innerHTML =
+    '<span contenteditable="true">参考見積額</span>' +
+    '<span contenteditable="true">¥' + fmt(totalRounded) + '</span>' +
+    '<button class="del-btn np" onclick="this.parentElement.remove()" title="削除">✕</button>';
+  premiseBody.appendChild(premiseFooter);
+  premise.appendChild(premiseBody);
+  coArea.appendChild(premise);
+
+  // SHEET 2: 見積もりシート
+  const quoteSheet = document.createElement('div');
+  quoteSheet.className = 'sheet-block od co-quote-sheet';
+  const quoteBody = document.createElement('div');
+  quoteBody.className = 'sheet-body co-wrap';
+  quoteBody.innerHTML = '<div style="text-align:right" class="np"><button class="sheet-del btn bd bsm np" onclick="this.closest(\'.sheet-block\').remove()">このシートを削除</button></div>' +
+    '<div class="co-disclaimer" contenteditable="true">' +
+    'この提示価格はあくまでも概算レベルのものですので、正式な支援価格をお約束するものではございません。<br>' +
+    'QA Review承認を得ました正式な見積もりが契約前に必須となりますことをご了承願います。' +
+    '</div>';
+
+  const tbl = document.createElement('table');
+  tbl.className = 'co-quote-tbl';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><td style="font-weight:700;font-size:15px;text-align:left;background:#dce6f4;border:1px solid #c8d6ea;padding:7px 12px;color:#1a3a5c">作業項目</td></tr>';
+  tbl.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  KOSU_SECTIONS.forEach(sec => {
+    const secTotal = sec.rows.reduce((s, row) => s + sumRow(row.id, n), 0);
+    if (secTotal === 0) return;
+    const secTr = document.createElement('tr');
+    secTr.innerHTML = '<td class="co-quote-sec" contenteditable="true" style="border:1px solid #c8d6ea;text-align:left">' + escHtml(sec.label) + '</td>';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-btn np';
+    delBtn.textContent = '✕ 区分削除';
+    delBtn.setAttribute('onclick', 'deleteOutputSection(this)');
+    secTr.querySelector('td').appendChild(delBtn);
+    tbody.appendChild(secTr);
+
+    sec.rows.forEach(row => {
+      const d = kosuData[row.id];
+      if (!d) return;
+      const rt = sumRow(row.id, n);
+      if (rt === 0) return;
+      const subTr = document.createElement('tr');
+      subTr.innerHTML = '<td class="co-quote-sub" contenteditable="true" style="border:1px solid #d8dde3">' + escHtml(d.label) + '</td>';
+      const rowDel = document.createElement('button');
+      rowDel.className = 'del-btn np';
+      rowDel.textContent = '✕';
+      rowDel.setAttribute('onclick', "this.closest('tr').remove()");
+      subTr.querySelector('td').appendChild(rowDel);
+      tbody.appendChild(subTr);
+    });
+
+    const sepTr = document.createElement('tr');
+    sepTr.innerHTML = '<td style="border:1px solid #d8dde3;height:6px;background:#fff"></td>';
+    tbody.appendChild(sepTr);
+  });
+
+  const totalTr = document.createElement('tr');
+  totalTr.className = 'co-total-row';
+  totalTr.innerHTML =
+    '<td style="border:1px solid #c8d6ea;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+    '<span contenteditable="true">参考見積額</span>' +
+    '<span contenteditable="true">¥' + fmt(totalRounded) + '</span>' +
+    '<button class="del-btn np" onclick="this.closest(\'tr\').remove()" title="削除">✕</button>' +
+    '</td>';
+  tbody.appendChild(totalTr);
+
+  const note1Tr = document.createElement('tr');
+  note1Tr.innerHTML = '<td class="co-note" contenteditable="true" style="border:1px solid #d8dde3">（参考見積額には交通費や宿泊費等のその他費用が含まれています）</td>';
+  tbody.appendChild(note1Tr);
+  const note2Tr = document.createElement('tr');
+  note2Tr.innerHTML = '<td class="co-note" contenteditable="true" style="border:1px solid #d8dde3">（IBM支援契約（準委任契約）でのGP およびContingencyを含んだお客様向け提供価格です）</td>';
+  tbody.appendChild(note2Tr);
+
+  tbl.appendChild(tbody);
+  quoteBody.appendChild(tbl);
+
+  const addRowBtn = document.createElement('button');
+  addRowBtn.className = 'btn bp bsm np';
+  addRowBtn.style.marginTop = '8px';
+  addRowBtn.textContent = '＋ 行を追加';
+  addRowBtn.setAttribute('onclick', 'addCustomerQuoteRow(this)');
+  quoteBody.appendChild(addRowBtn);
+  quoteSheet.appendChild(quoteBody);
+  coArea.appendChild(quoteSheet);
+}
+
+function addCustomerQuoteRow(btn) {
+  const tbl = btn.previousElementSibling;
+  if (!tbl || tbl.tagName !== 'TABLE') return;
+  const tbody = tbl.querySelector('tbody');
+  if (!tbody) return;
+  const totalRow = tbody.querySelector('.co-total-row');
+  const newTr = document.createElement('tr');
+  newTr.innerHTML = '<td class="co-quote-sub" style="border:1px solid #d8dde3" contenteditable="true"></td>';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'del-btn np';
+  delBtn.textContent = '✕';
+  delBtn.setAttribute('onclick', "this.closest('tr').remove()");
+  newTr.querySelector('td').appendChild(delBtn);
+  if (totalRow) tbody.insertBefore(newTr, totalRow);
+  else tbody.appendChild(newTr);
+}
+
+function deleteOutputSection(btn) {
+  const tr = btn.closest('tr');
+  const tbody = tr.closest('tbody');
+  const rows = Array.from(tbody.rows);
+  const idx = rows.indexOf(tr);
+  let i = idx + 1;
+  while (i < rows.length) {
+    const row = rows[i];
+    if (row.style.background === 'rgb(232, 237, 245)' || row.style.background === '#e8edf5') break;
+    if (row.style.background === 'rgb(254, 243, 199)' || row.style.background === '#fef3c7') break;
+    tbody.removeChild(row);
+    i++;
+  }
+  tbody.removeChild(tr);
+}
+
+function addOutputTravelRow(btn) {
+  const table = btn.previousElementSibling.querySelector('#out-travel-tbody') ||
+    btn.closest('.sheet-body').querySelector('tbody');
+  if (!table) return;
+  const rows = table.rows;
+  const lastRow = rows[rows.length - 1];
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td contenteditable="true" style="text-align:left"></td>' +
+    '<td contenteditable="true"></td>' +
+    '<td contenteditable="true" style="text-align:right"></td>' +
+    '<td contenteditable="true" style="text-align:right"></td>' +
+    '<td contenteditable="true" style="text-align:right"></td>' +
+    '<td contenteditable="true" style="text-align:right"></td>' +
+    '<td class="np"><button class="del-btn np" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+  table.insertBefore(tr, lastRow);
+}
+
+// ===================== GITHUB 連携 =====================
+const GH_REPO_OWNER = 'ibm-el-japan';
+const GH_REPO_NAME  = 'quotation-tool';
+const GH_WORK_PATH  = 'work';
+const GH_API_BASE   = 'https://api.github.com';
+
+function _ghPat()      { return sessionStorage.getItem('gh_pat') || ''; }
+function _ghAuthor()   { return sessionStorage.getItem('gh_author') || ''; }
+function _setGhPat(v)  { if (v) sessionStorage.setItem('gh_pat', v); }
+function _setGhAuthor(v){ if (v) sessionStorage.setItem('gh_author', v); }
+
+function closeGhModal() {
+  document.getElementById('gh-modal-overlay').classList.remove('open');
+}
+
+// ── 共通: PATとAuthor入力フォームのHTML ──
+function _ghCredHtml(mode) {
+  return `
+    <div class="gh-info-box">
+      GitHub Personal Access Token (PAT) を使って <strong>ibm-el-japan/quotation-tool</strong> の
+      <code>work/</code> フォルダと直接連携します。<br>
+      PAT は今回のセッション中のみ保持され、ページを閉じると削除されます。
+    </div>
+    <div class="frow">
+      <label>担当者名（イニシャル）</label>
+      <input type="text" id="gh-author" placeholder="例: KS" value="${escHtml(_ghAuthor())}" maxlength="20">
+      <span class="hint2">コミット履歴の「変更者」として記録されます</span>
+    </div>
+    <div class="frow">
+      <label>GitHub Personal Access Token (PAT)</label>
+      <input type="password" id="gh-pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" value="${_ghPat() ? '●●●●●●●●●●●●' : ''}">
+      <span class="hint2">
+        PAT の取得: GitHub → Settings → Developer settings → Personal access tokens →
+        Generate new token（Classicで可）→ スコープ: <strong>repo</strong> にチェック
+      </span>
+    </div>
+  `;
+}
+
+// ── PAT取得（入力済みの場合は既存値を優先） ──
+function _resolveCredentials() {
+  const patInput = document.getElementById('gh-pat-input');
+  const authorInput = document.getElementById('gh-author');
+  const author = (authorInput && authorInput.value.trim()) || _ghAuthor();
+  let pat = _ghPat();
+  if (patInput && patInput.value && patInput.value !== '●●●●●●●●●●●●') {
+    pat = patInput.value.trim();
+  }
+  if (author) _setGhAuthor(author);
+  if (pat) _setGhPat(pat);
+  return { pat, author };
+}
+
+// ── GitHub API helper ──
+async function ghFetch(path, options = {}) {
+  const pat = _ghPat();
+  const headers = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (pat) headers['Authorization'] = 'Bearer ' + pat;
+  const res = await fetch(GH_API_BASE + path, { ...options, headers: { ...headers, ...(options.headers||{}) } });
+  if (!res.ok) {
+    let msg = res.statusText;
+    try { const j = await res.json(); msg = j.message || msg; } catch(e){}
+    throw new Error('GitHub API エラー: ' + res.status + ' ' + msg);
+  }
+  return res.json();
+}
+
+// ── work/ ファイル一覧取得 ──
+async function ghListWorkFiles() {
+  try {
+    const items = await ghFetch(`/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${GH_WORK_PATH}`);
+    return items.filter(i => i.type === 'file' && i.name.endsWith('.html') && i.name !== 'README.md');
+  } catch(e) {
+    return [];
+  }
+}
+
+// ── ファイル内容取得（Base64デコード） ──
+async function ghGetFileContent(filePath) {
+  const data = await ghFetch(`/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${filePath}`);
+  // Base64 → Uint8Array → UTF-8 文字列（日本語文字化け防止）
+  const binary = atob(data.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const content = new TextDecoder('utf-8').decode(bytes);
+  return { content, sha: data.sha };
+}
+
+// ── ファイルをコミット（作成または上書き） ──
+async function ghPutFile(filePath, content, commitMessage, sha) {
+  const body = {
+    message: commitMessage,
+    content: btoa(unescape(encodeURIComponent(content))),
+    branch: 'main'
+  };
+  if (sha) body.sha = sha;
+  await ghFetch(`/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${filePath}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+// ===================== GITHUB 保存モーダル =====================
+function openGhSaveModal() {
+  const proj = document.getElementById('project-name').value.trim() || '見積もり';
+  const today = new Date();
+  const ymd = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
+  const authorStr = _ghAuthor() || 'XX';
+  const defaultName = proj.replace(/[\\/:*?"<>|]/g,'_') + '_' + ymd + '_v1_' + authorStr + '.html';
+
+  document.getElementById('gh-modal-title').textContent = 'GitHubへ保存（work/ フォルダ）';
+  document.getElementById('gh-modal-body').innerHTML = _ghCredHtml('save') + `
+    <div class="frow">
+      <label>保存ファイル名</label>
+      <input type="text" id="gh-save-filename" value="${escHtml(defaultName)}">
+      <span class="hint2">命名規則: [案件略称]_[YYYYMMDD]_v[番号]_[担当者イニシャル].html</span>
+    </div>
+    <div class="frow">
+      <label>変更コメント（コミットメッセージ）</label>
+      <textarea id="gh-save-comment" rows="2" placeholder="例: 工数・交通費を更新"></textarea>
+      <span class="hint2">GitHub の変更履歴として「誰が・いつ・何を変更したか」が記録されます</span>
+    </div>
+  `;
+  document.getElementById('gh-modal-footer').innerHTML = `
+    <button class="btn bs" onclick="closeGhModal()">キャンセル</button>
+    <button class="btn bg" onclick="execGhSave()" id="gh-save-exec-btn">☁️ GitHub に保存する</button>
+  `;
+  document.getElementById('gh-modal-overlay').classList.add('open');
+}
+
+async function execGhSave() {
+  const { pat, author } = _resolveCredentials();
+  if (!pat) { showToast('PAT を入力してください'); return; }
+  if (!author) { showToast('担当者名（イニシャル）を入力してください'); return; }
+
+  const filename = (document.getElementById('gh-save-filename').value || '').trim();
+  if (!filename) { showToast('ファイル名を入力してください'); return; }
+
+  const comment = (document.getElementById('gh-save-comment').value || '').trim();
+  const projName = document.getElementById('project-name').value.trim() || filename;
+  const commitMsg = `[${author}] ${projName}: ${comment || 'ファイルを更新'}`;
+
+  const btn = document.getElementById('gh-save-exec-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    // 既存ファイルのSHAを取得（上書きの場合）
+    let existingSha = null;
+    const filePath = GH_WORK_PATH + '/' + filename;
+    try {
+      const existing = await ghFetch(`/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/contents/${filePath}`);
+      existingSha = existing.sha;
+    } catch(e) { /* 新規ファイル */ }
+
+    // 状態をHTMLに埋め込んで保存（prevStateに現在の状態を記録）
+    const rawPrev = window.__SAVED_STATE__ || null;
+    // 無限ネストを防ぐため prevState の中の prevState は除去する
+    let prevState = null;
+    if (rawPrev) {
+      const { prevState: _drop, ...rest } = rawPrev;
+      prevState = rest;
+    }
+    const state = collectState();
+    state.prevState = prevState;
+    const json = JSON.stringify(state);
+    let src = document.documentElement.outerHTML;
+    src = src.replace(/<script id="saved-state"[\s\S]*?<\/script>/g, '');
+    const inject = '<script id="saved-state">window.__SAVED_STATE__=' + json + ';<\/script>';
+    src = src.replace('</head>', inject + '</head>');
+    const fullHtml = '<!DOCTYPE html>\n' + src;
+
+    await ghPutFile(filePath, fullHtml, commitMsg, existingSha);
+
+    // 保存後は現在の state を基準にする（次回保存で再び差分が取れるように）
+    window.__SAVED_STATE__ = state;
+
+    closeGhModal();
+    showToast('GitHubに保存しました: work/' + filename);
+  } catch(e) {
+    showToast('保存失敗: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '☁️ GitHub に保存する';
+  }
+}
+
+// ===================== GITHUB 読み込みモーダル =====================
+function openGhLoadModal() {
+  document.getElementById('gh-modal-title').textContent = 'GitHubから開く（work/ フォルダ）';
+  document.getElementById('gh-modal-body').innerHTML = _ghCredHtml('load') + `
+    <div class="frow">
+      <label>work/ フォルダのファイル一覧</label>
+      <div class="gh-file-list" id="gh-file-list">
+        <div class="gh-spinner">読み込みボタンでファイル一覧を取得します</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('gh-modal-footer').innerHTML = `
+    <button class="btn bs" onclick="closeGhModal()">キャンセル</button>
+    <button class="btn bp" onclick="loadGhFileList()" id="gh-list-btn">📋 ファイル一覧を取得</button>
+  `;
+  document.getElementById('gh-modal-overlay').classList.add('open');
+}
+
+async function loadGhFileList() {
+  const { pat } = _resolveCredentials();
+  const btn = document.getElementById('gh-list-btn');
+  btn.disabled = true;
+  btn.textContent = '取得中...';
+
+  const listEl = document.getElementById('gh-file-list');
+  listEl.innerHTML = '<div class="gh-spinner">取得中...</div>';
+
+  try {
+    const items = await ghListWorkFiles();
+
+    if (items.length === 0) {
+      listEl.innerHTML = '<div class="gh-spinner">work/ フォルダにファイルがありません</div>';
+    } else {
+      // ファイルごとに最終コミット情報を取得（並列・最大10件）
+      const fileInfos = await Promise.all(
+        items.slice(0, 20).map(async item => {
+          try {
+            const commits2 = await ghFetch(
+              `/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/commits?path=${encodeURIComponent(item.path)}&per_page=1`
+            );
+            const last = commits2[0];
+            return {
+              ...item,
+              lastDate: last ? (last.commit.committer.date || last.commit.author.date || '').substring(0,10) : '',
+              lastAuthor: last ? (last.commit.author.name || '') : '',
+              lastMsg: last ? (last.commit.message || '') : ''
+            };
+          } catch(e) { return { ...item, lastDate: '', lastAuthor: '', lastMsg: '' }; }
+        })
+      );
+
+      listEl.innerHTML = fileInfos.map(f => `
+        <div class="gh-file-item" onclick="execGhLoad('${escHtml(f.path)}','${escHtml(f.name)}')">
+          <span style="font-size:16px">📄</span>
+          <span class="gh-file-name">${escHtml(f.name)}</span>
+          <span class="gh-file-date">${f.lastDate ? f.lastDate + ' ' + escHtml(f.lastAuthor) : ''}</span>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    listEl.innerHTML = `<div class="gh-spinner" style="color:#dc2626">エラー: ${escHtml(e.message)}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📋 ファイル一覧を取得';
+}
+
+async function execGhLoad(filePath, fileName) {
+  try {
+    const listEl = document.getElementById('gh-file-list');
+    listEl.innerHTML = '<div class="gh-spinner">読み込み中...</div>';
+    const { content } = await ghGetFileContent(filePath);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content, 'text/html');
+    const script = doc.getElementById('saved-state');
+    if (!script) { showToast('保存データが見つかりません'); closeGhModal(); return; }
+    const json = script.textContent.replace(/^window\.__SAVED_STATE__=/, '').replace(/;$/, '');
+    const state = JSON.parse(json);
+    const prevState = state.prevState || null;
+    restoreState(state);
+    // ロードした状態を __SAVED_STATE__ に反映（次回保存時の prevState 基準となる）
+    window.__SAVED_STATE__ = state;
+    closeGhModal();
+    showToast('読み込みました: ' + fileName);
+    // prevState があれば差分モーダルを表示
+    if (prevState) {
+      setTimeout(() => showDiffModal(prevState, state, fileName), 300);
+    }
+  } catch(e) {
+    showToast('読み込みエラー: ' + e.message);
+    document.getElementById('gh-file-list').innerHTML = `<div class="gh-spinner" style="color:#dc2626">エラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+
+// ===================== DIFF (変更差分) =====================
+function buildDiffHtml(prev, curr) {
+  if (!prev) return '<p class="dm-none">前バージョンのデータがありません</p>';
+
+  let html = '';
+
+  // ── 基本情報 ──
+  const basicLabels = {
+    customerName:'お客様名', projectName:'案件名', laborRate:'Labor単価',
+    contingency:'Contingency', gp:'GP', isDou:'eDOU契約',
+    startYear:'開始年', startMonth:'開始月', periodMonths:'期間（月）', roundingUnit:'丸め単位'
+  };
+  const pb = prev.basic || {}, cb = curr.basic || {};
+  const basicDiffs = [];
+  Object.keys(basicLabels).forEach(k => {
+    const pv = String(pb[k] ?? ''), cv = String(cb[k] ?? '');
+    if (pv !== cv) basicDiffs.push({key: basicLabels[k], from: pv, to: cv});
+  });
+  html += '<div class="dm-section">';
+  html += '<div class="dm-section-title">📌 基本情報 <span class="dm-badge dm-chg">' + basicDiffs.length + '件変更</span></div>';
+  if (basicDiffs.length === 0) {
+    html += '<div class="dm-none">変更なし</div>';
+  } else {
+    basicDiffs.forEach(d => {
+      html += '<div class="dm-row chg"><span class="dm-key">' + escHtml(d.key) + '</span>' +
+        '<span class="dm-val-del">' + escHtml(d.from || '(空)') + '</span>' +
+        '<span>→</span><span class="dm-val-new">' + escHtml(d.to || '(空)') + '</span></div>';
+    });
+  }
+  html += '</div>';
+
+  // ── 工数 ──
+  const months = getMonthLabels();
+  const kosuDiffs = [];
+  const allRowIds = new Set([
+    ...Object.keys(prev.kosuData || {}),
+    ...Object.keys(curr.kosuData || {})
+  ]);
+  allRowIds.forEach(rid => {
+    const pd = (prev.kosuData || {})[rid];
+    const cd = (curr.kosuData || {})[rid];
+    const label = (cd || pd || {}).label || rid;
+    if (!pd && cd) { kosuDiffs.push({type:'add', label, detail:'行を追加'}); return; }
+    if (pd && !cd) { kosuDiffs.push({type:'del', label, detail:'行を削除'}); return; }
+    const changedMonths = [];
+    for (let i = 0; i < months.length; i++) {
+      const pv = parseFloat((pd.values || [])[i] || 0);
+      const cv = parseFloat((cd.values || [])[i] || 0);
+      if (pv !== cv) changedMonths.push({m: months[i].label, from: pv, to: cv});
+    }
+    if ((pd.label || '') !== (cd.label || '')) {
+      kosuDiffs.push({type:'chg', label, detail: 'ラベル変更: "' + (pd.label||'') + '" → "' + (cd.label||'') + '"'});
+    }
+    if (changedMonths.length > 0) {
+      const detail = changedMonths.map(m => m.m + ': ' + m.from + 'h → ' + m.to + 'h').join('、');
+      kosuDiffs.push({type:'chg', label, detail});
+    }
+  });
+  const kosuAddCount = kosuDiffs.filter(d=>d.type==='add').length;
+  const kosuDelCount = kosuDiffs.filter(d=>d.type==='del').length;
+  const kosuChgCount = kosuDiffs.filter(d=>d.type==='chg').length;
+  html += '<div class="dm-section">';
+  html += '<div class="dm-section-title">📊 工数シート ';
+  if (kosuAddCount) html += '<span class="dm-badge dm-add">+' + kosuAddCount + '行</span> ';
+  if (kosuDelCount) html += '<span class="dm-badge dm-del">-' + kosuDelCount + '行</span> ';
+  if (kosuChgCount) html += '<span class="dm-badge dm-chg">' + kosuChgCount + '件変更</span>';
+  if (!kosuAddCount && !kosuDelCount && !kosuChgCount) html += '<span class="dm-badge" style="background:#f3f4f6;color:#374151">変更なし</span>';
+  html += '</div>';
+  if (kosuDiffs.length === 0) {
+    html += '<div class="dm-none">変更なし</div>';
+  } else {
+    kosuDiffs.forEach(d => {
+      const cls = d.type === 'add' ? 'add' : d.type === 'del' ? 'del' : 'chg';
+      const mark = d.type === 'add' ? '＋' : d.type === 'del' ? '－' : '✏';
+      html += '<div class="dm-row ' + cls + '"><span class="dm-key">' + mark + ' ' + escHtml(d.label) + '</span>' +
+        '<span>' + escHtml(d.detail) + '</span></div>';
+    });
+  }
+  html += '</div>';
+
+  // ── 交通費等 ──
+  const prevTravel = prev.travelRows || [], currTravel = curr.travelRows || [];
+  const travelDiffs = [];
+  const travelMap = {};
+  prevTravel.forEach(r => { travelMap[r.id] = {prev: r}; });
+  currTravel.forEach(r => {
+    if (travelMap[r.id]) travelMap[r.id].curr = r;
+    else travelMap[r.id] = {curr: r};
+  });
+  Object.values(travelMap).forEach(({prev: p, curr: c}) => {
+    if (!p) { travelDiffs.push({type:'add', label: c.type || '(新規)', detail:'行を追加'}); return; }
+    if (!c) { travelDiffs.push({type:'del', label: p.type || '(削除)', detail:'行を削除'}); return; }
+    const changes = [];
+    if (String(p.unit||'') !== String(c.unit||'')) changes.push('単価: ' + (p.unit||0) + ' → ' + (c.unit||0));
+    if (String(p.qty||'') !== String(c.qty||'')) changes.push('数量: ' + (p.qty||0) + ' → ' + (c.qty||0));
+    if (String(p.cnt||'') !== String(c.cnt||'')) changes.push('回数: ' + (p.cnt||0) + ' → ' + (c.cnt||0));
+    if (String(p.place||'') !== String(c.place||'')) changes.push('場所: "' + (p.place||'') + '" → "' + (c.place||'') + '"');
+    if (changes.length) travelDiffs.push({type:'chg', label: c.type || p.type || '', detail: changes.join('、')});
+  });
+  const trAdd = travelDiffs.filter(d=>d.type==='add').length;
+  const trDel = travelDiffs.filter(d=>d.type==='del').length;
+  const trChg = travelDiffs.filter(d=>d.type==='chg').length;
+  html += '<div class="dm-section">';
+  html += '<div class="dm-section-title">🚌 交通費等 ';
+  if (trAdd) html += '<span class="dm-badge dm-add">+' + trAdd + '行</span> ';
+  if (trDel) html += '<span class="dm-badge dm-del">-' + trDel + '行</span> ';
+  if (trChg) html += '<span class="dm-badge dm-chg">' + trChg + '件変更</span>';
+  if (!trAdd && !trDel && !trChg) html += '<span class="dm-badge" style="background:#f3f4f6;color:#374151">変更なし</span>';
+  html += '</div>';
+  if (travelDiffs.length === 0) {
+    html += '<div class="dm-none">変更なし</div>';
+  } else {
+    travelDiffs.forEach(d => {
+      const cls = d.type === 'add' ? 'add' : d.type === 'del' ? 'del' : 'chg';
+      const mark = d.type === 'add' ? '＋' : d.type === 'del' ? '－' : '✏';
+      html += '<div class="dm-row ' + cls + '"><span class="dm-key">' + mark + ' ' + escHtml(d.label) + '</span>' +
+        '<span>' + escHtml(d.detail) + '</span></div>';
+    });
+  }
+  html += '</div>';
+
+  // ── チェックシート ──
+  const prevCL = prev.checklist || [], currCL = curr.checklist || [];
+  let clAdded = 0, clRemoved = 0, clChanged = 0;
+  const clDetails = [];
+  const maxSec = Math.max(prevCL.length, currCL.length);
+  for (let si = 0; si < maxSec; si++) {
+    const ps = prevCL[si], cs = currCL[si];
+    const secTitle = (cs || ps || {}).title || ('セクション' + (si+1));
+    if (!ps && cs) { clAdded += (cs.items||[]).length; continue; }
+    if (ps && !cs) { clRemoved += (ps.items||[]).length; continue; }
+    const pi = ps.items || [], ci = cs.items || [];
+    const maxItem = Math.max(pi.length, ci.length);
+    for (let ii = 0; ii < maxItem; ii++) {
+      const pItem = pi[ii], cItem = ci[ii];
+      if (!pItem && cItem) { clAdded++; continue; }
+      if (pItem && !cItem) { clRemoved++; continue; }
+      if (pItem.text !== cItem.text || pItem.checked !== cItem.checked) {
+        clChanged++;
+        if (clDetails.length < 10) {
+          const detail = pItem.checked !== cItem.checked
+            ? '[' + secTitle + '] "' + escHtml(cItem.text||pItem.text) + '" チェック: ' + (pItem.checked?'✓':'□') + ' → ' + (cItem.checked?'✓':'□')
+            : '[' + secTitle + '] "' + escHtml(pItem.text) + '" → "' + escHtml(cItem.text) + '"';
+          clDetails.push({type:'chg', detail});
+        }
+      }
+    }
+  }
+  html += '<div class="dm-section">';
+  html += '<div class="dm-section-title">☑️ チェックシート ';
+  if (clAdded) html += '<span class="dm-badge dm-add">+' + clAdded + '</span> ';
+  if (clRemoved) html += '<span class="dm-badge dm-del">-' + clRemoved + '</span> ';
+  if (clChanged) html += '<span class="dm-badge dm-chg">' + clChanged + '件変更</span>';
+  if (!clAdded && !clRemoved && !clChanged) html += '<span class="dm-badge" style="background:#f3f4f6;color:#374151">変更なし</span>';
+  html += '</div>';
+  if (clDetails.length === 0 && !clAdded && !clRemoved) {
+    html += '<div class="dm-none">変更なし</div>';
+  } else {
+    clDetails.forEach(d => {
+      html += '<div class="dm-row chg"><span>' + d.detail + '</span></div>';
+    });
+    if (clChanged > 10) html += '<div class="dm-none">他 ' + (clChanged - 10) + ' 件の変更あり</div>';
+    if (clAdded) html += '<div class="dm-row add"><span class="dm-key">＋</span><span>項目を ' + clAdded + ' 件追加</span></div>';
+    if (clRemoved) html += '<div class="dm-row del"><span class="dm-key">－</span><span>項目を ' + clRemoved + ' 件削除</span></div>';
+  }
+  html += '</div>';
+
+  return html;
+}
+
+function showDiffModal(prev, curr, fileName) {
+  document.getElementById('diff-modal-title').textContent = '🔍 変更内容の確認 — ' + (fileName || '');
+  document.getElementById('diff-modal-body').innerHTML =
+    '<div style="background:#eaf1fb;border:1px solid #b0c4de;border-radius:6px;padding:8px 12px;font-size:12px;color:#1a3a5c;margin-bottom:14px">' +
+    '前バージョン（保存時点）からの変更内容をシートごとに表示しています。</div>' +
+    buildDiffHtml(prev, curr);
+  document.getElementById('diff-modal-overlay').classList.add('open');
+}
+
+
+// ===================== SAVE & UPLOAD (PAT不要フロー) =====================
+const GH_UPLOAD_URL = 'https://github.com/ibm-el-japan/quotation-tool/upload/main/work';
+const GH_WORKLOG_URL = 'https://github.com/ibm-el-japan/quotation-tool/edit/main/WORK_LOG.md';
+
+function saveAndUpload() {
+  const proj = document.getElementById('project-name').value.trim() || '見積もり';
+  const today = new Date();
+  const ymd = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
+  const fileName = proj.replace(/[\\/:*?"<>|]/g,'_') + '_' + ymd + '_v1.html';
+
+  // ローカルにダウンロード（prevStateに現在のSAVED_STATEを記録）
+  const rawPrev = window.__SAVED_STATE__ || null;
+  let prevState = null;
+  if (rawPrev) {
+    const { prevState: _drop, ...rest } = rawPrev;
+    prevState = rest;
+  }
+  const state = collectState();
+  state.prevState = prevState;
+  const json = JSON.stringify(state);
+  let src = document.documentElement.outerHTML;
+  src = src.replace(/<script id="saved-state"[\s\S]*?<\/script>/g, '');
+  const inject = '<script id="saved-state">window.__SAVED_STATE__=' + json + ';<\/script>';
+  src = src.replace('</head>', inject + '</head>');
+  const blob = new Blob(['<!DOCTYPE html>\n' + src], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  // アップロード案内モーダルを表示
+  _showUploadGuideModal(fileName);
+}
+
+function _showUploadGuideModal(fileName) {
+  document.getElementById('gh-modal-title').textContent = '💾 保存完了 — GitHubへアップロード';
+  document.getElementById('gh-modal-body').innerHTML = `
+    <div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:10px 14px;font-size:12px;color:#166534;margin-bottom:14px">
+      ✅ <strong>${escHtml(fileName)}</strong> をダウンロードしました
+    </div>
+    <p style="font-size:13px;font-weight:700;color:#1a3a5c;margin-bottom:12px">次のステップ（2ステップで完了）</p>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px">
+      <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#1a56a0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+      <div style="flex:1;font-size:13px">
+        <strong style="color:#1a3a5c">GitHubの work/ フォルダにアップロード</strong><br>
+        <span style="font-size:12px;color:#374151">下のボタンをクリックするとアップロードページが開きます。<br>ダウンロードした <code style="background:#f0f3f7;padding:1px 5px;border-radius:3px;font-size:11px">${escHtml(fileName)}</code> をドラッグ&ドロップしてコミットしてください。</span><br>
+        <a href="${GH_UPLOAD_URL}" target="_blank"
+           style="display:inline-block;margin-top:8px;background:#1a56a0;color:#fff;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">
+          📁 work/ フォルダを開く →
+        </a>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#6b7280;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+      <div style="flex:1;font-size:13px">
+        <strong style="color:#1a3a5c">WORK_LOG.md に変更内容を記入（任意）</strong><br>
+        <span style="font-size:12px;color:#374151">誰が・いつ・何を変更したかをチームで共有するための記録です。</span><br>
+        <a href="${GH_WORKLOG_URL}" target="_blank"
+           style="display:inline-block;margin-top:8px;background:#6b7280;color:#fff;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">
+          📝 WORK_LOG.md を編集 →
+        </a>
+      </div>
+    </div>
+  `;
+  document.getElementById('gh-modal-footer').innerHTML = `
+    <button class="btn bs" onclick="closeGhModal()">閉じる</button>
+  `;
+  document.getElementById('gh-modal-overlay').classList.add('open');
+}
+
+// ===================== SAVE / LOAD =====================
+function collectState() {
+  const kosuSnapshot = {};
+  Object.keys(kosuData).forEach(k => {
+    kosuSnapshot[k] = {label: kosuData[k].label, hint: kosuData[k].hint, values: kosuData[k].values.slice()};
+  });
+
+  return {
+    version: 4,
+    appVersion: APP_VERSION,
+    basic: {
+      customerName: document.getElementById('customer-name').value,
+      projectName: document.getElementById('project-name').value,
+      laborRate: document.getElementById('labor-rate').value,
+      contingency: document.getElementById('contingency').value,
+      gp: document.getElementById('gp').value,
+      isDou: document.getElementById('is-dou').value,
+      startYear: document.getElementById('start-year').value,
+      startMonth: document.getElementById('start-month').value,
+      periodMonths: document.getElementById('period-months').value,
+      roundingUnit: (document.getElementById('rounding-unit') || {}).value || '100000'
+    },
+    checklist: JSON.parse(JSON.stringify(CHECKLIST_DATA)),
+    kosuData: kosuSnapshot,
+    kosuSections: JSON.parse(JSON.stringify(KOSU_SECTIONS)),
+    travelRows: JSON.parse(JSON.stringify(travelRows))
+  };
+}
+
+function saveProject() {
+  const rawPrev = window.__SAVED_STATE__ || null;
+  let prevState = null;
+  if (rawPrev) {
+    const { prevState: _drop, ...rest } = rawPrev;
+    prevState = rest;
+  }
+  const state = collectState();
+  state.prevState = prevState;
+  const json = JSON.stringify(state);
+  const projectName = document.getElementById('project-name').value || '見積もり';
+  const fileName = projectName.replace(/[\\/:*?"<>|]/g,'_') + '.html';
+
+  let src = document.documentElement.outerHTML;
+  src = src.replace(/<script id="saved-state"[\s\S]*?<\/script>/g, '');
+  const inject = '<script id="saved-state">window.__SAVED_STATE__=' + json + ';<\/script>';
+  src = src.replace('</head>', inject + '</head>');
+
+  const blob = new Blob(['<!DOCTYPE html>\n' + src], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  // 保存後は現在の state を基準にする（次回保存で再び差分が取れるように）
+  window.__SAVED_STATE__ = state;
+  showToast('保存しました: ' + fileName);
+}
+
+function loadProject(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(e.target.result, 'text/html');
+      const script = doc.getElementById('saved-state');
+      if (!script) { showToast('保存データが見つかりません'); return; }
+      const json = script.textContent.replace(/^window\.__SAVED_STATE__=/, '').replace(/;$/, '');
+      const state = JSON.parse(json);
+      const prevState = state.prevState || null;
+      restoreState(state);
+      // ロードした状態を __SAVED_STATE__ に反映（次回保存時の prevState 基準となる）
+      window.__SAVED_STATE__ = state;
+      showToast('読み込みました: ' + file.name);
+      if (prevState) {
+        setTimeout(() => showDiffModal(prevState, state, file.name), 300);
+      }
+    } catch(ex) {
+      showToast('読み込みエラー: ' + ex.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function restoreState(state) {
+  if (!state) return;
+  const b = state.basic || {};
+  if (b.customerName !== undefined) document.getElementById('customer-name').value = b.customerName;
+  if (b.projectName !== undefined) document.getElementById('project-name').value = b.projectName;
+  if (b.laborRate !== undefined) document.getElementById('labor-rate').value = b.laborRate;
+  if (b.contingency !== undefined) document.getElementById('contingency').value = b.contingency;
+  if (b.gp !== undefined) document.getElementById('gp').value = b.gp;
+  if (b.isDou !== undefined) document.getElementById('is-dou').value = b.isDou;
+  if (b.startYear !== undefined) document.getElementById('start-year').value = b.startYear;
+  if (b.startMonth !== undefined) document.getElementById('start-month').value = b.startMonth;
+  if (b.periodMonths !== undefined) document.getElementById('period-months').value = b.periodMonths;
+  if (b.roundingUnit !== undefined) { const ru = document.getElementById('rounding-unit'); if (ru) ru.value = b.roundingUnit; }
+
+  if (state.checklist) CHECKLIST_DATA = JSON.parse(JSON.stringify(state.checklist));
+  if (state.kosuSections) KOSU_SECTIONS = JSON.parse(JSON.stringify(state.kosuSections));
+  if (state.kosuData) {
+    kosuData = {};
+    Object.keys(state.kosuData).forEach(k => {
+      const d = state.kosuData[k];
+      kosuData[k] = {label: d.label, hint: d.hint, values: (d.values || []).concat(new Array(60).fill(0)).slice(0, 60)};
+    });
+  }
+  if (state.travelRows) travelRows = JSON.parse(JSON.stringify(state.travelRows));
+
+  buildChecklist();
+  buildKosuTable();
+  buildTravelTable();
+  recalcAll();
+}
+
+// ===================== INIT =====================
+window.addEventListener('DOMContentLoaded', () => {
+  initKosuData();
+  buildChecklist();
+  buildKosuTable();
+  buildTravelTable();
+  recalcAll();
+
+  // 古い保存ファイルに admin-lock が残っていても強制解除する
+  document.querySelectorAll('.admin-lock').forEach(el => {
+    el.classList.remove('admin-lock');
+  });
+
+  const clBackTop = document.getElementById('cl-back-top');
+  window.addEventListener('scroll', () => {
+    const clTab = document.getElementById('tab-checklist');
+    if (clTab && clTab.classList.contains('active')) {
+      clBackTop.style.display = window.scrollY > 300 ? 'block' : 'none';
+    } else {
+      clBackTop.style.display = 'none';
+    }
+  });
+});
+
+if (window.__SAVED_STATE__) {
+  window.addEventListener('DOMContentLoaded', () => setTimeout(() => restoreState(window.__SAVED_STATE__), 50));
+}
+</script>
+</body>
+</html>

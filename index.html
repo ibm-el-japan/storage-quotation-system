@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expert Labs Storage Quotation Automation System</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:14px;line-height:1.6;color:#1e293b;background:#f1f5f9}
+#app{display:flex;flex-direction:column;min-height:100vh}
+header{background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);color:#fff;padding:24px 32px;box-shadow:0 4px 12px rgba(15,23,42,0.15)}
+header .top-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+header h1{font-size:20px;font-weight:700;letter-spacing:0.02em;display:flex;align-items:center;gap:10px}
+header .badge{background:#3b82f6;color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;letter-spacing:0.05em}
+header p{margin-top:6px;font-size:13px;color:#94a3b8}
+
+main{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:32px 20px}
+
+.intro-card{background:#fff;border-radius:10px;border:1px solid #cbd5e1;padding:20px 24px;margin-bottom:28px;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
+.intro-card h2{font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px}
+.intro-card p{font-size:13px;color:#475569}
+
+.notice-banner{background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;padding:14px 18px;margin-bottom:24px;font-size:13px;color:#0369a1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.notice-banner strong{color:#075985}
+.notice-banner a{color:#0284c7;font-weight:700;text-decoration:none}
+.notice-banner a:hover{text-decoration:underline}
+
+.flow-container{margin-bottom:32px}
+.flow-title{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+.flow-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;position:relative}
+.flow-card{background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:20px;display:flex;flex-direction:column;position:relative;transition:all 0.2s ease;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
+.flow-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(30,58,138,0.1);border-color:#3b82f6}
+.flow-card .step-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#1e3a8a;color:#fff;font-size:13px;font-weight:700;margin-bottom:12px}
+.flow-card h3{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:6px}
+.flow-card .role-tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-bottom:10px;width:fit-content}
+.role-sales{background:#e0f2fe;color:#0369a1}
+.role-el{background:#fef3c7;color:#92400e}
+.role-slink{background:#f3e8ff;color:#6b21a8}
+.flow-card p{font-size:12.5px;color:#64748b;flex:1;margin-bottom:18px}
+.flow-card .btn-link{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#1e3a8a;color:#fff;text-decoration:none;font-weight:600;font-size:13px;padding:9px 16px;border-radius:6px;transition:background 0.15s}
+.flow-card .btn-link:hover{background:#2563eb}
+.flow-card .btn-link.secondary{background:#f8fafc;color:#1e3a8a;border:1px solid #cbd5e1}
+.flow-card .btn-link.secondary:hover{background:#f1f5f9}
+
+.team-work-card{background:#fff;border-radius:10px;border:1px solid #cbd5e1;padding:22px 24px;margin-bottom:28px}
+.team-work-card h3{font-size:15px;font-weight:700;color:#0f172a;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.team-steps{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-top:12px}
+.tstep{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px}
+.tstep-num{display:inline-block;background:#1e3a8a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:6px}
+.tstep-title{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px}
+.tstep-desc{font-size:12px;color:#64748b;line-height:1.6}
+
+.quick-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.qlink{display:inline-flex;align-items:center;gap:6px;background:#0f172a;color:#fff;text-decoration:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:6px;transition:opacity 0.15s}
+.qlink:hover{opacity:0.88}
+.qlink.outline{background:#fff;color:#1e293b;border:1px solid #cbd5e1}
+.qlink.outline:hover{background:#f1f5f9}
+
+.data-mapping-card{background:#fff;border-radius:10px;border:1px solid #cbd5e1;padding:24px;margin-top:24px}
+.data-mapping-card h3{font-size:15px;font-weight:700;color:#0f172a;margin-bottom:14px}
+.mapping-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.mapping-tbl th{background:#f8fafc;padding:10px 12px;border:1px solid #cbd5e1;font-weight:700;text-align:left;color:#334155}
+.mapping-tbl td{padding:10px 12px;border:1px solid #cbd5e1;vertical-align:top}
+.mapping-tbl tr:nth-child(even){background:#fbfcfe}
+
+footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font-size:12px;margin-top:auto}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="top-row">
+      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v1.4.0</span></h1>
+      <div><span style="font-size:12px;color:#94a3b8">Expert Labs Storage Division</span></div>
+    </div>
+    <p>Quotation Request 提出から Estimated Cost 試算、S-LINK / 仕様書・別紙の自動生成までを一気通貫で自動化する独立システム</p>
+  </header>
+
+  <main>
+    <div class="notice-banner">
+      <div>
+        🌐 <strong>オンライン GitHub Pages 公開中（ワンクリック起動）:</strong>
+        <span style="margin-left:6px">URLコピー不要。チームメンバー全員がブラウザ上で直接編集・共同利用できます。</span>
+      </div>
+      <div>
+        <a href="https://ibm-el-japan.github.io/storage-quotation-system/" target="_blank">🔗 公開URLを確認</a>
+      </div>
+    </div>
+
+    <div class="intro-card">
+      <h2>📌 システム概要・自動化の流れ</h2>
+      <p>「Expert Labs Storage Inputs and Outputs」の運用モデルに基づき、Storage Sales / Tech Sales による依頼入力から、Expert Labs による見積もり試算、S-LINK 登録用メタデータおよび仕様書・別紙 HTML 出力までの各工程で、手作業や二重入力を完全に排除したデータ連携を実現します。</p>
+    </div>
+
+    <div class="flow-container">
+      <div class="flow-title">📋 自動化プロセス・メニュー</div>
+      <div class="flow-grid">
+        <!-- Step 1 -->
+        <div class="flow-card">
+          <div class="step-num">1</div>
+          <h3>Quotation Request Form</h3>
+          <span class="role-tag role-sales">Storage Sales / Tech Sales</span>
+          <p>原本 Excel (`Quotation Request Form.xlsx`) を完全準拠・刷新した Web フォーム。12項目の事前確認や対象製品・提供条件を快適に入力し、見積もり生成用データをワンクリックで出力します。</p>
+          <a href="request-form.html" class="btn-link">依頼フォームを開く →</a>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flow-card">
+          <div class="step-num">2</div>
+          <h3>Quotation Generator</h3>
+          <span class="role-tag role-el">Expert Labs Storage</span>
+          <p>Request Form の入力内容を自動解析・マッピング。GitHub `work/` フォルダと直接連携し、前バージョンとの差分表示、クラウド保存・ロード、お客様提出用見積もり出力を完備しています。</p>
+          <a href="quotation-generator.html" class="btn-link">見積もり生成ツール →</a>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flow-card">
+          <div class="step-num">3</div>
+          <h3>S-LINK & 仕様書・別紙 生成</h3>
+          <span class="role-tag role-slink">S-LINK 登録 & 提案書作成</span>
+          <p>試算された見積もりデータから、S-LINK 登録用メタデータ（契約金額・GP・Contingency・OO・PPTL/PJTL等）および「仕様書」「別紙」を自動整理し、登録用 HTML / コピー用テキストを一括出力します。</p>
+          <a href="slink-spec-generator.html" class="btn-link">S-LINK・仕様書生成 →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- チーム共同編集・変更履歴・work/ フォルダ利用ガイド -->
+    <div class="team-work-card">
+      <h3>👥 チーム共同編集・変更履歴（work/ フォルダ）の利用フロー</h3>
+      <p style="font-size:12.5px;color:#475569">
+        全案件の作業ファイルは専用リポジトリの <code>work/</code> フォルダにて一元管理されます。ブラウザ上で編集した内容を保存すると、誰が・いつ・何を変更したかが <code>WORK_LOG.md</code> および Git コミット履歴に自動追跡されます。
+      </p>
+
+      <div class="team-steps">
+        <div class="tstep">
+          <span class="tstep-num">STEP 1</span>
+          <div class="tstep-title">ワンクリックで起動</div>
+          <div class="tstep-desc">本ポータルまたは各ツールリンクをクリックしてブラウザ上で直接開きます。</div>
+        </div>
+        <div class="tstep">
+          <span class="tstep-num">STEP 2</span>
+          <div class="tstep-title">GitHubからファイル読込</div>
+          <div class="tstep-desc">「📂 GitHubから開く」で <code>work/</code> フォルダの案件作業ファイルを選択して読み込みます。</div>
+        </div>
+        <div class="tstep">
+          <span class="tstep-num">STEP 3</span>
+          <div class="tstep-title">差分ビューの自動確認</div>
+          <div class="tstep-desc">前回保存時からの変更点が色分けモーダルで自動表示され、更新内容を一目で把握できます。</div>
+        </div>
+        <div class="tstep">
+          <span class="tstep-num">STEP 4</span>
+          <div class="tstep-title">work/ へ保存・履歴記録</div>
+          <div class="tstep-desc">「💾 保存 → GitHubへ」または「☁️ API保存」で <code>work/</code> へ保存。<code>WORK_LOG.md</code> に記録されます。</div>
+        </div>
+      </div>
+
+      <div class="quick-links">
+        <a href="https://github.com/ibm-el-japan/storage-quotation-system" target="_blank" class="qlink">
+          🐙 GitHub 専用リポジトリ (storage-quotation-system)
+        </a>
+        <a href="https://github.com/ibm-el-japan/storage-quotation-system/tree/main/work" target="_blank" class="qlink outline">
+          📁 案件作業ファイルフォルダ (work/)
+        </a>
+        <a href="https://github.com/ibm-el-japan/storage-quotation-system/blob/main/WORK_LOG.md" target="_blank" class="qlink outline">
+          📝 変更履歴 (WORK_LOG.md)
+        </a>
+        <a href="https://github.com/ibm-el-japan/storage-quotation-system/commits/main" target="_blank" class="qlink outline">
+          📜 コミット履歴一覧
+        </a>
+      </div>
+    </div>
+
+    <div class="data-mapping-card">
+      <h3>🔄 各工程間のデータ自動連携一覧 (Inputs & Outputs Parity)</h3>
+      <table class="mapping-tbl">
+        <thead>
+          <tr>
+            <th style="width:28%">① Quotation Request Form</th>
+            <th style="width:36%">② Quotation Tool (Estimated Cost)</th>
+            <th style="width:36%">③ S-LINK & Service Spec / Appendix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>基本情報</strong> (お客様名、案件名、DNSO #、Opportunity No、担当営業、TS、関係者)</td>
+            <td><strong>基本情報タブ</strong> (お客様名、案件名、開始時期、期間、Labor単価、GP、Contingency)</td>
+            <td><strong>S-LINK 登録メタデータ</strong> (お客様番号、契約名、Opportunity No、PJTL/PPTL)</td>
+          </tr>
+          <tr>
+            <td><strong>支援対象製品 & 支援内容</strong> (製品種別、台数・規模、詳細タスク)</td>
+            <td><strong>工数タブ</strong> (各製品に応じた標準工数テンプレート自動展開 & 時間試算)</td>
+            <td><strong>仕様書 & 別紙</strong> (サービス名、サービス対象範囲、サービス内容、提出成果物)</td>
+          </tr>
+          <tr>
+            <td><strong>支援場所 & 出張条件</strong> (リモート / オンサイト / ハイブリッド)</td>
+            <td><strong>交通費等タブ</strong> (オンサイト前提の交通費・宿泊費の初期行自動セット)</td>
+            <td><strong>仕様書 & 別紙</strong> (サービス提供場所、実費精算条件)</td>
+          </tr>
+          <tr>
+            <td><strong>事前確認事項 (12項目 Y/N)</strong> (SAレビュー、TCT、保守・運用契約等)</td>
+            <td><strong>チェックシートタブ</strong> (全チェック項目へ自動同期・注意点の自動フラグ)</td>
+            <td><strong>仕様書</strong> (サービスの前提条件・サービス適用外事項)</td>
+          </tr>
+          <tr>
+            <td><strong>契約情報 & 支払計画</strong> (提供形態、契約形態、支払計画、月次報告)</td>
+            <td><strong>作成・出力タブ</strong> (見積もりサマリー、前提条件、月次工数展開)</td>
+            <td><strong>S-LINK & 別紙</strong> (契約タイプ、チャネルコード、契約期間、支払計画、報告書要否)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    Storage Expert Labs Quotation Automation System &copy; IBM EL Japan
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Specification & Appendix (S-LINK) Generator — Expert Labs Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.6;color:#1e293b;background:#f1f5f9;padding:20px 16px 80px}
+.container{max-width:1100px;margin:0 auto}
+
+/* Top Navigation Bar */
+.top-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;color:#1e3a8a;text-decoration:none;font-size:13px;font-weight:600}
+.nav-back:hover{text-decoration:underline}
+
+/* Header */
+.header{background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);color:#fff;border-radius:8px 8px 0 0;padding:22px 28px 18px}
+.header-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:18px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.header p{font-size:12px;color:#cbd5e1}
+
+/* Tabs */
+.tabs-header{display:flex;background:#e2e8f0;border-bottom:3px solid #1e3a8a;padding:0 12px;overflow-x:auto}
+.tab-btn{padding:11px 20px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:#475569;border-bottom:3px solid transparent;margin-bottom:-3px;white-space:nowrap;transition:all 0.15s}
+.tab-btn:hover{color:#1e3a8a}
+.tab-btn.active{color:#1e3a8a;background:#fff;border-bottom-color:#1e3a8a;border-radius:6px 6px 0 0}
+
+/* Card */
+.card{background:#fff;border:1px solid #cbd5e1;border-radius:0 0 8px 8px;padding:28px;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Action Toolbar */
+.toolbar{display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:10px 16px;margin-bottom:20px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:5px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:opacity 0.15s}
+.btn:hover{opacity:0.88}
+.bp{background:#1e3a8a;color:#fff}.bs{background:#64748b;color:#fff}.bg{background:#15803d;color:#fff}.bc{background:#0284c7;color:#fff}.bv{background:#7c3aed;color:#fff}.bd{background:#dc2626;color:#fff}
+.bsm{padding:3px 8px;font-size:11px}
+
+/* S-LINK Grid */
+.slink-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(310px, 1fr));gap:14px;margin-bottom:24px}
+.slink-item{background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;position:relative}
+.slink-item label{font-size:11px;font-weight:700;color:#64748b}
+.slink-item input[type="text"]{
+  font-size:13px;font-weight:600;color:#0f172a;
+  border:1px solid #cbd5e1;border-radius:4px;padding:4px 8px;background:#fff;width:100%;font-family:inherit;
+}
+.slink-item input[type="text"]:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+.slink-item .copy-sub-btn{position:absolute;top:8px;right:8px;font-size:10px;padding:2px 6px;background:#e2e8f0;border:none;border-radius:3px;cursor:pointer;color:#334155}
+.slink-item .copy-sub-btn:hover{background:#cbd5e1}
+
+/* Document Document Styles (Specification & Appendix) */
+.doc-sheet{background:#fff;border:1px solid #94a3b8;border-radius:6px;padding:36px 44px;box-shadow:0 4px 12px rgba(0,0,0,0.05);line-height:1.75;margin-bottom:24px}
+.doc-sheet h2{font-size:18px;font-weight:700;color:#0f172a;border-bottom:2px solid #1e3a8a;padding-bottom:8px;margin-bottom:20px;text-align:center}
+.doc-sheet h3{font-size:14px;font-weight:700;color:#1e3a8a;background:#f1f5f9;border-left:4px solid #1e3a8a;padding:5px 10px;margin:20px 0 10px}
+.doc-sheet p{font-size:13px;color:#334155;margin-bottom:8px}
+.doc-sheet ul{margin:6px 0 12px 22px;font-size:13px;color:#334155}
+.doc-sheet li{margin-bottom:4px}
+.doc-sheet table{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:12.5px}
+.doc-sheet th,.doc-sheet td{border:1px solid #cbd5e1;padding:7px 10px;text-align:left}
+.doc-sheet th{background:#f8fafc;font-weight:700;color:#0f172a}
+
+.edit-box{width:100%;border:1px solid #cbd5e1;border-radius:4px;padding:6px 10px;font-family:inherit;font-size:13px;line-height:1.6}
+.edit-box:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+
+.edit-clause{
+  border:1px solid #cbd5e1;
+  border-radius:6px;
+  padding:14px;
+  margin-bottom:14px;
+  background:#f8fafc;
+}
+.edit-clause label{font-size:12px;font-weight:700;color:#1e3a8a;display:block;margin-bottom:4px}
+.edit-clause textarea{
+  width:100%;
+  border:1px solid #cbd5e1;
+  border-radius:4px;
+  padding:8px 10px;
+  font-family:inherit;
+  font-size:13px;
+  line-height:1.6;
+  background:#fff;
+  resize:vertical;
+}
+.edit-clause textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+@media print {
+  body{background:#fff;padding:0}
+  .top-nav,.header,.tabs-header,.toolbar,.toast{display:none!important}
+  .card{border:none;padding:0;box-shadow:none}
+  .doc-sheet{border:none;box-shadow:none;padding:0}
+  .tab-panel{display:none!important}
+  .tab-panel.active{display:block!important}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Top Nav -->
+  <div class="top-nav">
+    <a href="index.html" class="nav-back">← システムポータルへ戻る</a>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="btn bs bsm" style="cursor:pointer">📂 保存ファイル読込 (HTML/JSON)<input type="file" accept=".html,.json" style="display:none" onchange="loadSavedSlinkFile(this)"></label>
+      <a href="quotation-generator.html" class="nav-back">📊 見積もり生成ツールへ戻る</a>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>📑 Service Specification & Appendix (S-LINK) Generator</h1>
+        <p>Expert Labs Storage Inputs and Outputs Phase 2 準拠 — S-LINK 登録メタデータ、仕様書、別紙の完全編集・出力</p>
+      </div>
+      <button class="btn bv" onclick="saveSlinkFullStateJson()">💾 S-LINK設定データ保存 (JSON)</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-header">
+    <button class="tab-btn active" onclick="switchSlinkTab('tab-slink-meta')">📋 S-LINK 登録メタデータ一覧</button>
+    <button class="tab-btn" onclick="switchSlinkTab('tab-spec-doc')">📄 サービス仕様書 (Specification)</button>
+    <button class="tab-btn" onclick="switchSlinkTab('tab-appx-doc')">📎 サービス別紙 (Appendix)</button>
+    <button class="tab-btn" onclick="switchSlinkTab('tab-export-all')">💾 一括HTMLエクスポート</button>
+  </div>
+
+  <!-- Card Body -->
+  <div class="card">
+
+    <!-- ===== TAB 1: S-LINK 登録メタデータ一覧 ===== -->
+    <div class="tab-panel active" id="tab-slink-meta">
+      <div class="toolbar">
+        <div>
+          <strong style="color:#0f172a;font-size:13.5px">S-LINK 登録用項目一覧 (全項目直接編集可能)</strong>
+          <span style="font-size:12px;color:#64748b;margin-left:8px">各フィールドを直接修正し、個別にまたは一括でコピーできます</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp bsm" onclick="addCustomSlinkItem()">＋ 登録項目を追加</button>
+          <button class="btn bc bsm" onclick="copyAllSlinkMeta()">📋 全項目を一括コピー</button>
+        </div>
+      </div>
+
+      <div class="slink-grid" id="slink-meta-grid">
+        <!-- Dynamically rendered -->
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: サービス仕様書 ===== -->
+    <div class="tab-panel" id="tab-spec-doc">
+      <div class="toolbar">
+        <div><strong style="color:#0f172a">サービス仕様書 (Service Specification) 編集</strong></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bg" onclick="downloadSingleHtml('spec')">⬇️ 仕様書HTML保存</button>
+          <button class="btn bp" onclick="window.print()">🖨️ 印刷 / PDF</button>
+        </div>
+      </div>
+
+      <div id="spec-editor-container"></div>
+    </div>
+
+    <!-- ===== TAB 3: サービス別紙 ===== -->
+    <div class="tab-panel" id="tab-appx-doc">
+      <div class="toolbar">
+        <div><strong style="color:#0f172a">サービス別紙 (Service Appendix) 編集</strong></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bg" onclick="downloadSingleHtml('appx')">⬇️ 別紙HTML保存</button>
+          <button class="btn bp" onclick="window.print()">🖨️ 印刷 / PDF</button>
+        </div>
+      </div>
+
+      <div id="appx-editor-container"></div>
+    </div>
+
+    <!-- ===== TAB 4: 一括HTMLエクスポート ===== -->
+    <div class="tab-panel" id="tab-export-all">
+      <div class="toolbar">
+        <div><strong style="color:#0f172a">一括登録・提出用パッケージ</strong></div>
+        <button class="btn bg" onclick="downloadFullPackageHtml()">📦 全ドキュメント統合HTMLを保存</button>
+      </div>
+      <p style="font-size:13px;color:#475569;margin-bottom:16px">S-LINK 登録メタデータ、サービス仕様書、サービス別紙の全情報を1つの完全なスタンドアロン HTML ファイルとして出力します。</p>
+      <div id="full-package-preview" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:20px"></div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /container -->
+
+<div id="toast" class="toast">コピーしました</div>
+
+<script>
+// ============================================================
+// STATE INITIALIZATION & PARSING
+// ============================================================
+let stateData = null;
+let slinkMetaList = [];
+let specDocData = {};
+let appxDocData = {};
+
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(n){ return Number(n||0).toLocaleString('ja-JP'); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function switchSlinkTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const tabs = ['tab-slink-meta','tab-spec-doc','tab-appx-doc','tab-export-all'];
+  const idx = tabs.indexOf(id);
+  if(idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if(id === 'tab-export-all') updateFullPackagePreview();
+}
+
+// Load state from sessionStorage or defaults
+function loadContextState(){
+  try {
+    const rawToolState = sessionStorage.getItem("STORAGE_QUOTATION_TOOL_STATE");
+    const rawFull = sessionStorage.getItem("STORAGE_QUOTATION_FULL_STATE");
+    const rawReq = sessionStorage.getItem("STORAGE_QUOTATION_REQUEST_DATA");
+    
+    if(rawToolState) {
+      const toolState = JSON.parse(rawToolState);
+      const req = rawReq ? JSON.parse(rawReq) : {};
+      stateData = {
+        ...toolState,
+        oppNoProduct: (toolState.basic && toolState.basic.oppNoProduct) || req.oppNoProduct || "006gR0000045s0hQAA",
+        oppNoService: (toolState.basic && toolState.basic.oppNoService) || req.oppNoService || "006gR000005I1M9QAK",
+        salesName: (toolState.basic && toolState.basic.salesName) || req.salesName || "営業担当",
+        tsName: (toolState.basic && toolState.basic.tsName) || req.tsName || "TS担当",
+        requestFormData: req
+      };
+      initDocsFromState();
+      return;
+    }
+
+    if(rawFull) {
+      stateData = JSON.parse(rawFull);
+      initDocsFromState();
+      return;
+    }
+    if(rawReq) {
+      const req = JSON.parse(rawReq);
+      stateData = {
+        version: 4,
+        basic: {
+          customerName: req.customerName || "お客様名",
+          projectName: req.projectName || "Storage支援案件",
+          laborRate: 17600,
+          contingency: 0.10,
+          gp: 0.36,
+          startYear: 2026,
+          startMonth: 4,
+          periodMonths: 12
+        },
+        oppNoProduct: req.oppNoProduct || "006gR0000045s0hQAA",
+        oppNoService: req.oppNoService || "006gR000005I1M9QAK",
+        salesName: req.salesName || "営業担当",
+        tsName: req.tsName || "TS担当",
+        requestFormData: req
+      };
+      initDocsFromState();
+      return;
+    }
+  } catch(e){}
+
+  // Fallback sample data
+  stateData = {
+    version: 4,
+    basic: {
+      customerName: "〇〇株式会社 様",
+      projectName: "Storage Ceph 導入・設計構築支援",
+      laborRate: 23000,
+      contingency: 10,
+      gp: 45,
+      startYear: 2026,
+      startMonth: 4,
+      periodMonths: 12
+    },
+    oppNoProduct: "006gR0000045s0hQAA",
+    oppNoService: "006gR000005I1M9QAK",
+    salesName: "山田 太郎",
+    tsName: "鈴木 花子",
+    kosuData: {},
+    travelRows: []
+  };
+  initDocsFromState();
+}
+
+function computeFinancials(){
+  const b = stateData.basic || {};
+  const rate = Number(b.laborRate) || 17600;
+  let contVal = Number(b.contingency) || 0.10;
+  if (contVal > 1) contVal = contVal / 100;
+  let gpVal = Number(b.gp) || 0.36;
+  if (gpVal > 1) gpVal = gpVal / 100;
+
+  let totalHours = 0;
+  if(stateData.kosuData){
+    Object.keys(stateData.kosuData).forEach(k => {
+      const d = stateData.kosuData[k];
+      if(d && d.values) totalHours += d.values.reduce((a, b) => a + Number(b||0), 0);
+    });
+  }
+
+  let travelCost = 0;
+  if(stateData.travelRows){
+    stateData.travelRows.forEach(r => {
+      const u = Number(r.unit !== undefined ? r.unit : r.unitPrice) || 0;
+      const q = Number(r.qty) || 1;
+      const c = Number(r.cnt !== undefined ? r.cnt : 1) || 1;
+      travelCost += u * q * c;
+    });
+  }
+
+  const laborCost = totalHours * rate;
+  const baseCost = laborCost + travelCost;
+  const isDou = b.isDou === 'true' || b.isDou === 'yes';
+  const contCost = isDou ? 0 : baseCost * contVal;
+  const gpBase = baseCost + contCost;
+  const gpCost = isDou ? 0 : (gpVal < 1 ? (gpBase * gpVal / (1 - gpVal)) : 0);
+  const rawPrice = gpBase + gpCost;
+
+  const ru = Number(b.roundingUnit) || 100000;
+  const price = ru > 0 ? Math.ceil(rawPrice / ru) * ru : Math.round(rawPrice);
+
+  return {
+    totalHours,
+    laborCost,
+    contCost,
+    travelCost,
+    internalCost: baseCost + contCost,
+    price,
+    gpPct: Math.round(gpVal * 100),
+    contPct: Math.round(contVal * 100)
+  };
+}
+
+// ============================================================
+// S-LINK METADATA INIT & EDIT
+// ============================================================
+function initDocsFromState(){
+  const f = computeFinancials();
+  const b = stateData.basic || {};
+  const req = stateData.requestFormData || {};
+  const cust = b.customerName || "お客様名";
+  const proj = b.projectName || "Storage案件";
+  const startY = b.startYear || 2026;
+  const startM = b.startMonth || 4;
+  const dur = b.periodMonths || 12;
+
+  slinkMetaList = [
+    { id: "sm1", label: "サービス名", val: `Storage Expert Labs 支援サービス (${cust} ${proj})` },
+    { id: "sm2", label: "契約先お客様名・番号", val: `${cust} (要S-LINK検索・マッピング)` },
+    { id: "sm3", label: "請求先お客様名・番号", val: `${cust} (同上)` },
+    { id: "sm4", label: "サービス先お客様名・番号", val: `${cust} (同上)` },
+    { id: "sm5", label: "契約金額 (定価・税抜)", val: `¥${fmt(f.price)}` },
+    { id: "sm6", label: "GP (%)", val: `${f.gpPct} %` },
+    { id: "sm7", label: "Contingency (%)", val: `${f.contPct} %` },
+    { id: "sm8", label: "総支援工数", val: `${f.totalHours} h` },
+    { id: "sm9", label: "契約期間", val: `${startY}年${startM}月1日 ～ (${dur}ヶ月間)` },
+    { id: "sm10", label: "契約捺印予定日", val: `${startY}年${startM > 1 ? startM - 1 : 12}月25日` },
+    { id: "sm11", label: "契約タイプ（支援）", val: req.contractType || "支援契約（Expert Labsの単独契約）" },
+    { id: "sm12", label: "チャネルコード（直販/BP）", val: req.dealType || "直販（エンドユーザ様-IBM）" },
+    { id: "sm13", label: "Opportunity No（HW/SW製品）", val: stateData.oppNoProduct || "—" },
+    { id: "sm14", label: "Opportunity No（サービス）", val: stateData.oppNoService || "—" },
+    { id: "sm15", label: "IBM Prime / DOU区分", val: b.isDou === 'yes' ? "DOU案件 (ILC計上)" : "IBM Prime (単独契約)" },
+    { id: "sm16", label: "使用する契約書", val: "IBM サービス契約書（支援サービス仕様書・別紙添付）" },
+    { id: "sm17", label: "個人情報・機密保持", val: req.confidential === "有り" ? `機密保持契約締結 (${req.confidentialNote||'済'})` : "機密保持対象外 (標準条件)" },
+    { id: "sm18", label: "PPTL (Project Partner Tech Lead)", val: stateData.tsName || "TBD" },
+    { id: "sm19", label: "PJTL (Project Tech Lead)", val: "Expert Labs Storage Specialist" },
+    { id: "sm20", label: "支払い計画", val: req.paymentPlan || "各月（標準）" },
+    { id: "sm21", label: "月次報告書提出要否", val: req.monthlyReport || "無" }
+  ];
+
+  // Specification Defaults
+  const prods = (req.products || ["IBM Storage 製品群"]).join("、 ");
+  specDocData = {
+    title: `Storage Expert Labs 支援サービス (${cust} ${proj})`,
+    docNo: `SPEC-STG-${Date.now().toString().slice(-6)}`,
+    target: `対象製品: ${prods}\nOffering: ${req.offering || 'Storage Expert Labs (6911-450)'}\n対象規模・詳細:\n${req.workDetail || 'IBM Storage 導入・設計構築および検証支援'}`,
+    scope: `・要件確認・基本設計支援: システム要件ヒアリング、パラメータ策定、構成設計書作成支援\n・導入・構築支援: ストレージ初期セットアップ、クラスタ/プール/ボリューム構成、ネットワーク疎通支援\n・機能・設定検証支援: 正常系動作確認、障害時フェイルオーバー確認、性能測定支援\n・スキルトランスファー・教育: 管理者向け運用操作説明、ナレッジトランスファー`,
+    deliverables: `・基本設計書（パラメータシート / 構成定義書）\n・導入・構築手順書 (または作業結果報告書)\n・テスト結果報告書${req.monthlyReport === '有' ? '\n・月次作業報告書 (Monthly Report)' : ''}`,
+    prerequisites: `・お客様にて対象機器の設置場所、電源、空調、ネットワーク配線が事前に準備されていること。\n・作業実施に必要なアカウント・アクセス権限およびリモート接続環境が適時提供されること。\n・ハードウェアおよびソフトウェアの保守契約が有効に締結されていること。\n・本サービスにおける作業時間は、IBM 標準就業時間 (平日 9:00〜17:36) 内を原則とします。`,
+    outOfScope: `・IBM 対象外の他社製ハードウェア、OS、サードパーティ製アプリケーションの導入・トラブル対応。\n・本仕様書に明記されていないプログラム開発、データ移行実作業、および本番障害復旧対応。\n・深夜・休日作業 (別途協議の上、合意された場合を除く)。`
+  };
+
+  // Appendix Defaults
+  appxDocData = {
+    title: `Storage Expert Labs 支援サービス (${cust} ${proj})`,
+    docNo: `APPX-STG-${Date.now().toString().slice(-6)}`,
+    scopeHours: `${f.totalHours}`,
+    location: req.workLocation || 'リモート中心（必要に応じてお客様指定場所オンサイト）',
+    price: `¥${fmt(f.price)}`,
+    travelCost: f.travelCost > 0 ? `¥${fmt(f.travelCost)}` : '¥0',
+    period: `${startY}年${startM}月1日 から ${dur} ヶ月間（または合意工数満了のいずれか早い方）`,
+    completion: `仕様書記載の成果物の納品完了、または本別紙に定める支援工数（${f.totalHours}時間）の消化、あるいはサービス期間の満了をもって本サービスは完了とします。`,
+    payment: `${req.paymentPlan || '各月（標準）'}（ご提供形態: ${req.contractType || '単独契約'}）`,
+    notes: `機密情報取扱い: ${req.confidential || '無し'} ${req.confidentialNote ? '(' + req.confidentialNote + ')' : ''}`
+  };
+}
+
+function renderSlinkMetadata(){
+  const grid = document.getElementById("slink-meta-grid");
+  let h = '';
+  slinkMetaList.forEach((m, idx) => {
+    h += `
+      <div class="slink-item">
+        <label>${escHtml(m.label)}</label>
+        <input type="text" value="${escHtml(m.val)}" oninput="slinkMetaList[${idx}].val=this.value">
+        <button class="copy-sub-btn" onclick="copySingleText(slinkMetaList[${idx}].val)">コピー</button>
+      </div>
+    `;
+  });
+  grid.innerHTML = h;
+}
+
+function addCustomSlinkItem(){
+  const label = prompt("追加する項目名を入力してください:", "カスタム項目名");
+  if(!label) return;
+  slinkMetaList.push({ id: "sm_" + Date.now(), label: label, val: "" });
+  renderSlinkMetadata();
+  showToast("項目を追加しました: " + label);
+}
+
+// ============================================================
+// SERVICE SPECIFICATION EDITOR (仕様書)
+// ============================================================
+function renderSpecificationEditor(){
+  const container = document.getElementById("spec-editor-container");
+  container.innerHTML = `
+    <div class="doc-sheet">
+      <h2>サービス仕様書 (Service Specification)</h2>
+      <div style="text-align:right;margin-bottom:16px">
+        <label style="font-size:11px;font-weight:700;color:#64748b">文書番号:</label>
+        <input type="text" value="${escHtml(specDocData.docNo)}" style="width:160px;font-size:12px;padding:2px 6px" oninput="specDocData.docNo=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>1. サービス名</label>
+        <input type="text" value="${escHtml(specDocData.title)}" class="edit-box" oninput="specDocData.title=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>2. サービス対象 (対象製品・システム構成)</label>
+        <textarea rows="4" oninput="specDocData.target=this.value">${escHtml(specDocData.target)}</textarea>
+      </div>
+
+      <div class="edit-clause">
+        <label>3. サービス内容 (作業スコープ)</label>
+        <textarea rows="6" oninput="specDocData.scope=this.value">${escHtml(specDocData.scope)}</textarea>
+      </div>
+
+      <div class="edit-clause">
+        <label>4. 提出ドキュメント (成果物)</label>
+        <textarea rows="4" oninput="specDocData.deliverables=this.value">${escHtml(specDocData.deliverables)}</textarea>
+      </div>
+
+      <div class="edit-clause">
+        <label>5. サービスの前提条件 (Prerequisites)</label>
+        <textarea rows="5" oninput="specDocData.prerequisites=this.value">${escHtml(specDocData.prerequisites)}</textarea>
+      </div>
+
+      <div class="edit-clause">
+        <label>6. サービス適用外事項 (Out of Scope)</label>
+        <textarea rows="4" oninput="specDocData.outOfScope=this.value">${escHtml(specDocData.outOfScope)}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// SERVICE APPENDIX EDITOR (別紙)
+// ============================================================
+function renderAppendixEditor(){
+  const container = document.getElementById("appx-editor-container");
+  container.innerHTML = `
+    <div class="doc-sheet">
+      <h2>サービス別紙 (Service Appendix)</h2>
+      <div style="text-align:right;margin-bottom:16px">
+        <label style="font-size:11px;font-weight:700;color:#64748b">別紙番号:</label>
+        <input type="text" value="${escHtml(appxDocData.docNo)}" style="width:160px;font-size:12px;padding:2px 6px" oninput="appxDocData.docNo=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>1. サービス名</label>
+        <input type="text" value="${escHtml(appxDocData.title)}" class="edit-box" oninput="appxDocData.title=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>2. サービス対象範囲 (上限工数)</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" value="${escHtml(appxDocData.scopeHours)}" style="width:120px" class="edit-box" oninput="appxDocData.scopeHours=this.value">
+          <span>時間を上限とする技術支援を提供</span>
+        </div>
+      </div>
+
+      <div class="edit-clause">
+        <label>3. サービス提供場所</label>
+        <input type="text" value="${escHtml(appxDocData.location)}" class="edit-box" oninput="appxDocData.location=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>4. サービス料金 (定価・税抜)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <span style="font-size:11px;color:#64748b">技術支援料金:</span>
+            <input type="text" value="${escHtml(appxDocData.price)}" class="edit-box" style="font-weight:700;color:#15803d" oninput="appxDocData.price=this.value">
+          </div>
+          <div>
+            <span style="font-size:11px;color:#64748b">交通費・宿泊費等実費:</span>
+            <input type="text" value="${escHtml(appxDocData.travelCost)}" class="edit-box" oninput="appxDocData.travelCost=this.value">
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-clause">
+        <label>5. サービス期間</label>
+        <input type="text" value="${escHtml(appxDocData.period)}" class="edit-box" oninput="appxDocData.period=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>6. サービスの終了条件</label>
+        <textarea rows="3" oninput="appxDocData.completion=this.value">${escHtml(appxDocData.completion)}</textarea>
+      </div>
+
+      <div class="edit-clause">
+        <label>7. 支払い計画</label>
+        <input type="text" value="${escHtml(appxDocData.payment)}" class="edit-box" oninput="appxDocData.payment=this.value">
+      </div>
+
+      <div class="edit-clause">
+        <label>8. その他特記事項</label>
+        <input type="text" value="${escHtml(appxDocData.notes)}" class="edit-box" oninput="appxDocData.notes=this.value">
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// FULL PACKAGE PREVIEW & EXPORTS
+// ============================================================
+function updateFullPackagePreview(){
+  const cust = (stateData.basic && stateData.basic.customerName) || "お客様名";
+  const proj = (stateData.basic && stateData.basic.projectName) || "案件名";
+  document.getElementById('full-package-preview').innerHTML = `
+    <p><strong>登録先お客様:</strong> ${escHtml(cust)}</p>
+    <p><strong>案件名:</strong> ${escHtml(proj)}</p>
+    <p><strong>S-LINK 登録項目数:</strong> ${slinkMetaList.length} 項目</p>
+    <p><strong>仕様書タイトル:</strong> ${escHtml(specDocData.title)}</p>
+    <p><strong>別紙金額 / 工数:</strong> ${escHtml(appxDocData.price)} / ${escHtml(appxDocData.scopeHours)} h</p>
+  `;
+}
+
+function copySingleText(text){
+  navigator.clipboard.writeText(text).then(() => showToast("コピーしました: " + text));
+}
+
+function copyAllSlinkMeta(){
+  const lines = [
+    "=== S-LINK 登録メタデータ一覧 ===",
+    ...slinkMetaList.map(m => `${m.label}: ${m.val}`)
+  ];
+  navigator.clipboard.writeText(lines.join("\n")).then(() => showToast("全 S-LINK 登録項目をコピーしました"));
+}
+
+function generateCleanDocHtml(type){
+  if(type === 'spec'){
+    return `
+      <h2>サービス仕様書 (Service Specification)</h2>
+      <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">文書番号: ${escHtml(specDocData.docNo)}</div>
+      <h3>1. サービス名</h3><p><strong>${escHtml(specDocData.title)}</strong></p>
+      <h3>2. サービス対象</h3><p>${escHtml(specDocData.target).replace(/\n/g, '<br>')}</p>
+      <h3>3. サービス内容 (作業スコープ)</h3><p>${escHtml(specDocData.scope).replace(/\n/g, '<br>')}</p>
+      <h3>4. 提出ドキュメント (成果物)</h3><p>${escHtml(specDocData.deliverables).replace(/\n/g, '<br>')}</p>
+      <h3>5. サービスの前提条件</h3><p>${escHtml(specDocData.prerequisites).replace(/\n/g, '<br>')}</p>
+      <h3>6. サービス適用外事項</h3><p>${escHtml(specDocData.outOfScope).replace(/\n/g, '<br>')}</p>
+    `;
+  } else {
+    return `
+      <h2>サービス別紙 (Service Appendix)</h2>
+      <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">別紙番号: ${escHtml(appxDocData.docNo)}</div>
+      <h3>1. サービス名</h3><p><strong>${escHtml(appxDocData.title)}</strong></p>
+      <h3>2. サービス対象範囲</h3><p>仕様書記載の支援作業に対し、合計 <strong>${escHtml(appxDocData.scopeHours)} 時間</strong> を上限とする技術支援を提供します。</p>
+      <h3>3. サービス提供場所</h3><p><strong>${escHtml(appxDocData.location)}</strong></p>
+      <h3>4. サービス料金</h3>
+      <table>
+        <thead><tr><th>項目</th><th>数量</th><th style="text-align:right">金額(税抜)</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td>技術支援料金</td><td>1式 (${escHtml(appxDocData.scopeHours)}h)</td><td style="text-align:right;font-weight:700">${escHtml(appxDocData.price)}</td><td>Labor/Contingency込</td></tr>
+          ${appxDocData.travelCost !== '¥0' ? `<tr><td>実費経費</td><td>1式</td><td style="text-align:right">${escHtml(appxDocData.travelCost)}</td><td>交通費・宿泊費等</td></tr>` : ''}
+        </tbody>
+      </table>
+      <h3>5. サービス期間</h3><p><strong>${escHtml(appxDocData.period)}</strong></p>
+      <h3>6. サービスの終了条件</h3><p>${escHtml(appxDocData.completion).replace(/\n/g, '<br>')}</p>
+      <h3>7. 支払い計画</h3><p>${escHtml(appxDocData.payment)}</p>
+      <h3>8. その他特記事項</h3><p>${escHtml(appxDocData.notes)}</p>
+    `;
+  }
+}
+
+function downloadSingleHtml(type){
+  const cust = ((stateData.basic && stateData.basic.customerName) || 'Quotation').replace(/[\\/:*?"<>|]/g,'_');
+  const title = type === 'spec' ? 'Service_Specification' : 'Service_Appendix';
+  const bodyContent = generateCleanDocHtml(type);
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>${title} - ${cust}</title>
+<style>
+  body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.75;color:#1e293b;padding:40px;max-width:900px;margin:0 auto}
+  h2{font-size:20px;font-weight:700;color:#0f172a;border-bottom:2px solid #1e3a8a;padding-bottom:8px;margin-bottom:24px;text-align:center}
+  h3{font-size:14px;font-weight:700;color:#1e3a8a;background:#f1f5f9;border-left:4px solid #1e3a8a;padding:6px 12px;margin:22px 0 10px}
+  table{width:100%;border-collapse:collapse;margin:14px 0}
+  th,td{border:1px solid #cbd5e1;padding:8px 12px;text-align:left}
+  th{background:#f8fafc;font-weight:700}
+</style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], {type:"text/html;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${cust}_${title}.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast("HTMLファイルを保存しました");
+}
+
+function downloadFullPackageHtml(){
+  const cust = ((stateData.basic && stateData.basic.customerName) || 'Quotation').replace(/[\\/:*?"<>|]/g,'_');
+  const spec = generateCleanDocHtml('spec');
+  const appx = generateCleanDocHtml('appx');
+  const metaGridHtml = slinkMetaList.map(m => `<div class="slink-item"><label>${escHtml(m.label)}</label><div class="val">${escHtml(m.val)}</div></div>`).join('');
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>S-LINK Registration & Service Docs - ${cust}</title>
+<style>
+  body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.75;color:#1e293b;padding:40px 20px;background:#f1f5f9}
+  .wrap{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:40px}
+  .sec{margin-bottom:40px;padding-bottom:30px;border-bottom:2px dashed #cbd5e1}
+  .sec:last-child{border-bottom:none}
+  h1{font-size:22px;color:#0f172a;text-align:center;margin-bottom:30px}
+  h2{font-size:18px;font-weight:700;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:6px;margin-bottom:18px}
+  h3{font-size:14px;font-weight:700;color:#1e3a8a;background:#f1f5f9;border-left:4px solid #1e3a8a;padding:6px 10px;margin:18px 0 10px}
+  .slink-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:12px}
+  .slink-item{background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px}
+  .slink-item label{font-size:11px;font-weight:700;color:#64748b;display:block}
+  .slink-item .val{font-size:13px;font-weight:600;color:#0f172a}
+  table{width:100%;border-collapse:collapse;margin:14px 0}
+  th,td{border:1px solid #cbd5e1;padding:8px 12px;text-align:left}
+  th{background:#f8fafc;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>IBM Storage Expert Labs — Service Package</h1>
+  <div class="sec">
+    <h2>■ S-LINK 登録メタデータ</h2>
+    <div class="slink-grid">${metaGridHtml}</div>
+  </div>
+  <div class="sec">${spec}</div>
+  <div class="sec">${appx}</div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], {type:"text/html;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${cust}_Full_Service_Package.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast("統合サービスパッケージを保存しました");
+}
+
+function saveSlinkFullStateJson(){
+  const exportData = {
+    stateData: stateData,
+    slinkMetaList: slinkMetaList,
+    specDocData: specDocData,
+    appxDocData: appxDocData
+  };
+  const json = JSON.stringify(exportData, null, 2);
+  const cust = ((stateData.basic && stateData.basic.customerName) || 'Quotation').replace(/[\\/:*?"<>|]/g,'_');
+  const fileName = `${cust}_SlinkSpecPackage.json`;
+  const blob = new Blob([json], {type:"application/json;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast("S-LINK設定データを保存しました: " + fileName);
+}
+
+function loadSavedSlinkFile(input){
+  const f = input.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const content = e.target.result;
+      if(f.name.endsWith('.html') || content.includes('<script id="saved-state"')){
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(content, 'text/html');
+        const script = doc.getElementById('saved-state');
+        if(!script) throw new Error("保存データ (saved-state) が見つかりません");
+        const json = script.textContent.replace(/^window\.__SAVED_STATE__=/, '').replace(/;$/, '');
+        stateData = JSON.parse(json);
+        initDocsFromState();
+        renderSlinkMetadata();
+        renderSpecificationEditor();
+        renderAppendixEditor();
+        showToast("HTMLファイルからS-LINK設定を再構築しました: " + f.name);
+      } else {
+        const data = JSON.parse(content);
+        if(data.slinkMetaList && data.specDocData){
+          // Direct S-LINK JSON
+          stateData = data.stateData || stateData;
+          slinkMetaList = data.slinkMetaList;
+          specDocData = data.specDocData;
+          appxDocData = data.appxDocData;
+        } else if(data.version === 4 && data.basic){
+          // Quotation tool JSON
+          stateData = data;
+          initDocsFromState();
+        } else if(data.version === "2.0"){
+          // Request Form JSON
+          stateData = {
+            version: 4,
+            basic: { customerName: data.customerName, projectName: data.projectName, laborRate: 23000, contingency: 10, gp: 45, startYear: 2026, startMonth: 4, periodMonths: 12 },
+            oppNoProduct: data.oppNoProduct,
+            oppNoService: data.oppNoService,
+            salesName: data.salesName,
+            tsName: data.tsName,
+            requestFormData: data
+          };
+          initDocsFromState();
+        }
+        renderSlinkMetadata();
+        renderSpecificationEditor();
+        renderAppendixEditor();
+        showToast("設定データを読み込み・復元しました: " + f.name);
+      }
+    } catch(err){
+      alert("読み込みエラー: " + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(f);
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  loadContextState();
+  renderSlinkMetadata();
+  renderSpecificationEditor();
+  renderAppendixEditor();
+});
+</script>
+</body>
+</html>
