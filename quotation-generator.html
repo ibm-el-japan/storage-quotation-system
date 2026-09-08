@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Storage Quotation Generator — Expert Labs Storage</title>
+<title>概算見積シート — Expert Labs Storage</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13px;line-height:1.5;color:#1a2b45;background:#eef2f8}
@@ -222,8 +223,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <!-- Top Navigation -->
 <div id="top-nav-bar">
   <div>
-    <a href="index.html">← 総合ポータル</a> | 
-    <a href="request-form.html">Quotation Request Form</a> | 
+    <a href="index.html">← 総合ポータル</a> |
+    <a href="request-form.html">見積もり依頼記入シート</a> |
     <a href="slink-spec-generator.html">S-LINK / 仕様書生成</a>
   </div>
   <div>
@@ -234,7 +235,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <!-- Auto-Import Handoff Banner -->
 <div id="handoff-banner">
   <div>
-    <span>📥 <strong>Quotation Request Form よりデータを自動インポートしました:</strong></span>
+    <span>📥 <strong>見積もり依頼記入シート よりデータを自動インポートしました:</strong></span>
     <span id="handoff-info" style="margin-left:8px;font-weight:600"></span>
   </div>
   <button class="btn bsm bp" onclick="document.getElementById('handoff-banner').classList.remove('show')">✕ 閉じる</button>
@@ -249,13 +250,14 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <div id="app">
   <div id="header">
-    <h1>📋 Storage Quotation Generator</h1>
+    <h1>📋 概算見積シート</h1>
     <span class="ver" id="ver-badge">v1.4.0</span>
     <div class="header-btns">
+      <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
       <button class="btn bp" style="background:#6366f1" onclick="openGhLoadModal()">📂 GitHubから開く</button>
-      <button class="btn bv" onclick="saveProject()">💾 ローカル保存</button>
-      <button class="btn bp" onclick="document.getElementById('load-file').click()">📂 ローカルから開く</button>
+      <button class="btn bv" onclick="saveProject()">💾 HTML保存</button>
+      <button class="btn bp" onclick="document.getElementById('load-file').click()">📂 HTML読込</button>
       <input type="file" id="load-file" accept=".html" style="display:none" onchange="loadProject(this)">
       <button class="btn bg" id="gh-api-save-btn" style="display:none" onclick="openGhSaveModal()" title="管理者: GitHub API保存">☁️ API保存</button>
       <button class="btn bg" onclick="window.print()">🖨️ 印刷/PDF</button>
@@ -352,21 +354,26 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
         </div>
       </div>
 
-      <!-- パイプライン拡張: 営業・製品・Opportunity参照情報 -->
+      <!-- パイプライン拡張: 営業・製品・Opportunity参照情報 (PPTX / 原本Excel完全準拠) -->
       <div class="card">
         <div class="card-header" onclick="toggleCard(this)">
-          <h3>🏷️ 案件・アカウント補足情報 (S-LINK / 仕様書連携)</h3>
+          <h3>🏷️ 案件・アカウント補足情報 (S-LINK / 仕様書・別紙 連携)</h3>
           <span class="ti">▼</span>
         </div>
         <div class="card-body">
           <div class="info-grid">
+            <div class="info-row"><label>お客様番号（8桁）</label><input type="text" id="ext-cust-no" placeholder="例: 1234ABCD"></div>
             <div class="info-row"><label>DNSO #</label><input type="text" id="ext-dnso" placeholder="例: DNSO-12345"></div>
-            <div class="info-row"><label>Opportunity No（製品）</label><input type="text" id="ext-opp-hw" placeholder="例: 006gR0000045s0hQAA"></div>
+            <div class="info-row"><label>Opportunity No（HW/SW製品）</label><input type="text" id="ext-opp-hw" placeholder="例: 006gR0000045s0hQAA"></div>
             <div class="info-row"><label>Opportunity No（サービス）</label><input type="text" id="ext-opp-svc" placeholder="例: 006gR000005I1M9QAK"></div>
-            <div class="info-row"><label>ビジネス・パートナー名</label><input type="text" id="ext-bp" placeholder="例: 株式会社〇〇"></div>
-            <div class="info-row"><label>担当営業名</label><input type="text" id="ext-sales" placeholder="例: 山田 太郎"></div>
+            <div class="info-row"><label>ビジネス・パートナー様名</label><input type="text" id="ext-bp" placeholder="例: △△システムズ株式会社"></div>
+            <div class="info-row"><label>BP お客様番号</label><input type="text" id="ext-bp-no" placeholder="例: ABCD1234"></div>
+            <div class="info-row"><label>担当営業名</label><input type="text" id="ext-sales" placeholder="例: 佐藤 健一"></div>
             <div class="info-row"><label>担当TS名</label><input type="text" id="ext-ts" placeholder="例: 鈴木 花子"></div>
-            <div class="info-row"><label>支援対象製品 / Offering</label><input type="text" id="ext-offering" placeholder="例: IBM Storage Ceph, FlashSystem"></div>
+            <div class="info-row"><label>支援対象製品 / Offering</label><input type="text" id="ext-offering" placeholder="例: Storage Scale System, Storage Protect"></div>
+            <div class="info-row"><label>サービス提供場所</label><input type="text" id="ext-location" placeholder="例: リモート / 東京都〇〇区 (〇〇駅)"></div>
+            <div class="info-row"><label>打合せ回数・頻度</label><input type="text" id="ext-meeting" placeholder="例: 週2回 (各1時間) @リモート"></div>
+            <div class="info-row"><label>提出ドキュメント</label><input type="text" id="ext-docs" placeholder="例: 基本設計書、詳細設計書、導入手順書"></div>
           </div>
         </div>
       </div>
@@ -539,7 +546,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v1.4.0 (Storage End-to-End Pipeline Edition)</strong></td></tr>
               <tr><td class="lc">リリース日</td><td style="text-align:left">2025-09-01</td></tr>
               <tr><td class="lc">ベースツール</td><td style="text-align:left"><a href="https://ibm-el-japan.github.io/quotation-tool/quotation-tool.html" target="_blank">quotation-tool.html (GitHub Pages)</a></td></tr>
-              <tr><td class="lc">パイプライン構成</td><td style="text-align:left">Quotation Request Form → Quotation Generator → S-LINK / 仕様書生成</td></tr>
+              <tr><td class="lc">パイプライン構成</td><td style="text-align:left">見積もり依頼記入シート → 概算見積シート → S-LINK / 仕様書生成</td></tr>
               <tr><td class="lc">管理者</td><td style="text-align:left">Expert Labs Storage</td></tr>
             </tbody>
           </table>
@@ -570,7 +577,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
                 <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">パイプライン統合</span></td>
                 <td style="text-align:left;white-space:normal">
                   quotation-tool.html (v1.4.0) の全機能・全タブ・全計算エンジン・お客様提出用出力を完全搭載。
-                  Quotation Request Form からの自動データマッピング、および S-LINK / サービス仕様書・別紙生成へのシームレスな引き継ぎ機能を統合。
+                  見積もり依頼記入シート からの自動データマッピング、および S-LINK / サービス仕様書・別紙生成へのシームレスな引き継ぎ機能を統合。
                 </td>
               </tr>
               <tr>
@@ -2463,13 +2470,18 @@ function collectState() {
       periodMonths: document.getElementById('period-months').value,
       roundingUnit: (document.getElementById('rounding-unit') || {}).value || '100000',
       // Extended fields
+      customerNo: (document.getElementById('ext-cust-no') || {}).value || '',
       dnsoNo: (document.getElementById('ext-dnso') || {}).value || '',
       oppNoProduct: (document.getElementById('ext-opp-hw') || {}).value || '',
       oppNoService: (document.getElementById('ext-opp-svc') || {}).value || '',
       bpName: (document.getElementById('ext-bp') || {}).value || '',
+      bpCustomerNo: (document.getElementById('ext-bp-no') || {}).value || '',
       salesName: (document.getElementById('ext-sales') || {}).value || '',
       tsName: (document.getElementById('ext-ts') || {}).value || '',
-      offering: (document.getElementById('ext-offering') || {}).value || ''
+      offering: (document.getElementById('ext-offering') || {}).value || '',
+      workLocation: (document.getElementById('ext-location') || {}).value || '',
+      meetingFrequency: (document.getElementById('ext-meeting') || {}).value || '',
+      docs: (document.getElementById('ext-docs') || {}).value || ''
     },
     checklist: JSON.parse(JSON.stringify(CHECKLIST_DATA)),
     kosuData: kosuSnapshot,
@@ -2587,15 +2599,29 @@ function checkIncomingRequestHandoff() {
     // Populate UI fields
     if (req.customerName) document.getElementById('customer-name').value = req.customerName;
     if (req.projectName) document.getElementById('project-name').value = req.projectName;
+    if (req.customerNo && document.getElementById('ext-cust-no')) document.getElementById('ext-cust-no').value = req.customerNo;
     if (req.dnsoNo && document.getElementById('ext-dnso')) document.getElementById('ext-dnso').value = req.dnsoNo;
     if (req.oppNoProduct && document.getElementById('ext-opp-hw')) document.getElementById('ext-opp-hw').value = req.oppNoProduct;
     if (req.oppNoService && document.getElementById('ext-opp-svc')) document.getElementById('ext-opp-svc').value = req.oppNoService;
     if (req.bpName && document.getElementById('ext-bp')) document.getElementById('ext-bp').value = req.bpName;
+    if (req.bpCustomerNo && document.getElementById('ext-bp-no')) document.getElementById('ext-bp-no').value = req.bpCustomerNo;
     if (req.salesName && document.getElementById('ext-sales')) document.getElementById('ext-sales').value = req.salesName;
     if (req.tsName && document.getElementById('ext-ts')) document.getElementById('ext-ts').value = req.tsName;
     
     const prodSummary = [req.offering, (req.products||[]).join(' / ')].filter(Boolean).join(' - ');
     if (prodSummary && document.getElementById('ext-offering')) document.getElementById('ext-offering').value = prodSummary;
+
+    const locSummary = [req.workLocation, req.workLocationDetail].filter(Boolean).join(' / ');
+    if (locSummary && document.getElementById('ext-location')) document.getElementById('ext-location').value = locSummary;
+    if (req.meetingFrequency && document.getElementById('ext-meeting')) document.getElementById('ext-meeting').value = req.meetingFrequency;
+    if (req.docs && document.getElementById('ext-docs')) {
+      document.getElementById('ext-docs').value = Array.isArray(req.docs) ? req.docs.join('、 ') : req.docs;
+    }
+
+    // eDOU detection from contractType
+    if (req.contractType && req.contractType.includes("他部門のSLINK")) {
+      document.getElementById('is-dou').value = "true";
+    }
 
     // Start date / month detection
     if (req.startDate) {
@@ -2606,24 +2632,81 @@ function checkIncomingRequestHandoff() {
       }
     }
 
+    // Auto-calculate period months if both dates present
+    if (req.startDate && req.endDate) {
+      const d1 = new Date(req.startDate);
+      const d2 = new Date(req.endDate);
+      const months = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+      document.getElementById('period-months').value = months;
+    }
+
+    // Auto-populate intelligent default kosu hours based on products
+    const n = getMonthLabels().length;
+    if (req.products && req.products.length > 0) {
+      const prods = req.products;
+      const isScale = prods.some(p => p.includes("Scale") || p.includes("SSS"));
+      const isCeph = prods.some(p => p.includes("Ceph"));
+      const isFlash = prods.some(p => p.includes("Virtualize") || p.includes("Flash"));
+      const isProtect = prods.some(p => p.includes("Protect"));
+
+      // Set default hours if untouched
+      if (isCeph) {
+        if (kosuData["des1"]) kosuData["des1"].values[0] = 40;
+        if (kosuData["bld2"]) kosuData["bld2"].values[0] = 32;
+        if (kosuData["tst3"]) kosuData["tst3"].values[0] = 24;
+        if (kosuData["doc1"]) kosuData["doc1"].values[0] = 16;
+        if (kosuData["qa1"])  kosuData["qa1"].values[0] = 16;
+      } else if (isScale) {
+        if (kosuData["des1"]) kosuData["des1"].values[0] = 40;
+        if (kosuData["bld2"]) kosuData["bld2"].values[0] = 40;
+        if (kosuData["tst3"]) kosuData["tst3"].values[0] = 24;
+        if (kosuData["doc1"]) kosuData["doc1"].values[0] = 16;
+      } else if (isFlash) {
+        if (kosuData["des1"]) kosuData["des1"].values[0] = 24;
+        if (kosuData["bld2"]) kosuData["bld2"].values[0] = 24;
+        if (kosuData["tst3"]) kosuData["tst3"].values[0] = 16;
+        if (kosuData["doc1"]) kosuData["doc1"].values[0] = 12;
+      }
+      if (isProtect) {
+        if (kosuData["des2"]) kosuData["des2"].values[0] = 24;
+        if (kosuData["bld3"]) kosuData["bld3"].values[0] = 24;
+      }
+      buildKosuTable();
+    }
+
     // Auto-populate / check items in checklist
     if (req.workDetail) {
       const srvSec = CHECKLIST_DATA.find(s => s.title === "サービス内容");
       if (srvSec) {
-        // Insert custom work detail
         srvSec.items.unshift({checked: true, text: req.workDetail, tag: "要件依頼"});
-        buildChecklist();
       }
     }
     if (req.products && req.products.length > 0) {
       const targetSec = CHECKLIST_DATA.find(s => s.title === "サービス対象");
       if (targetSec) {
         req.products.forEach(p => {
-          targetSec.items.unshift({checked: true, text: "・" + p + " 環境一式", tag: "対象製品"});
+          targetSec.items.unshift({checked: true, text: "・" + p + " 支援一式", tag: "対象製品"});
         });
-        buildChecklist();
       }
     }
+    if (req.docs && Array.isArray(req.docs) && req.docs.length > 0) {
+      const docSec = CHECKLIST_DATA.find(s => s.title === "提出ドキュメント");
+      if (docSec) {
+        docSec.items.forEach(it => {
+          if (req.docs.some(d => it.text.includes(d) || d.includes(it.text))) {
+            it.checked = true;
+          }
+        });
+      }
+    }
+    if (req.serviceExclusions) {
+      const excSec = CHECKLIST_DATA.find(s => s.title.includes("適用除外"));
+      if (excSec) {
+        excSec.items.unshift({checked: true, text: req.serviceExclusions, tag: "個別除外"});
+      }
+    }
+    buildChecklist();
+    recalcAll();
 
     // Show handoff info banner
     const banner = document.getElementById('handoff-banner');
@@ -2653,15 +2736,23 @@ function handoffToSlink() {
     ...(_incomingRequestData || {}),
     customerName: document.getElementById('customer-name').value,
     projectName: document.getElementById('project-name').value,
+    customerNo: (document.getElementById('ext-cust-no')||{}).value || (_incomingRequestData||{}).customerNo || '',
     dnsoNo: (document.getElementById('ext-dnso')||{}).value || (_incomingRequestData||{}).dnsoNo || '',
     oppNoProduct: (document.getElementById('ext-opp-hw')||{}).value || (_incomingRequestData||{}).oppNoProduct || '',
     oppNoService: (document.getElementById('ext-opp-svc')||{}).value || (_incomingRequestData||{}).oppNoService || '',
     bpName: (document.getElementById('ext-bp')||{}).value || (_incomingRequestData||{}).bpName || '',
+    bpCustomerNo: (document.getElementById('ext-bp-no')||{}).value || (_incomingRequestData||{}).bpCustomerNo || '',
     salesName: (document.getElementById('ext-sales')||{}).value || (_incomingRequestData||{}).salesName || '',
     tsName: (document.getElementById('ext-ts')||{}).value || (_incomingRequestData||{}).tsName || '',
     offering: (document.getElementById('ext-offering')||{}).value || (_incomingRequestData||{}).offering || '',
+    workLocation: (document.getElementById('ext-location')||{}).value || (_incomingRequestData||{}).workLocation || '',
+    meetingFrequency: (document.getElementById('ext-meeting')||{}).value || (_incomingRequestData||{}).meetingFrequency || '',
+    docs: (document.getElementById('ext-docs')||{}).value || (_incomingRequestData||{}).docs || '',
     scopeHours: grandH,
     estimatedPrice: totalStr,
+    laborRate: document.getElementById('labor-rate').value,
+    contingency: document.getElementById('contingency').value,
+    gp: document.getElementById('gp').value,
     travelCost: '¥' + fmt(Math.round(travelGrand)),
     toolState: state
   };
@@ -2669,6 +2760,172 @@ function handoffToSlink() {
   sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(payload));
   sessionStorage.setItem("STORAGE_QUOTATION_TOOL_STATE", JSON.stringify(state));
   window.location.href = "slink-spec-generator.html?src=quotation_generator";
+}
+
+function parseQuotationRequestExcel(wb) {
+  const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error("シートが見つかりません");
+
+  const getCell = (col, row) => {
+    const c = ws[col + row];
+    return c ? (c.w || String(c.v || "")).trim() : "";
+  };
+
+  const data = {
+    version: "2.1",
+    createdDate: "",
+    author: "",
+    customerName: "",
+    customerNo: "",
+    projectName: "",
+    dnsoNo: "",
+    oppNoProduct: "",
+    oppNoService: "",
+    bpName: "",
+    bpCustomerNo: "",
+    salesName: "",
+    tsName: "",
+    otherMembers: "",
+    offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
+    products: [],
+    startDate: "",
+    endDate: "",
+    workLocation: "リモート",
+    workLocationDetail: "",
+    workDetail: "",
+    docs: [],
+    meetingFrequency: "",
+    serviceExclusions: "",
+    confidential: "無し",
+    confidentialNote: "",
+    meetingInternal: "調整します",
+    meetingExternal: "調整します",
+    preChecks: [],
+    contractType: "支援契約（Expert Labsの単独契約）",
+    dealType: "直販（エンドユーザ様-IBM）",
+    paymentPlan: "各月（標準）",
+    monthlyReport: "無"
+  };
+
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const rowNum = R + 1;
+    const bVal = getCell('B', rowNum);
+    const cVal = getCell('C', rowNum);
+    const dVal = getCell('D', rowNum);
+
+    if (bVal.includes("記入日")) {
+      const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      else data.createdDate = cVal;
+    } else if (bVal.includes("記入者")) {
+      data.author = cVal;
+    } else if (bVal.includes("お客様名")) {
+      data.customerName = cVal;
+    } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
+      data.projectName = cVal;
+    } else if (bVal.includes("お客様番号")) {
+      if (!data.customerNo) data.customerNo = cVal;
+      else data.bpCustomerNo = cVal;
+    } else if (bVal.includes("DNSO")) {
+      data.dnsoNo = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+      data.oppNoProduct = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
+      data.oppNoService = cVal;
+    } else if (bVal.includes("ビジネス・パートナー")) {
+      data.bpName = cVal;
+    } else if (bVal.includes("担当営業名")) {
+      data.salesName = cVal;
+    } else if (bVal.includes("担当テクニカル")) {
+      data.tsName = cVal;
+    } else if (bVal.includes("その他案件関係者")) {
+      data.otherMembers = cVal;
+    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (rowNum >= 27 && rowNum <= 41) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
+        if (pName && !data.products.includes(pName)) data.products.push(pName);
+      }
+    } else if (bVal.includes("サービス期間")) {
+      const parts = cVal.split(/～|~/);
+      if (parts.length >= 1) {
+        const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m1) data.startDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+      }
+      if (parts.length >= 2) {
+        const m2 = parts[1].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m2) data.endDate = `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+      }
+    } else if (bVal.includes("サービス提供場所")) {
+      data.workLocationDetail = cVal;
+      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
+      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
+      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
+      data.workDetail = cVal;
+    } else if (bVal.includes("提出ドキュメント")) {
+      const lines = cVal.split(/\n|・|,|、/);
+      lines.forEach(l => {
+        const t = l.trim();
+        if (t && !data.docs.includes(t)) data.docs.push(t);
+      });
+    } else if (bVal.includes("打合せ回数")) {
+      data.meetingFrequency = cVal;
+    } else if (bVal.includes("サービス除外事項")) {
+      data.serviceExclusions = cVal;
+    } else if (bVal.includes("機密情報取扱い")) {
+      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) data.confidential = "有り";
+      else data.confidential = "無し";
+      data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingInternal = "不要";
+    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingExternal = "不要";
+    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
+      else data.monthlyReport = "無";
+    }
+  }
+  return data;
+}
+
+function handleToolExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const parsedData = parseQuotationRequestExcel(workbook);
+
+      // Save to sessionStorage and trigger import
+      sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
+      checkIncomingRequestHandoff();
+
+      showToast(`📊 Excel「${file.name}」の内容を全自動反映しました！`);
+    } catch (err) {
+      alert("Excelの解析に失敗しました: " + err.message);
+      console.error(err);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // ===================== INIT =====================
