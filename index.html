@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Expert Labs Storage Quotation Automation System</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:14px;line-height:1.6;color:#1e293b;background:#f1f5f9}
@@ -71,13 +72,26 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
 <div id="app">
   <header>
     <div class="top-row">
-      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v1.4.0</span></h1>
+      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.0.0</span></h1>
       <div><span style="font-size:12px;color:#94a3b8">Expert Labs Storage Division</span></div>
     </div>
     <p>Quotation Request 提出から Estimated Cost 試算、S-LINK / 仕様書・別紙の自動生成までを一気通貫で自動化する独立システム</p>
   </header>
 
   <main>
+    <div class="notice-banner" style="background:#f0fdf4;border-color:#86efac;color:#166534">
+      <div>
+        📊 <strong>「見積もり依頼記入シート_テンプレート.xlsx」をアップロードして即時連携:</strong>
+        <span style="margin-left:6px;font-size:12.5px;color:#15803d">Excelファイルをそのままアップロードすると、依頼シート・概算見積・S-LINK仕様書生成の全ツールに全データが自動反映されます。</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="background:#059669;color:#fff;font-weight:700;font-size:13px;padding:8px 16px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2)">
+          📥 Excelファイルをアップロード (.xlsx)
+          <input type="file" id="portal-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handlePortalExcelUpload(this)">
+        </label>
+      </div>
+    </div>
+
     <div class="notice-banner">
       <div>
         🌐 <strong>オンライン GitHub Pages 公開中（ワンクリック起動）:</strong>
@@ -99,19 +113,19 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
         <!-- Step 1 -->
         <div class="flow-card">
           <div class="step-num">1</div>
-          <h3>Quotation Request Form</h3>
+          <h3>見積もり依頼記入シート</h3>
           <span class="role-tag role-sales">Storage Sales / Tech Sales</span>
           <p>原本 Excel (`Quotation Request Form.xlsx`) を完全準拠・刷新した Web フォーム。12項目の事前確認や対象製品・提供条件を快適に入力し、見積もり生成用データをワンクリックで出力します。</p>
-          <a href="request-form.html" class="btn-link">依頼フォームを開く →</a>
+          <a href="request-form.html" class="btn-link">依頼シートを開く →</a>
         </div>
 
         <!-- Step 2 -->
         <div class="flow-card">
           <div class="step-num">2</div>
-          <h3>Quotation Generator</h3>
+          <h3>概算見積シート</h3>
           <span class="role-tag role-el">Expert Labs Storage</span>
-          <p>Request Form の入力内容を自動解析・マッピング。GitHub `work/` フォルダと直接連携し、前バージョンとの差分表示、クラウド保存・ロード、お客様提出用見積もり出力を完備しています。</p>
-          <a href="quotation-generator.html" class="btn-link">見積もり生成ツール →</a>
+          <p>依頼シートの入力内容を自動解析・マッピング。GitHub `work/` フォルダと直接連携し、前バージョンとの差分表示、クラウド保存・ロード、お客様提出用見積もり出力を完備しています。</p>
+          <a href="quotation-generator.html" class="btn-link">概算見積シートを開く →</a>
         </div>
 
         <!-- Step 3 -->
@@ -176,8 +190,8 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
       <table class="mapping-tbl">
         <thead>
           <tr>
-            <th style="width:28%">① Quotation Request Form</th>
-            <th style="width:36%">② Quotation Tool (Estimated Cost)</th>
+            <th style="width:28%">① 見積もり依頼記入シート</th>
+            <th style="width:36%">② 概算見積シート (Estimated Cost)</th>
             <th style="width:36%">③ S-LINK & Service Spec / Appendix</th>
           </tr>
         </thead>
@@ -216,5 +230,175 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
     Storage Expert Labs Quotation Automation System &copy; IBM EL Japan
   </footer>
 </div>
+
+<script>
+function parseQuotationRequestExcel(wb) {
+  const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error("シートが見つかりません");
+
+  const getCell = (col, row) => {
+    const c = ws[col + row];
+    return c ? (c.w || String(c.v || "")).trim() : "";
+  };
+
+  const data = {
+    version: "2.1",
+    createdDate: "",
+    author: "",
+    customerName: "",
+    customerNo: "",
+    projectName: "",
+    dnsoNo: "",
+    oppNoProduct: "",
+    oppNoService: "",
+    bpName: "",
+    bpCustomerNo: "",
+    salesName: "",
+    tsName: "",
+    otherMembers: "",
+    offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
+    products: [],
+    startDate: "",
+    endDate: "",
+    workLocation: "リモート",
+    workLocationDetail: "",
+    workDetail: "",
+    docs: [],
+    meetingFrequency: "",
+    serviceExclusions: "",
+    confidential: "無し",
+    confidentialNote: "",
+    meetingInternal: "調整します",
+    meetingExternal: "調整します",
+    preChecks: [],
+    contractType: "支援契約（Expert Labsの単独契約）",
+    dealType: "直販（エンドユーザ様-IBM）",
+    paymentPlan: "各月（標準）",
+    monthlyReport: "無"
+  };
+
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const rowNum = R + 1;
+    const bVal = getCell('B', rowNum);
+    const cVal = getCell('C', rowNum);
+    const dVal = getCell('D', rowNum);
+
+    if (bVal.includes("記入日")) {
+      const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      else data.createdDate = cVal;
+    } else if (bVal.includes("記入者")) {
+      data.author = cVal;
+    } else if (bVal.includes("お客様名")) {
+      data.customerName = cVal;
+    } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
+      data.projectName = cVal;
+    } else if (bVal.includes("お客様番号")) {
+      if (!data.customerNo) data.customerNo = cVal;
+      else data.bpCustomerNo = cVal;
+    } else if (bVal.includes("DNSO")) {
+      data.dnsoNo = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+      data.oppNoProduct = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
+      data.oppNoService = cVal;
+    } else if (bVal.includes("ビジネス・パートナー")) {
+      data.bpName = cVal;
+    } else if (bVal.includes("担当営業名")) {
+      data.salesName = cVal;
+    } else if (bVal.includes("担当テクニカル")) {
+      data.tsName = cVal;
+    } else if (bVal.includes("その他案件関係者")) {
+      data.otherMembers = cVal;
+    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (rowNum >= 27 && rowNum <= 41) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
+        if (pName && !data.products.includes(pName)) data.products.push(pName);
+      }
+    } else if (bVal.includes("サービス期間")) {
+      const parts = cVal.split(/～|~/);
+      if (parts.length >= 1) {
+        const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m1) data.startDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+      }
+      if (parts.length >= 2) {
+        const m2 = parts[1].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m2) data.endDate = `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+      }
+    } else if (bVal.includes("サービス提供場所")) {
+      data.workLocationDetail = cVal;
+      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
+      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
+      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
+      data.workDetail = cVal;
+    } else if (bVal.includes("提出ドキュメント")) {
+      const lines = cVal.split(/\n|・|,|、/);
+      lines.forEach(l => {
+        const t = l.trim();
+        if (t && !data.docs.includes(t)) data.docs.push(t);
+      });
+    } else if (bVal.includes("打合せ回数")) {
+      data.meetingFrequency = cVal;
+    } else if (bVal.includes("サービス除外事項")) {
+      data.serviceExclusions = cVal;
+    } else if (bVal.includes("機密情報取扱い")) {
+      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) data.confidential = "有り";
+      else data.confidential = "無し";
+      data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingInternal = "不要";
+    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingExternal = "不要";
+    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
+      else data.monthlyReport = "無";
+    }
+  }
+  return data;
+}
+
+function handlePortalExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const parsedData = parseQuotationRequestExcel(workbook);
+
+      sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
+
+      if (confirm(`📊 Excel「${file.name}」を正常に解析しました！\n\nお客様名: ${parsedData.customerName || '未記入'}\n案件名: ${parsedData.projectName || '未記入'}\n製品: ${(parsedData.products || []).join(', ')}\n\n続いて「概算見積シート」を開きますか？\n（[キャンセル]を押すと「見積もり依頼記入シート」を開きます）`)) {
+        window.location.href = "quotation-generator.html?src=excel_upload";
+      } else {
+        window.location.href = "request-form.html?src=excel_upload";
+      }
+    } catch (err) {
+      alert("Excelの解析に失敗しました: " + err.message);
+      console.error(err);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+</script>
 </body>
 </html>
