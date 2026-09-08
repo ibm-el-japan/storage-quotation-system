@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Service Specification & Appendix (S-LINK) Generator — Expert Labs Storage</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.6;color:#1e293b;background:#f1f5f9;padding:20px 16px 80px}
@@ -103,9 +104,10 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
   <!-- Top Nav -->
   <div class="top-nav">
     <a href="index.html" class="nav-back">← システムポータルへ戻る</a>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="btn bg bsm" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="slink-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleSlinkExcelUpload(this)"></label>
       <label class="btn bs bsm" style="cursor:pointer">📂 保存ファイル読込 (HTML/JSON)<input type="file" accept=".html,.json" style="display:none" onchange="loadSavedSlinkFile(this)"></label>
-      <a href="quotation-generator.html" class="nav-back">📊 見積もり生成ツールへ戻る</a>
+      <a href="quotation-generator.html" class="nav-back">📊 概算見積シートへ戻る</a>
     </div>
   </div>
 
@@ -217,6 +219,172 @@ function switchSlinkTab(id){
   const idx = tabs.indexOf(id);
   if(idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if(id === 'tab-export-all') updateFullPackagePreview();
+}
+
+function parseQuotationRequestExcel(wb) {
+  const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  if (!ws) throw new Error("シートが見つかりません");
+
+  const getCell = (col, row) => {
+    const c = ws[col + row];
+    return c ? (c.w || String(c.v || "")).trim() : "";
+  };
+
+  const data = {
+    version: "2.1",
+    createdDate: "",
+    author: "",
+    customerName: "",
+    customerNo: "",
+    projectName: "",
+    dnsoNo: "",
+    oppNoProduct: "",
+    oppNoService: "",
+    bpName: "",
+    bpCustomerNo: "",
+    salesName: "",
+    tsName: "",
+    otherMembers: "",
+    offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
+    products: [],
+    startDate: "",
+    endDate: "",
+    workLocation: "リモート",
+    workLocationDetail: "",
+    workDetail: "",
+    docs: [],
+    meetingFrequency: "",
+    serviceExclusions: "",
+    confidential: "無し",
+    confidentialNote: "",
+    meetingInternal: "調整します",
+    meetingExternal: "調整します",
+    preChecks: [],
+    contractType: "支援契約（Expert Labsの単独契約）",
+    dealType: "直販（エンドユーザ様-IBM）",
+    paymentPlan: "各月（標準）",
+    monthlyReport: "無"
+  };
+
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const rowNum = R + 1;
+    const bVal = getCell('B', rowNum);
+    const cVal = getCell('C', rowNum);
+    const dVal = getCell('D', rowNum);
+
+    if (bVal.includes("記入日")) {
+      const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      else data.createdDate = cVal;
+    } else if (bVal.includes("記入者")) {
+      data.author = cVal;
+    } else if (bVal.includes("お客様名")) {
+      data.customerName = cVal;
+    } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
+      data.projectName = cVal;
+    } else if (bVal.includes("お客様番号")) {
+      if (!data.customerNo) data.customerNo = cVal;
+      else data.bpCustomerNo = cVal;
+    } else if (bVal.includes("DNSO")) {
+      data.dnsoNo = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+      data.oppNoProduct = cVal;
+    } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
+      data.oppNoService = cVal;
+    } else if (bVal.includes("ビジネス・パートナー")) {
+      data.bpName = cVal;
+    } else if (bVal.includes("担当営業名")) {
+      data.salesName = cVal;
+    } else if (bVal.includes("担当テクニカル")) {
+      data.tsName = cVal;
+    } else if (bVal.includes("その他案件関係者")) {
+      data.otherMembers = cVal;
+    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      }
+    } else if (rowNum >= 27 && rowNum <= 41) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
+        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
+        if (pName && !data.products.includes(pName)) data.products.push(pName);
+      }
+    } else if (bVal.includes("サービス期間")) {
+      const parts = cVal.split(/～|~/);
+      if (parts.length >= 1) {
+        const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m1) data.startDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+      }
+      if (parts.length >= 2) {
+        const m2 = parts[1].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
+        if (m2) data.endDate = `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+      }
+    } else if (bVal.includes("サービス提供場所")) {
+      data.workLocationDetail = cVal;
+      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
+      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
+      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
+      data.workDetail = cVal;
+    } else if (bVal.includes("提出ドキュメント")) {
+      const lines = cVal.split(/\n|・|,|、/);
+      lines.forEach(l => {
+        const t = l.trim();
+        if (t && !data.docs.includes(t)) data.docs.push(t);
+      });
+    } else if (bVal.includes("打合せ回数")) {
+      data.meetingFrequency = cVal;
+    } else if (bVal.includes("サービス除外事項")) {
+      data.serviceExclusions = cVal;
+    } else if (bVal.includes("機密情報取扱い")) {
+      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) data.confidential = "有り";
+      else data.confidential = "無し";
+      data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingInternal = "不要";
+    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
+      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
+      else if (cVal.includes("不要")) data.meetingExternal = "不要";
+    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
+      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
+      else data.monthlyReport = "無";
+    }
+  }
+  return data;
+}
+
+function handleSlinkExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const parsedData = parseQuotationRequestExcel(workbook);
+
+      sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
+
+      // Re-populate S-LINK State
+      loadContextState();
+      showToast(`📊 Excel「${file.name}」の内容を S-LINK / 仕様書・別紙 に反映しました！`);
+    } catch (err) {
+      alert("Excelの解析に失敗しました: " + err.message);
+      console.error(err);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // Load state from sessionStorage or defaults
@@ -356,11 +524,19 @@ function initDocsFromState(){
   const startM = b.startMonth || 4;
   const dur = b.periodMonths || 12;
 
+  const custNo = b.customerNo || req.customerNo || "";
+  const bp = b.bpName || req.bpName || "";
+  const bpNo = b.bpCustomerNo || req.bpCustomerNo || "";
+  const loc = b.workLocation || [req.workLocation, req.workLocationDetail].filter(Boolean).join(' ') || "リモート中心";
+  const meeting = b.meetingFrequency || req.meetingFrequency || "週2回（各1時間）リモート";
+  const docList = b.docs || (Array.isArray(req.docs) ? req.docs.join('、 ') : req.docs) || "基本設計書、詳細設計書、テスト結果報告書、導入手順書";
+  const excl = req.serviceExclusions || "・ネットワーク関連作業\n・機器搬入・敷設（ケーブル含む）\n・サーバ構築・OS導入\n・性能テスト / 運用設計";
+
   slinkMetaList = [
     { id: "sm1", label: "サービス名", val: `Storage Expert Labs 支援サービス (${cust} ${proj})` },
-    { id: "sm2", label: "契約先お客様名・番号", val: `${cust} (要S-LINK検索・マッピング)` },
-    { id: "sm3", label: "請求先お客様名・番号", val: `${cust} (同上)` },
-    { id: "sm4", label: "サービス先お客様名・番号", val: `${cust} (同上)` },
+    { id: "sm2", label: "契約先お客様名・番号", val: `${cust}${custNo ? ` (番号: ${custNo})` : ' (要S-LINK検索・マッピング)'}` },
+    { id: "sm3", label: "請求先お客様名・番号", val: bp ? `${bp}${bpNo ? ` (番号: ${bpNo})` : ''}` : `${cust}${custNo ? ` (番号: ${custNo})` : ''}` },
+    { id: "sm4", label: "サービス先お客様名・番号", val: `${cust}${custNo ? ` (番号: ${custNo})` : ''}` },
     { id: "sm5", label: "契約金額 (定価・税抜)", val: `¥${fmt(f.price)}` },
     { id: "sm6", label: "GP (%)", val: `${f.gpPct} %` },
     { id: "sm7", label: "Contingency (%)", val: `${f.contPct} %` },
@@ -369,41 +545,41 @@ function initDocsFromState(){
     { id: "sm10", label: "契約捺印予定日", val: `${startY}年${startM > 1 ? startM - 1 : 12}月25日` },
     { id: "sm11", label: "契約タイプ（支援）", val: req.contractType || "支援契約（Expert Labsの単独契約）" },
     { id: "sm12", label: "チャネルコード（直販/BP）", val: req.dealType || "直販（エンドユーザ様-IBM）" },
-    { id: "sm13", label: "Opportunity No（HW/SW製品）", val: stateData.oppNoProduct || "—" },
-    { id: "sm14", label: "Opportunity No（サービス）", val: stateData.oppNoService || "—" },
-    { id: "sm15", label: "IBM Prime / DOU区分", val: b.isDou === 'yes' ? "DOU案件 (ILC計上)" : "IBM Prime (単独契約)" },
+    { id: "sm13", label: "Opportunity No（HW/SW製品）", val: b.oppNoProduct || stateData.oppNoProduct || "—" },
+    { id: "sm14", label: "Opportunity No（サービス）", val: b.oppNoService || stateData.oppNoService || "—" },
+    { id: "sm15", label: "IBM Prime / DOU区分", val: (b.isDou === 'true' || b.isDou === 'yes') ? "DOU案件 (ILC計上)" : "IBM Prime (単独契約)" },
     { id: "sm16", label: "使用する契約書", val: "IBM サービス契約書（支援サービス仕様書・別紙添付）" },
     { id: "sm17", label: "個人情報・機密保持", val: req.confidential === "有り" ? `機密保持契約締結 (${req.confidentialNote||'済'})` : "機密保持対象外 (標準条件)" },
-    { id: "sm18", label: "PPTL (Project Partner Tech Lead)", val: stateData.tsName || "TBD" },
+    { id: "sm18", label: "PPTL (Project Partner Tech Lead)", val: b.tsName || stateData.tsName || "TBD" },
     { id: "sm19", label: "PJTL (Project Tech Lead)", val: "Expert Labs Storage Specialist" },
     { id: "sm20", label: "支払い計画", val: req.paymentPlan || "各月（標準）" },
     { id: "sm21", label: "月次報告書提出要否", val: req.monthlyReport || "無" }
   ];
 
-  // Specification Defaults
+  // Specification Defaults (PPTX & Request Form 完全準拠)
   const prods = (req.products || ["IBM Storage 製品群"]).join("、 ");
   specDocData = {
-    title: `Storage Expert Labs 支援サービス (${cust} ${proj})`,
+    title: `Storage Expert Labs 支援サービス仕様書 (${cust} ${proj})`,
     docNo: `SPEC-STG-${Date.now().toString().slice(-6)}`,
-    target: `対象製品: ${prods}\nOffering: ${req.offering || 'Storage Expert Labs (6911-450)'}\n対象規模・詳細:\n${req.workDetail || 'IBM Storage 導入・設計構築および検証支援'}`,
-    scope: `・要件確認・基本設計支援: システム要件ヒアリング、パラメータ策定、構成設計書作成支援\n・導入・構築支援: ストレージ初期セットアップ、クラスタ/プール/ボリューム構成、ネットワーク疎通支援\n・機能・設定検証支援: 正常系動作確認、障害時フェイルオーバー確認、性能測定支援\n・スキルトランスファー・教育: 管理者向け運用操作説明、ナレッジトランスファー`,
-    deliverables: `・基本設計書（パラメータシート / 構成定義書）\n・導入・構築手順書 (または作業結果報告書)\n・テスト結果報告書${req.monthlyReport === '有' ? '\n・月次作業報告書 (Monthly Report)' : ''}`,
-    prerequisites: `・お客様にて対象機器の設置場所、電源、空調、ネットワーク配線が事前に準備されていること。\n・作業実施に必要なアカウント・アクセス権限およびリモート接続環境が適時提供されること。\n・ハードウェアおよびソフトウェアの保守契約が有効に締結されていること。\n・本サービスにおける作業時間は、IBM 標準就業時間 (平日 9:00〜17:36) 内を原則とします。`,
-    outOfScope: `・IBM 対象外の他社製ハードウェア、OS、サードパーティ製アプリケーションの導入・トラブル対応。\n・本仕様書に明記されていないプログラム開発、データ移行実作業、および本番障害復旧対応。\n・深夜・休日作業 (別途協議の上、合意された場合を除く)。`
+    target: `対象製品: ${prods}\nOffering: ${req.offering || b.offering || 'Storage Expert Labs (6911-450)'}\n対象構成・規模:\n${req.workDetail || 'IBM Storage 導入・設計構築および検証支援'}`,
+    scope: `1. 設計作業: 要件確認、パラメータ設計、構成定義書作成支援\n2. 導入・構築作業: ハードウェア/ソフトウェア製品初期導入、クラスタ/プール/ボリューム構成\n3. 検証・テスト作業: 正常系動作確認、障害時動作確認\n4. ドキュメント作成作業: 納品ドキュメントの作成およびレビュー\n5. QA作業・スキルトランスファー: 運用引き継ぎ支援、管理者向けQ&A`,
+    deliverables: `・${docList.replace(/、/g, '\n・')}${req.monthlyReport === '有' ? '\n・月次作業報告書 (Monthly Report)' : ''}`,
+    prerequisites: `・作業場所: ${loc}\n・打合せ回数・頻度: ${meeting}\n・お客様にて対象機器の設置場所、電源、空調、ネットワーク配線が事前に準備されていること。\n・作業実施に必要なアカウント・アクセス権限およびリモート接続環境が適時提供されること。\n・ハードウェアおよびソフトウェアの保守契約が有効に締結されていること。\n・本サービスにおける作業時間は、IBM 標準就業時間 (平日 9:00〜17:36) 内を原則とします。`,
+    outOfScope: `${excl}\n・IBM 対象外の他社製ハードウェア、OS、サードパーティ製アプリケーションの導入・トラブル対応。\n・深夜・休日作業 (別途協議の上、合意された場合を除く)。`
   };
 
-  // Appendix Defaults
+  // Appendix Defaults (PPTX & Request Form 完全準拠)
   appxDocData = {
-    title: `Storage Expert Labs 支援サービス (${cust} ${proj})`,
+    title: `Storage Expert Labs 支援サービス別紙 (${cust} ${proj})`,
     docNo: `APPX-STG-${Date.now().toString().slice(-6)}`,
     scopeHours: `${f.totalHours}`,
-    location: req.workLocation || 'リモート中心（必要に応じてお客様指定場所オンサイト）',
+    location: loc,
     price: `¥${fmt(f.price)}`,
     travelCost: f.travelCost > 0 ? `¥${fmt(f.travelCost)}` : '¥0',
     period: `${startY}年${startM}月1日 から ${dur} ヶ月間（または合意工数満了のいずれか早い方）`,
     completion: `仕様書記載の成果物の納品完了、または本別紙に定める支援工数（${f.totalHours}時間）の消化、あるいはサービス期間の満了をもって本サービスは完了とします。`,
     payment: `${req.paymentPlan || '各月（標準）'}（ご提供形態: ${req.contractType || '単独契約'}）`,
-    notes: `機密情報取扱い: ${req.confidential || '無し'} ${req.confidentialNote ? '(' + req.confidentialNote + ')' : ''}`
+    notes: `機密情報取扱い: ${req.confidential || '無し'} ${req.confidentialNote ? '(' + req.confidentialNote + ')' : ''}\n社内打合せ調整: ${req.meetingInternal || '調整します'} / 社外打合せ調整: ${req.meetingExternal || '調整します'}`
   };
 }
 
