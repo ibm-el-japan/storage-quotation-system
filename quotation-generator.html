@@ -2683,9 +2683,17 @@ function checkIncomingRequestHandoff() {
       document.getElementById('period-months').value = months;
     }
 
-    // Auto-populate intelligent default kosu hours based on products
+    // Auto-populate workload hours (if explicitly provided in req.workload, prioritize them)
     const n = getMonthLabels().length;
-    if (req.products && req.products.length > 0) {
+    if (req.workload) {
+      if (kosuData["des1"]) kosuData["des1"].values[0] = req.workload.design || 0;
+      if (kosuData["bld2"]) kosuData["bld2"].values[0] = req.workload.build || 0;
+      if (kosuData["tst3"]) kosuData["tst3"].values[0] = req.workload.test || 0;
+      if (kosuData["doc1"]) kosuData["doc1"].values[0] = req.workload.doc || 0;
+      if (kosuData["qa1"])  kosuData["qa1"].values[0] = req.workload.qa || 0;
+      if (kosuData["mtg1"]) kosuData["mtg1"].values[0] = req.workload.pm || 0;
+      buildKosuTable();
+    } else if (req.products && req.products.length > 0) {
       const prods = req.products;
       const isScale = prods.some(p => p.includes("Scale") || p.includes("SSS"));
       const isCeph = prods.some(p => p.includes("Ceph"));
@@ -2715,6 +2723,28 @@ function checkIncomingRequestHandoff() {
         if (kosuData["bld3"]) kosuData["bld3"].values[0] = 24;
       }
       buildKosuTable();
+    }
+
+    // Auto-populate Other Cost (travel, hotel, allowance) if provided
+    if (req.otherCost && travelRows && travelRows.length >= 3) {
+      const oc = req.otherCost;
+      const placeName = req.workLocationDetail || req.workLocation || "現地オンサイト";
+      if (oc.trips > 0) {
+        travelRows[0].place = placeName;
+        travelRows[0].unit = oc.tripUnit || 28000;
+        travelRows[0].cnt = oc.trips;
+      }
+      if (oc.stays > 0) {
+        travelRows[1].place = placeName;
+        travelRows[1].unit = oc.stayUnit || 10000;
+        travelRows[1].cnt = oc.stays;
+      }
+      if (oc.allowanceUnit > 0) {
+        travelRows[2].place = placeName;
+        travelRows[2].unit = oc.allowanceUnit;
+        travelRows[2].cnt = oc.stays || oc.trips;
+      }
+      buildTravelTable();
     }
 
     // Auto-populate / check items in checklist
