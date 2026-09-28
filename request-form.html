@@ -339,6 +339,7 @@
     <div class="prog-step" id="ps2"></div>
     <div class="prog-step" id="ps3"></div>
     <div class="prog-step" id="ps4"></div>
+    <div class="prog-step" id="ps5"></div>
   </div>
 
   <!-- Card Body -->
@@ -347,9 +348,10 @@
     <div class="step-indicator">
       <div class="step-dot active" id="sd0" onclick="goStep(0)">① 案件基本情報</div>
       <div class="step-dot" id="sd1" onclick="goStep(1)">② 支援対象・内容</div>
-      <div class="step-dot" id="sd2" onclick="goStep(2)">③ 事前確認事項 (12項目)</div>
-      <div class="step-dot" id="sd3" onclick="goStep(3)">④ 契約・支払条件</div>
-      <div class="step-dot" id="sd4" onclick="goStep(4)">⑤ 確認・自動生成</div>
+      <div class="step-dot" id="sd2" onclick="goStep(2)">③ 工数・Other Cost試算</div>
+      <div class="step-dot" id="sd3" onclick="goStep(3)">④ 事前確認事項 (12項目)</div>
+      <div class="step-dot" id="sd4" onclick="goStep(4)">⑤ 契約・支払条件</div>
+      <div class="step-dot" id="sd5" onclick="goStep(5)">⑥ 確認・自動生成</div>
     </div>
 
     <!-- ===== STEP 0: 案件基本情報 ===== -->
@@ -386,12 +388,12 @@
 
       <div class="row2">
         <div class="form-row">
-          <label class="field-label">サービス名（案件名）<span class="req">*</span></label>
+          <label class="field-label">サービス名（案件名）<span class="req">*</span><span class="hint">⇒ S-LINK・仕様書・別紙・概算見積すべて「サービス名」に統一</span></label>
           <input type="text" id="f-project" placeholder="例）Storage Ceph基盤 導入・設計構築支援" />
           <p class="err-msg" id="e-project">サービス名（案件名）を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">DNSO #<span class="hint">任意</span></label>
+          <label class="field-label">DNSO #<span class="hint">任意（案件追跡番号）</span></label>
           <input type="text" id="f-dnso" placeholder="例）DNSO-123456" />
         </div>
       </div>
@@ -411,11 +413,11 @@
 
       <div class="row2">
         <div class="form-row">
-          <label class="field-label">ビジネス・パートナー様名<span class="hint">BP商流の場合</span></label>
+          <label class="field-label">ビジネス・パートナー様名<span class="hint">BP商流の場合（S-LINK請求先）</span></label>
           <input type="text" id="f-bp" placeholder="例）△△システムズ株式会社" />
         </div>
         <div class="form-row">
-          <label class="field-label">BP お客様番号<span class="hint">BP商流時（任意）</span></label>
+          <label class="field-label">BP お客様番号<span class="hint">BP商流時（S-LINK請求先番号）</span></label>
           <input type="text" id="f-bp-no" placeholder="例）ABCD1234" />
         </div>
       </div>
@@ -423,7 +425,7 @@
       <div class="row3">
         <div class="form-row">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-            <label class="field-label" style="margin-bottom:0">担当営業名<span class="req">*</span></label>
+            <label class="field-label" style="margin-bottom:0">担当営業名<span class="req">*</span><span class="hint">（S-LINK: OO）</span></label>
             <button type="button" class="quick-insert-btn" style="padding:1px 5px;font-size:10px" onclick="document.getElementById('f-sales').value='TBD'">TBD</button>
           </div>
           <input type="text" id="f-sales" placeholder="例）佐藤 健一" />
@@ -431,14 +433,14 @@
         </div>
         <div class="form-row">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-            <label class="field-label" style="margin-bottom:0">担当テクニカル・セールス名<span class="req">*</span></label>
+            <label class="field-label" style="margin-bottom:0">担当テクニカル・セールス名<span class="req">*</span><span class="hint">（S-LINK: PPTL）</span></label>
             <button type="button" class="quick-insert-btn" style="padding:1px 5px;font-size:10px" onclick="document.getElementById('f-ts').value='TBD'">TBD</button>
           </div>
           <input type="text" id="f-ts" placeholder="例）鈴木 花子" />
           <p class="err-msg" id="e-ts">担当TS名を入力してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">その他案件関係者名<span class="hint">SSR、AP等</span></label>
+          <label class="field-label">その他案件関係者名<span class="hint">SSR、AP等（S-LINK: PJTL）</span></label>
           <input type="text" id="f-others" placeholder="例）高橋 次郎 (SSR)" />
         </div>
       </div>
@@ -473,7 +475,7 @@
       </div>
 
       <div class="form-row">
-        <label class="field-label">支援対象製品<span class="req">*</span><span class="hint">複数選択可（原本Excel全製品を網羅）</span></label>
+        <label class="field-label">サービス対象製品（支援対象製品）<span class="req">*</span><span class="hint">複数選択可（原本Excel全製品・仕様書/別紙連携）</span></label>
         <div class="check-grid" id="fg-product">
           <label class="check-item"><input type="checkbox" value="Storage Virtualize系製品"> <span>Storage Virtualize系 (FlashSystem等)</span></label>
           <label class="check-item"><input type="checkbox" value="DS8K"> <span>DS8K (DS8900F等)</span></label>
@@ -495,19 +497,19 @@
 
       <div class="row2">
         <div class="form-row">
-          <label class="field-label">支援期間（開始予定）<span class="req">*</span></label>
-          <input type="date" id="f-start" />
-          <p class="err-msg" id="e-period">支援開始予定日を選択してください</p>
+          <label class="field-label">サービス期間（サービス開始年月日）<span class="req">*</span></label>
+          <input type="date" id="f-start" onchange="autoCalcMonthlyPlan()" />
+          <p class="err-msg" id="e-period">サービス開始年月日を選択してください</p>
         </div>
         <div class="form-row">
-          <label class="field-label">支援期間（終了予定）<span class="req">*</span></label>
-          <input type="date" id="f-end" />
-          <p class="err-msg" id="e-period-end">支援終了予定日を選択してください</p>
+          <label class="field-label">サービス期間（サービス終了年月日）<span class="req">*</span></label>
+          <input type="date" id="f-end" onchange="autoCalcMonthlyPlan()" />
+          <p class="err-msg" id="e-period-end">サービス終了年月日を選択してください</p>
         </div>
       </div>
 
       <div class="form-row">
-        <label class="field-label">サービス提供場所（支援実施場所）<span class="req">*</span></label>
+        <label class="field-label">サービス提供場所（支援作業実施場所）<span class="req">*</span></label>
         <div class="check-grid" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr))">
           <label class="check-item selected"><input type="radio" name="place" value="リモート" checked> <span>リモート中心</span></label>
           <label class="check-item"><input type="radio" name="place" value="お客様先（オンサイト）"> <span>お客様先（オンサイト）</span></label>
@@ -521,24 +523,28 @@
       </div>
 
       <div class="form-row">
-        <label class="field-label">サービス内容（詳細・規模・タスク）<span class="req">*</span></label>
+        <label class="field-label">サービスの内容（詳細・作業分類別工数）<span class="req">*</span></label>
         
         <div class="template-helper-box">
           <div class="title">
             <span>💡 支援内容テンプレート・クイック挿入</span>
-            <span style="font-size:11px;color:#64748b">クリックで雛形を追加</span>
+            <span style="font-size:11px;color:#64748b">クリックで雛形を追加＆工数自動試算</span>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('ceph')">+ Ceph導入支援</button>
-            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('scale')">+ SSS6000/Scale支援</button>
-            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('flash')">+ FlashSystem構築</button>
-            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('protect')">+ バックアップ(Protect)</button>
+            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('ceph')">+ Ceph導入支援 (136h)</button>
+            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('scale')">+ SSS6000/Scale支援 (120h)</button>
+            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('flash')">+ FlashSystem構築 (76h)</button>
+            <button type="button" class="quick-insert-btn" onclick="insertDetailTemplate('protect')">+ バックアップ(Protect) (104h)</button>
           </div>
         </div>
 
-        <textarea id="f-detail" rows="6" placeholder="例）以下の製品の支援
-① SSS6000 x 1セット（設計・構築・稼動テスト・ドキュメント・Q&A）
-② Storage Protect x 1台（設計・構築・稼動テスト・ドキュメント・Q&A）"></textarea>
+        <textarea id="f-detail" rows="6" oninput="parseWorkDetailForHours()" placeholder="例）以下の製品の支援
+① SSS6000 x 1セット
+・設計作業 (40h)
+・構築作業 (40h)
+・稼動テスト作業 (24h)
+・提出ドキュメント作成 (16h)
+・QA作業支援 (16h)"></textarea>
         <p class="err-msg" id="e-detail">支援内容の詳細を入力してください</p>
       </div>
 
@@ -599,12 +605,132 @@
 
       <div class="btn-row">
         <button class="btn btn-prev" onclick="goStep(0)">← 戻る: 案件基本情報</button>
-        <button class="btn btn-next" onclick="goStep(2)">次へ: 事前確認事項 →</button>
+        <button class="btn btn-next" onclick="goStep(2)">次へ: 工数・Other Cost試算 →</button>
       </div>
     </div>
 
-    <!-- ===== STEP 2: 事前確認事項 (12項目) ===== -->
+    <!-- ===== STEP 2: 工数・Other Cost自動算出 ===== -->
     <div class="step-panel" id="step-2">
+      <div class="section-title">
+        <span>③ 月別作業工数 ＆ Other Cost 算出（見積り関連情報整理準拠）</span>
+        <span style="font-size:11px;font-weight:400;color:#64748b">作業場所・期間・タスク工数から自動計算</span>
+      </div>
+      <p style="font-size:12px;color:#64748b;margin-bottom:14px;">
+        サービス内容（設計・構築・テスト・ドキュメント・QA）および現地作業場所情報をもとに、月別工数・移動回数・宿泊日数・出張手当（Other Costs）をリアルタイムに自動算定します。
+      </p>
+
+      <!-- 概算工数サマリー -->
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:10px">📊 作業分類別工数 (時間)</div>
+        <div class="row3" style="gap:10px">
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">設計作業 (h)</label>
+            <input type="number" id="f-h-design" value="40" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">構築作業 (h)</label>
+            <input type="number" id="f-h-build" value="40" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">稼動テスト作業 (h)</label>
+            <input type="number" id="f-h-test" value="24" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">提出ドキュメント作成 (h)</label>
+            <input type="number" id="f-h-doc" value="16" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">QA作業支援 (h)</label>
+            <input type="number" id="f-h-qa" value="16" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">PM・打合せ・その他 (h)</label>
+            <input type="number" id="f-h-pm" value="12" min="0" oninput="autoCalcMonthlyPlan()" />
+          </div>
+        </div>
+        <div style="text-align:right;font-size:13px;font-weight:700;color:#1e3a8a;margin-top:6px">
+          総工数合計: <span id="f-h-total" style="font-size:16px;color:#0f172a">148</span> 時間
+        </div>
+      </div>
+
+      <!-- Other Cost (交通費・宿泊費・出張手当) 算出 -->
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-bottom:18px">
+        <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:6px">🚄 Other Cost（出張・交通費・宿泊費・出張手当）自動算出</div>
+        <p style="font-size:11.5px;color:#64748b;margin-bottom:10px">
+          ※ PPTX＆整理資料準拠: 作業場所と現地作業工数（構築・テスト日数）から移動回数、宿泊日数、出張手当を自動計算。
+        </p>
+        <div class="row3" style="gap:10px">
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">現地オンサイト日数 (日)</label>
+            <input type="number" id="f-onsite-days" value="0" min="0" oninput="autoCalcOtherCost()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">往復移動回数 (回)</label>
+            <input type="number" id="f-trip-cnt" value="0" min="0" oninput="autoCalcOtherCost()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">宿泊日数 (泊)</label>
+            <input type="number" id="f-stay-nights" value="0" min="0" oninput="autoCalcOtherCost()" />
+          </div>
+        </div>
+        <div class="row3" style="gap:10px">
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">往復交通費単価 (円)</label>
+            <input type="number" id="f-trip-unit" value="28000" min="0" oninput="autoCalcOtherCost()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">宿泊費単価 (上限10,000円)</label>
+            <input type="number" id="f-stay-unit" value="10000" min="0" oninput="autoCalcOtherCost()" />
+          </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <label class="field-label" style="font-size:12px">出張手当種別</label>
+            <select id="f-allowance-type" onchange="autoCalcOtherCost()">
+              <option value="0">手当なし (リモート等)</option>
+              <option value="1500">中距離出張手当 (¥1,500/回)</option>
+              <option value="3500">長距離出張手当 (¥3,500/回)</option>
+              <option value="4000" selected>宿泊出張手当 朝×夕× (¥4,000/泊)</option>
+              <option value="3200">宿泊出張手当 朝○夕× (¥3,200/泊)</option>
+            </select>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:10px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;font-weight:600;color:#334155">Other Cost 合計見積:</span>
+          <span style="font-size:15px;font-weight:700;color:#15803d" id="f-other-cost-total">¥0</span>
+        </div>
+      </div>
+
+      <!-- 月別工数展開テーブル (CPS月別コスト / 仮売上マッピング) -->
+      <div style="background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px">📅 月別工数・仮売上展開（CPS / S-LINK 連携用）</div>
+        <div style="overflow-x:auto">
+          <table class="yn-table" id="monthly-plan-table" style="font-size:12px">
+            <thead>
+              <tr id="m-plan-head">
+                <th>作業月</th>
+                <th style="text-align:right">設計(h)</th>
+                <th style="text-align:right">構築(h)</th>
+                <th style="text-align:right">テスト(h)</th>
+                <th style="text-align:right">ドキュメント(h)</th>
+                <th style="text-align:right">QA(h)</th>
+                <th style="text-align:right">PM/他(h)</th>
+                <th style="text-align:right;background:#dbeafe">月別合計(h)</th>
+              </tr>
+            </thead>
+            <tbody id="m-plan-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-prev" onclick="goStep(1)">← 戻る: 支援対象・内容</button>
+        <button class="btn btn-next" onclick="goStep(3)">次へ: 事前確認事項 →</button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 3: 事前確認事項 (12項目) ===== -->
+    <div class="step-panel" id="step-3">
       <div class="section-title">
         <span>③ 事前確認事項（要記入 12項目）</span>
         <button type="button" class="quick-insert-btn" onclick="setAllYn('Y')">すべて Y に設定</button>
@@ -625,15 +751,15 @@
       </table>
 
       <div class="btn-row">
-        <button class="btn btn-prev" onclick="goStep(1)">← 戻る: 支援対象・内容</button>
-        <button class="btn btn-next" onclick="goStep(3)">次へ: 契約・支払条件 →</button>
+        <button class="btn btn-prev" onclick="goStep(2)">← 戻る: 工数・Other Cost試算</button>
+        <button class="btn btn-next" onclick="goStep(4)">次へ: 契約・支払条件 →</button>
       </div>
     </div>
 
-    <!-- ===== STEP 3: 契約・支払条件 ===== -->
-    <div class="step-panel" id="step-3">
+    <!-- ===== STEP 4: 契約・支払条件 ===== -->
+    <div class="step-panel" id="step-4">
       <div class="section-title">
-        <span>④ 契約・支払条件</span>
+        <span>⑤ 契約・支払条件</span>
       </div>
 
       <div class="form-row">
@@ -680,15 +806,15 @@
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-prev" onclick="goStep(2)">← 戻る: 事前確認事項</button>
-        <button class="btn btn-next" onclick="goStep(4)">確認・自動生成へ進む →</button>
+        <button class="btn btn-prev" onclick="goStep(3)">← 戻る: 事前確認事項</button>
+        <button class="btn btn-next" onclick="goStep(5)">確認・自動生成へ進む →</button>
       </div>
     </div>
 
-    <!-- ===== STEP 4: 確認・自動生成 ===== -->
-    <div class="step-panel" id="step-4">
+    <!-- ===== STEP 5: 確認・自動生成 ===== -->
+    <div class="step-panel" id="step-5">
       <div class="section-title">
-        <span>⑤ 入力内容の確認と次の自動化アクション</span>
+        <span>⑥ 入力内容の確認と次の自動化アクション</span>
       </div>
 
       <!-- Action Cards -->
@@ -729,7 +855,7 @@
       <textarea id="output-text" class="output-box" readonly></textarea>
 
       <div class="btn-row">
-        <button class="btn btn-prev" onclick="goStep(3)">← 戻る: 契約・支払条件</button>
+        <button class="btn btn-prev" onclick="goStep(4)">← 戻る: 契約・支払条件</button>
         <span></span>
       </div>
     </div>
@@ -820,7 +946,7 @@ function insertDetailTemplate(type) {
 // Navigation & Validation
 // ============================================================
 let currentStep = 0;
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 // Default dates
 document.getElementById('f-date').valueAsDate = new Date();
@@ -832,7 +958,8 @@ document.getElementById('f-end').value = next3Month.toISOString().split('T')[0];
 
 function goStep(n){
   if(n > currentStep && !validateStep(currentStep)) return;
-  if(n === 4) buildPreviewAndOutputs();
+  if(n === 2) autoCalcMonthlyPlan();
+  if(n === 5) buildPreviewAndOutputs();
 
   document.getElementById("step-"+currentStep).classList.remove("active");
   document.getElementById("sd"+currentStep).classList.remove("active");
@@ -843,6 +970,122 @@ function goStep(n){
   document.getElementById("sd"+currentStep).classList.add("active");
   updateProgress();
   window.scrollTo({top:0, behavior:"smooth"});
+}
+
+// ============================================================
+// Automatic Workload & Other Cost Calculation Engine
+// (見積り関連情報整理.xlsx / ストレージ見積関連資料.pptx 準拠)
+// ============================================================
+function parseWorkDetailForHours(){
+  const text = document.getElementById("f-detail").value;
+  const matchDesign = text.match(/設計[^\d]*(\d+)\s*h/i);
+  const matchBuild = text.match(/構築[^\d]*(\d+)\s*h/i);
+  const matchTest = text.match(/テスト[^\d]*(\d+)\s*h/i);
+  const matchDoc = text.match(/ドキュメント[^\d]*(\d+)\s*h/i);
+  const matchQa = text.match(/QA[^\d]*(\d+)\s*h/i);
+
+  if(matchDesign) document.getElementById("f-h-design").value = parseInt(matchDesign[1], 10);
+  if(matchBuild) document.getElementById("f-h-build").value = parseInt(matchBuild[1], 10);
+  if(matchTest) document.getElementById("f-h-test").value = parseInt(matchTest[1], 10);
+  if(matchDoc) document.getElementById("f-h-doc").value = parseInt(matchDoc[1], 10);
+  if(matchQa) document.getElementById("f-h-qa").value = parseInt(matchQa[1], 10);
+
+  autoCalcMonthlyPlan();
+}
+
+function autoCalcOtherCost(){
+  const onsiteDays = parseInt(document.getElementById("f-onsite-days").value, 10) || 0;
+  let tripCnt = parseInt(document.getElementById("f-trip-cnt").value, 10);
+  let stayNights = parseInt(document.getElementById("f-stay-nights").value, 10);
+
+  // If trips/stays not manually set, derive from onsite days (移動回数は予備20%見込み)
+  if(onsiteDays > 0 && isNaN(tripCnt)){
+    tripCnt = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
+    document.getElementById("f-trip-cnt").value = tripCnt;
+  }
+  if(onsiteDays > 1 && isNaN(stayNights)){
+    stayNights = Math.max(0, onsiteDays - 1);
+    document.getElementById("f-stay-nights").value = stayNights;
+  }
+
+  const tripUnit = parseInt(document.getElementById("f-trip-unit").value, 10) || 0;
+  const stayUnit = parseInt(document.getElementById("f-stay-unit").value, 10) || 0;
+  const allowanceUnit = parseInt(document.getElementById("f-allowance-type").value, 10) || 0;
+
+  const totalTrip = (tripCnt || 0) * tripUnit;
+  const totalStay = (stayNights || 0) * stayUnit;
+  const totalAllowance = (stayNights || tripCnt || 0) * allowanceUnit;
+  const grandOtherCost = totalTrip + totalStay + totalAllowance;
+
+  document.getElementById("f-other-cost-total").textContent = `¥${grandOtherCost.toLocaleString()}`;
+  return { onsiteDays, tripCnt, stayNights, tripUnit, stayUnit, allowanceUnit, grandOtherCost };
+}
+
+function autoCalcMonthlyPlan(){
+  const hDesign = parseInt(document.getElementById("f-h-design").value, 10) || 0;
+  const hBuild = parseInt(document.getElementById("f-h-build").value, 10) || 0;
+  const hTest = parseInt(document.getElementById("f-h-test").value, 10) || 0;
+  const hDoc = parseInt(document.getElementById("f-h-doc").value, 10) || 0;
+  const hQa = parseInt(document.getElementById("f-h-qa").value, 10) || 0;
+  const hPm = parseInt(document.getElementById("f-h-pm").value, 10) || 0;
+  const hTotal = hDesign + hBuild + hTest + hDoc + hQa + hPm;
+
+  document.getElementById("f-h-total").textContent = hTotal;
+
+  // Calculate monthly spread based on start and end dates
+  const st = document.getElementById("f-start").value;
+  const en = document.getElementById("f-end").value;
+  let months = [];
+  if(st && en){
+    const d1 = new Date(st);
+    const d2 = new Date(en);
+    const count = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+    let cur = new Date(d1.getFullYear(), d1.getMonth(), 1);
+    for(let i=0; i<count; i++){
+      months.push(`${cur.getFullYear()}年${cur.getMonth()+1}月`);
+      cur.setMonth(cur.getMonth()+1);
+    }
+  } else {
+    months = ["1ヶ月目", "2ヶ月目", "3ヶ月目"];
+  }
+
+  const mCount = months.length;
+  const tbody = document.getElementById("m-plan-body");
+  if(!tbody) return;
+  tbody.innerHTML = '';
+
+  months.forEach((mLabel, idx) => {
+    // Intelligent spread across project phases
+    let mDes = 0, mBld = 0, mTst = 0, mDoc = 0, mQa = 0, mPm = Math.round(hPm / mCount);
+    if(mCount === 1){
+      mDes = hDesign; mBld = hBuild; mTst = hTest; mDoc = hDoc; mQa = hQa;
+    } else if(mCount === 2){
+      if(idx === 0){ mDes = hDesign; mBld = Math.round(hBuild * 0.7); mDoc = Math.round(hDoc * 0.3); }
+      else { mBld = hBuild - Math.round(hBuild * 0.7); mTst = hTest; mDoc = hDoc - Math.round(hDoc * 0.3); mQa = hQa; }
+    } else {
+      // 3 or more months
+      if(idx === 0){ mDes = hDesign; mBld = Math.round(hBuild * 0.4); }
+      else if(idx === 1){ mBld = hBuild - Math.round(hBuild * 0.4); mTst = Math.round(hTest * 0.6); mDoc = Math.round(hDoc * 0.5); }
+      else if(idx === mCount - 1){ mTst = hTest - Math.round(hTest * 0.6); mDoc = hDoc - Math.round(hDoc * 0.5); mQa = hQa; }
+      else { mQa = Math.round(hQa / (mCount - 2)); }
+    }
+
+    const mTotal = mDes + mBld + mTst + mDoc + mQa + mPm;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${mLabel}</strong></td>
+      <td style="text-align:right">${mDes}</td>
+      <td style="text-align:right">${mBld}</td>
+      <td style="text-align:right">${mTst}</td>
+      <td style="text-align:right">${mDoc}</td>
+      <td style="text-align:right">${mQa}</td>
+      <td style="text-align:right">${mPm}</td>
+      <td style="text-align:right;font-weight:700;background:#eff6ff">${mTotal}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  autoCalcOtherCost();
 }
 
 function updateProgress(){
@@ -940,6 +1183,25 @@ function getYNList(){
 
 // Build complete data object
 function getFormDataObject() {
+  const hDesign = parseInt(val("f-h-design"), 10) || 0;
+  const hBuild = parseInt(val("f-h-build"), 10) || 0;
+  const hTest = parseInt(val("f-h-test"), 10) || 0;
+  const hDoc = parseInt(val("f-h-doc"), 10) || 0;
+  const hQa = parseInt(val("f-h-qa"), 10) || 0;
+  const hPm = parseInt(val("f-h-pm"), 10) || 0;
+  const hTotal = hDesign + hBuild + hTest + hDoc + hQa + hPm;
+
+  const onsiteDays = parseInt(val("f-onsite-days"), 10) || 0;
+  const tripCnt = parseInt(val("f-trip-cnt"), 10) || 0;
+  const stayNights = parseInt(val("f-stay-nights"), 10) || 0;
+  const tripUnit = parseInt(val("f-trip-unit"), 10) || 0;
+  const stayUnit = parseInt(val("f-stay-unit"), 10) || 0;
+  const allowanceUnit = parseInt(val("f-allowance-type"), 10) || 0;
+  const totalTrip = tripCnt * tripUnit;
+  const totalStay = stayNights * stayUnit;
+  const totalAllowance = (stayNights || tripCnt) * allowanceUnit;
+  const grandOtherCost = totalTrip + totalStay + totalAllowance;
+
   return {
     version: "2.1",
     createdDate: val("f-date"),
@@ -969,6 +1231,27 @@ function getFormDataObject() {
     confidentialNote: val("f-conf-note"),
     meetingInternal: radio("meeting-in"),
     meetingExternal: radio("meeting-out"),
+    workload: {
+      design: hDesign,
+      build: hBuild,
+      test: hTest,
+      doc: hDoc,
+      qa: hQa,
+      pm: hPm,
+      totalHours: hTotal
+    },
+    otherCost: {
+      onsiteDays: onsiteDays,
+      trips: tripCnt,
+      stays: stayNights,
+      tripUnit: tripUnit,
+      stayUnit: stayUnit,
+      allowanceUnit: allowanceUnit,
+      totalTrip: totalTrip,
+      totalStay: totalStay,
+      totalAllowance: totalAllowance,
+      totalOtherCost: grandOtherCost
+    },
     preChecks: getYNList(),
     contractType: getCT(),
     dealType: getDT(),
@@ -1055,6 +1338,26 @@ function restoreFormData(d){
   if(d.meetingExternal){
     const mOutRad = document.querySelector(`input[name="meeting-out"][value="${d.meetingExternal}"]`);
     if(mOutRad) mOutRad.checked = true;
+  }
+
+  if(d.workload){
+    if(d.workload.design !== undefined && document.getElementById('f-h-design')) document.getElementById('f-h-design').value = d.workload.design;
+    if(d.workload.build !== undefined && document.getElementById('f-h-build')) document.getElementById('f-h-build').value = d.workload.build;
+    if(d.workload.test !== undefined && document.getElementById('f-h-test')) document.getElementById('f-h-test').value = d.workload.test;
+    if(d.workload.doc !== undefined && document.getElementById('f-h-doc')) document.getElementById('f-h-doc').value = d.workload.doc;
+    if(d.workload.qa !== undefined && document.getElementById('f-h-qa')) document.getElementById('f-h-qa').value = d.workload.qa;
+    if(d.workload.pm !== undefined && document.getElementById('f-h-pm')) document.getElementById('f-h-pm').value = d.workload.pm;
+    if(typeof autoCalcMonthlyPlan === 'function') autoCalcMonthlyPlan();
+  }
+
+  if(d.otherCost){
+    if(d.otherCost.onsiteDays !== undefined && document.getElementById('f-onsite-days')) document.getElementById('f-onsite-days').value = d.otherCost.onsiteDays;
+    if(d.otherCost.trips !== undefined && document.getElementById('f-trip-cnt')) document.getElementById('f-trip-cnt').value = d.otherCost.trips;
+    if(d.otherCost.stays !== undefined && document.getElementById('f-stay-nights')) document.getElementById('f-stay-nights').value = d.otherCost.stays;
+    if(d.otherCost.tripUnit !== undefined && document.getElementById('f-trip-unit')) document.getElementById('f-trip-unit').value = d.otherCost.tripUnit;
+    if(d.otherCost.stayUnit !== undefined && document.getElementById('f-stay-unit')) document.getElementById('f-stay-unit').value = d.otherCost.stayUnit;
+    if(d.otherCost.allowanceUnit !== undefined && document.getElementById('f-allowance-type')) document.getElementById('f-allowance-type').value = d.otherCost.allowanceUnit;
+    if(typeof autoCalcOtherCost === 'function') autoCalcOtherCost();
   }
 
   if(d.preChecks && Array.isArray(d.preChecks)){
@@ -1150,7 +1453,13 @@ function buildPreviewAndOutputs(){
       ${prow("打合せ調整", "社内: " + d.meetingInternal + " / 社外: " + d.meetingExternal)}
     </div>
     <div class="preview-section">
-      <h3>③ 事前確認事項</h3>
+      <h3>③ 工数 ＆ Other Cost 概算</h3>
+      ${prow("想定総工数", d.workload ? `${d.workload.totalHours} 時間 (設計:${d.workload.design}h / 構築:${d.workload.build}h / テスト:${d.workload.test}h / ドキュメント:${d.workload.doc}h / QA:${d.workload.qa}h / PM:${d.workload.pm}h)` : "—")}
+      ${prow("現地オンサイト", d.otherCost ? `${d.otherCost.onsiteDays} 日 / 移動:${d.otherCost.trips} 回 / 宿泊:${d.otherCost.stays} 泊` : "—")}
+      ${prow("Other Cost 合計", d.otherCost ? `¥${d.otherCost.totalOtherCost.toLocaleString()} (交通費:¥${d.otherCost.totalTrip.toLocaleString()} / 宿泊費:¥${d.otherCost.totalStay.toLocaleString()} / 手当:¥${d.otherCost.totalAllowance.toLocaleString()})` : "—")}
+    </div>
+    <div class="preview-section">
+      <h3>④ 事前確認事項</h3>
       ${d.preChecks.map(r => `
         <div class="preview-row">
           <span class="preview-key" style="flex:0 0 58%;font-size:12px">[${r.category}] ${r.label}</span>
@@ -1160,7 +1469,7 @@ function buildPreviewAndOutputs(){
       `).join("")}
     </div>
     <div class="preview-section">
-      <h3>④ 契約・支払条件</h3>
+      <h3>⑤ 契約・支払条件</h3>
       ${prow("ご提供形態", d.contractType)}
       ${prow("契約形態", d.dealType)}
       ${prow("支払い計画", d.paymentPlan)}
@@ -1197,6 +1506,9 @@ function buildPreviewAndOutputs(){
     `機密情報取扱い\t${d.confidential}\t${d.confidentialNote}`,
     `社内打合せ調整\t${d.meetingInternal}`,
     `社外打合せ調整\t${d.meetingExternal}`,
+    "--- 工数・Other Cost 概算 ---",
+    `総想定工数\t${d.workload ? d.workload.totalHours + 'h (設計:' + d.workload.design + 'h, 構築:' + d.workload.build + 'h, テスト:' + d.workload.test + 'h, 成果物:' + d.workload.doc + 'h, QA:' + d.workload.qa + 'h, PM:' + d.workload.pm + 'h)' : ''}`,
+    `Other Cost 合計\t${d.otherCost ? '¥' + d.otherCost.totalOtherCost.toLocaleString() + ' (移動:' + d.otherCost.trips + '回, 宿泊:' + d.otherCost.stays + '泊)' : ''}`,
     "--- 事前確認事項 ---",
     ...d.preChecks.map(c => `${c.label}\t${c.yn}\t${c.note}`),
     "--- 契約情報 ---",
