@@ -251,7 +251,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v1.4.0</span>
+    <span class="ver" id="ver-badge">v2.1.0</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -296,7 +296,40 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
             </div>
             <div class="info-row">
               <label>Labor 単価（円/時間）</label>
-              <input type="number" id="labor-rate" value="17600" oninput="recalcAll()">
+              <div style="display:flex;gap:4px">
+                <input type="number" id="labor-rate" value="17900" oninput="recalcAll()" style="flex:1">
+                <select id="labor-rate-preset" onchange="applyLaborRatePreset(this.value)" style="width:110px;font-size:11px;padding:3px" title="年度・Band別単価プリセット">
+                  <option value="">単価選択...</option>
+                  <optgroup label="2025年">
+                    <option value="12200">2025 B6 (12,200)</option>
+                    <option value="15300">2025 B7 (15,300)</option>
+                    <option value="17400">2025 B8 (17,400)</option>
+                    <option value="20000">2025 B9 (20,000)</option>
+                    <option value="22900">2025 B10 (22,900)</option>
+                  </optgroup>
+                  <optgroup label="2026年 (標準)">
+                    <option value="12600">2026 B6 (12,600)</option>
+                    <option value="15800">2026 B7 (15,800)</option>
+                    <option value="17900" selected>2026 B8 (17,900)</option>
+                    <option value="20600">2026 B9 (20,600)</option>
+                    <option value="23600">2026 B10 (23,600)</option>
+                  </optgroup>
+                  <optgroup label="2027年">
+                    <option value="13000">2027 B6 (13,000)</option>
+                    <option value="16300">2027 B7 (16,300)</option>
+                    <option value="18400">2027 B8 (18,400)</option>
+                    <option value="21200">2027 B9 (21,200)</option>
+                    <option value="24300">2027 B10 (24,300)</option>
+                  </optgroup>
+                  <optgroup label="2028年">
+                    <option value="13400">2028 B6 (13,400)</option>
+                    <option value="16800">2028 B7 (16,800)</option>
+                    <option value="19000">2028 B8 (19,000)</option>
+                    <option value="21800">2028 B9 (21,800)</option>
+                    <option value="25000">2028 B10 (25,000)</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
             <div class="info-row">
               <label>Contingency（例: 0.10 = 10%）</label>
@@ -543,11 +576,11 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v1.4.0 (Storage End-to-End Pipeline Edition)</strong></td></tr>
-              <tr><td class="lc">リリース日</td><td style="text-align:left">2025-09-01</td></tr>
-              <tr><td class="lc">ベースツール</td><td style="text-align:left"><a href="https://ibm-el-japan.github.io/quotation-tool/quotation-tool.html" target="_blank">quotation-tool.html (GitHub Pages)</a></td></tr>
-              <tr><td class="lc">パイプライン構成</td><td style="text-align:left">見積もり依頼記入シート → 概算見積シート → S-LINK / 仕様書生成</td></tr>
-              <tr><td class="lc">管理者</td><td style="text-align:left">Expert Labs Storage</td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.1.0 (Expert Labs Storage Integration Edition)</strong></td></tr>
+              <tr><td class="lc">リリース日</td><td style="text-align:left">2026-09-16</td></tr>
+              <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
+              <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
+              <tr><td class="lc">管理者</td><td style="text-align:left">Expert Labs Storage (ibmkevin)</td></tr>
             </tbody>
           </table>
         </div>
@@ -766,8 +799,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v1.4.0';
-const APP_RELEASE_DATE = '2025-09-01';
+const APP_VERSION = 'v2.1.0';
+const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
 let _isAdmin = false;
@@ -833,11 +866,11 @@ const CHECKLIST_DEFAULT = [
   {
     title: "サービス内容",
     items: [
-      {checked:true, text:"（サンプル）", tag:""},
-      {checked:true, text:"1. 設計作業（xxxx年xx月～xxxx年xx月）", tag:""},
-      {checked:true, text:"2. 導入・構築作業（xxxx年xx月～xxxx年xx月）", tag:""},
-      {checked:true, text:"3. テスト作業（xxxx年xx月～xxxx年xx月）", tag:""},
-      {checked:true, text:"4. ドキュメント作成作業（xxxx年xx月～xxxx年xx月）", tag:""},
+      {checked:true, text:"1. 設計作業", tag:"設計"},
+      {checked:true, text:"2. 導入・構築作業", tag:"構築"},
+      {checked:true, text:"3. 稼動テスト作業", tag:"テスト"},
+      {checked:true, text:"4. ドキュメント作成作業", tag:"成果物"},
+      {checked:true, text:"5. Q&A・スキルトランスファー支援", tag:"QA"},
       {checked:false, text:"", tag:""},
       {checked:false, text:"", tag:""}
     ]
@@ -845,9 +878,7 @@ const CHECKLIST_DEFAULT = [
   {
     title: "サービス対象",
     items: [
-      {checked:true, text:"（サンプル）", tag:""},
-      {checked:true, text:"・xxxxx（xx環境：xx台/xx環境：xx台）", tag:""},
-      {checked:true, text:"・xxxxx（xx環境：xx台/xx環境：xx台）", tag:""},
+      {checked:true, text:"・対象機器・ソフトウェア一式", tag:"対象製品"},
       {checked:false, text:"", tag:""},
       {checked:false, text:"", tag:""}
     ]
@@ -856,12 +887,12 @@ const CHECKLIST_DEFAULT = [
     title: "提出ドキュメント",
     items: [
       {checked:false, text:"基本設計書", tag:""},
-      {checked:false, text:"詳細設計書", tag:""},
+      {checked:false, text:"設定書", tag:""},
       {checked:false, text:"スクリプト設計書", tag:""},
-      {checked:false, text:"xxテスト計画兼報告書", tag:""},
+      {checked:false, text:"テスト計画兼報告書", tag:""},
       {checked:false, text:"導入手順書", tag:""},
-      {checked:false, text:"xxテスト手順書", tag:""},
-      {checked:false, text:"運用手順書", tag:""},
+      {checked:false, text:"テスト手順書", tag:""},
+      {checked:false, text:"操作手順書", tag:""},
       {checked:false, text:"", tag:""},
       {checked:false, text:"", tag:""}
     ]
@@ -869,18 +900,19 @@ const CHECKLIST_DEFAULT = [
   {
     title: "前提",
     items: [
-      {checked:false, text:"本サービスは、お客様の業務を支援する作業として提供されるものです。", tag:""},
-      {checked:false, text:"本サービスは、 xxx 支援を行うものです。", tag:""},
-      {checked:false, text:"作業の対応時間は、平日標準勤務時間（9:00～18:00）です。", tag:""},
-      {checked:false, text:"土日祝日対応がある場合は要相談となります。", tag:""},
-      {checked:false, text:"サービスはリモートサポートとなります。", tag:""},
+      {checked:true, text:"本サービスは、お客様の業務を支援する作業として提供されるものです。", tag:""},
+      {checked:true, text:"本サービスは、設計・構築のリモート支援を行うものです。", tag:""},
+      {checked:true, text:"作業の対応時間は、平日標準勤務時間 (9:00～18:00) です。", tag:""},
+      {checked:true, text:"土日祝日対応がある場合は要相談となります。", tag:""},
+      {checked:true, text:"サービスはリモートサポートとなります。", tag:""},
       {checked:false, text:"必要な場合はオンサイトでの作業を実施します。", tag:""},
-      {checked:false, text:"作業場所は xxx を想定しています。", tag:""},
-      {checked:false, text:"プロジェクトの打ち合わせ場所は xxx で 週xx回 程度を想定しています。", tag:""},
-      {checked:false, text:"サービス期間は xxx ～ xxx を想定しています。", tag:""},
-      {checked:false, text:"対象製品に関しては保守契約を締結されていることを前提とさせていただきます。", tag:""},
-      {checked:false, text:"対象製品の障害発生時、その具体的な解決（収集資料の特定、問題解析、修正モジュールの作成、等）は、お客様からの要請によりテクニカルサポートにておこなわれます。当支援は、問題判別や資料収集、テクニカルサポートとの窓口としての役割を遂行されるお客様担当者様をお手伝いさせていただき、障害の早期解決が円滑におこなわれるための技術支援となります。", tag:""},
-      {checked:false, text:"", tag:""},
+      {checked:false, text:"作業場所はお客様指定施設を想定しています。", tag:""},
+      {checked:true, text:"プロジェクトの打ち合わせ場所は リモート で 週1回 程度を想定しています。", tag:""},
+      {checked:true, text:"サービス期間は契約合意期間を想定しています。", tag:""},
+      {checked:true, text:"対象製品に関しては保守契約を締結されていることを前提とさせていただきます。", tag:""},
+      {checked:true, text:"対象製品の障害発生時、その具体的な解決(収集資料の特定、問題解析、修正モジュールの作成、等)は、お客様からの要請によりテクニカルサポートにておこなわれます。当支援は、問題判別や資料収集、テクニカルサポートとの窓口としての役割を遂行されるお客様担当者様をお手伝いさせていただき、障害の早期解決が円滑におこなわれるための技術支援となります。", tag:""},
+      {checked:true, text:"対象製品以外（IBスイッチ等の接続機器）の作業支援は想定しておりません。", tag:""},
+      {checked:false, text:"提出ドキュメントはなしの想定です。", tag:""},
       {checked:true, text:"お客様には、IBMが本サービスを実施するにあたり、IBMが必要とする情報を書面にて提供していただきます。", tag:"必須"},
       {checked:true, text:"お客様には、IBMが本サービスを実施するにあたり、必要となる作業場所、付帯設備、事務消耗品および電話使用などの庶務サービス、ならびに必要なシステムや施設へのアクセスが可能な環境を提供していただきます。", tag:"必須"},
       {checked:true, text:"お客様には、作業にともなう既存システムのデータのバックアップおよびリストアの作業を提供していただきます。（お客様が必要と判断された場合のみ）", tag:"必須"},
@@ -891,8 +923,8 @@ const CHECKLIST_DEFAULT = [
   {
     title: "サービスの適用除外 — 全体",
     items: [
-      {checked:false, text:"サービス終了後にお客様にて実施された作業に起因した問題の復旧作業", tag:""},
-      {checked:false, text:"他社製品の性能、機能および品質等の保証および他社製品の導入の保証", tag:""},
+      {checked:true, text:"サービス終了後にお客様にて実施された作業に起因した問題の復旧作業", tag:""},
+      {checked:true, text:"他社製品の性能、機能および品質等の保証および他社製品の導入の保証", tag:""},
       {checked:false, text:"", tag:""},
       {checked:false, text:"", tag:""}
     ]
@@ -900,45 +932,46 @@ const CHECKLIST_DEFAULT = [
   {
     title: "サービスの適用除外 — ソフトウェア",
     items: [
-      {checked:false, text:"ライセンスの準備と適用作業", tag:""},
-      {checked:false, text:"仮想マシンの作成、設定作業", tag:""},
-      {checked:false, text:"OSの導入、OS修正パッケージの適用、ドライバの導入、セットアップ作業", tag:""},
-      {checked:false, text:"OS、システムソフトウェア、ファームウェア等の更新作業", tag:""},
-      {checked:false, text:"アプリケーションの導入、セキュリティパッチの適用、設定作業", tag:""},
-      {checked:false, text:"プログラムの開発・改変にかかわるサービス", tag:""},
-      {checked:false, text:"お客様によるプログラム変更に起因する障害に対するサービス", tag:""},
+      {checked:true, text:"ライセンスの準備と適用作業", tag:""},
+      {checked:true, text:"仮想マシンの作成、設定作業", tag:""},
+      {checked:true, text:"OSの導入、OS修正パッケージの適用、ドライバの導入、セットアップ作業", tag:""},
+      {checked:true, text:"OS、システムソフトウェア、ファームウェア等の更新作業", tag:""},
+      {checked:true, text:"アプリケーションの導入、セキュリティパッチの適用、設定作業", tag:""},
+      {checked:true, text:"プログラムの開発・改変にかかわるサービス", tag:""},
+      {checked:true, text:"お客様によるプログラム変更に起因する障害に対するサービス", tag:""},
       {checked:false, text:"", tag:""}
     ]
   },
   {
     title: "サービスの適用除外 — ハードウェア",
     items: [
-      {checked:false, text:"機器搬入設置、キッティング、ラッキング、ケーブリング作業", tag:""},
-      {checked:false, text:"工事をともなう電源関連の作業、耐震工事、ネットワーク・ケーブルなどの敷設作業、ルーターなどのネットワーク構成機器の設置作業およびプリンターの設置作業", tag:""},
-      {checked:false, text:"ハードウェア障害またはデバイスドライバーの障害対応", tag:""},
+      {checked:true, text:"機器搬入設置、キッティング、ラッキング、ケーブリング作業", tag:""},
+      {checked:true, text:"工事をともなう電源関連の作業、耐震工事、ネットワーク・ケーブルなどの敷設作業、ルーターなどのネットワーク構成機器の設置作業およびプリンターの設置作業", tag:""},
+      {checked:true, text:"ハードウェア障害またはデバイスドライバーの障害対応", tag:""},
       {checked:false, text:"", tag:""}
     ]
   },
   {
     title: "サービスの適用除外 — 設計・構築",
     items: [
-      {checked:false, text:"キャパシティー・プランニング", tag:""},
-      {checked:false, text:"スクリプト作成", tag:""},
-      {checked:false, text:"運用設計（監視設計、データ保管設計、等を含む）", tag:""},
-      {checked:false, text:"パフォーマンス・チューニング", tag:""},
-      {checked:false, text:"データ移行", tag:""},
-      {checked:false, text:"", tag:""},
+      {checked:true, text:"キャパシティプランニング", tag:""},
+      {checked:true, text:"バックアップおよびリストア設計構築", tag:""},
+      {checked:true, text:"監視設計構築", tag:""},
+      {checked:true, text:"スクリプト作成", tag:""},
+      {checked:true, text:"運用設計", tag:""},
+      {checked:true, text:"パフォーマンス・チューニング", tag:""},
+      {checked:true, text:"データ移行", tag:""},
       {checked:false, text:"", tag:""}
     ]
   },
   {
     title: "サービスの適用除外 — テスト",
     items: [
-      {checked:false, text:"単体テスト", tag:""},
-      {checked:false, text:"結合テスト", tag:""},
-      {checked:false, text:"パフォーマンステスト", tag:""},
-      {checked:false, text:"ベンチマークテスト", tag:""},
-      {checked:false, text:"負荷テスト", tag:""},
+      {checked:true, text:"単体テスト", tag:""},
+      {checked:true, text:"結合テスト", tag:""},
+      {checked:true, text:"パフォーマンステスト", tag:""},
+      {checked:true, text:"ベンチマークテスト", tag:""},
+      {checked:true, text:"負荷テスト", tag:""},
       {checked:false, text:"", tag:""}
     ]
   },
@@ -1491,6 +1524,16 @@ function recalcAll() {
 }
 
 function syncBasicInfo() { recalcAll(); }
+
+function applyLaborRatePreset(val) {
+  if (!val) return;
+  const num = parseInt(val, 10);
+  if (!isNaN(num) && num > 0) {
+    document.getElementById('labor-rate').value = num;
+    recalcAll();
+    showToast(`Labor 単価を ¥${num.toLocaleString()}/h に設定しました`);
+  }
+}
 
 // ===================== OUTPUT GENERATION =====================
 function generateOutput(mode) {
