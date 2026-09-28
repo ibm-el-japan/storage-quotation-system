@@ -156,7 +156,8 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
       <div class="toolbar">
         <div><strong style="color:#0f172a">サービス仕様書 (Service Specification) 編集</strong></div>
         <div style="display:flex;gap:8px">
-          <button class="btn bg" onclick="downloadSingleHtml('spec')">⬇️ 仕様書HTML保存</button>
+          <button class="btn bg" onclick="downloadSingleDoc('spec')">📄 Word(.doc)保存</button>
+          <button class="btn bc" onclick="downloadSingleHtml('spec')">⬇️ 仕様書HTML保存</button>
           <button class="btn bp" onclick="window.print()">🖨️ 印刷 / PDF</button>
         </div>
       </div>
@@ -169,7 +170,8 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
       <div class="toolbar">
         <div><strong style="color:#0f172a">サービス別紙 (Service Appendix) 編集</strong></div>
         <div style="display:flex;gap:8px">
-          <button class="btn bg" onclick="downloadSingleHtml('appx')">⬇️ 別紙HTML保存</button>
+          <button class="btn bg" onclick="downloadSingleDoc('appx')">📄 Word(.doc)保存</button>
+          <button class="btn bc" onclick="downloadSingleHtml('appx')">⬇️ 別紙HTML保存</button>
           <button class="btn bp" onclick="window.print()">🖨️ 印刷 / PDF</button>
         </div>
       </div>
@@ -559,27 +561,60 @@ function initDocsFromState(){
   // Specification Defaults (PPTX & Request Form 完全準拠)
   const prods = (req.products || ["IBM Storage 製品群"]).join("、 ");
   specDocData = {
-    title: `Storage Expert Labs 支援サービス仕様書 (${cust} ${proj})`,
+    title: `サービス仕様書 （${cust} ${proj}）`,
     docNo: `SPEC-STG-${Date.now().toString().slice(-6)}`,
-    target: `対象製品: ${prods}\nOffering: ${req.offering || b.offering || 'Storage Expert Labs (6911-450)'}\n対象構成・規模:\n${req.workDetail || 'IBM Storage 導入・設計構築および検証支援'}`,
-    scope: `1. 設計作業: 要件確認、パラメータ設計、構成定義書作成支援\n2. 導入・構築作業: ハードウェア/ソフトウェア製品初期導入、クラスタ/プール/ボリューム構成\n3. 検証・テスト作業: 正常系動作確認、障害時動作確認\n4. ドキュメント作成作業: 納品ドキュメントの作成およびレビュー\n5. QA作業・スキルトランスファー: 運用引き継ぎ支援、管理者向けQ&A`,
-    deliverables: `・${docList.replace(/、/g, '\n・')}${req.monthlyReport === '有' ? '\n・月次作業報告書 (Monthly Report)' : ''}`,
-    prerequisites: `・作業場所: ${loc}\n・打合せ回数・頻度: ${meeting}\n・お客様にて対象機器の設置場所、電源、空調、ネットワーク配線が事前に準備されていること。\n・作業実施に必要なアカウント・アクセス権限およびリモート接続環境が適時提供されること。\n・ハードウェアおよびソフトウェアの保守契約が有効に締結されていること。\n・本サービスにおける作業時間は、IBM 標準就業時間 (平日 9:00〜17:36) 内を原則とします。`,
-    outOfScope: `${excl}\n・IBM 対象外の他社製ハードウェア、OS、サードパーティ製アプリケーションの導入・トラブル対応。\n・深夜・休日作業 (別途協議の上、合意された場合を除く)。`
+    intro: `IBMは、お客様に対し、${cust} ${proj}（以下「本サービス」といいます）を提供します。なお、お客様は本サービスの実施にあたり、お客様責任者を選任するものとします。`,
+    scope: `別紙記載のサービス対象機械、サービス対象ソフトウェアを対象に、以下の作業を支援いたします。\n\n【設計作業】\n・要件ヒアリング・パラメータ設計\n・構成定義および設定値策定支援\n\n【構築作業】\n・対象ストレージ製品の初期導入・環境設定支援\n・プール・ボリューム・ファイルシステム構成支援\n\n【ドキュメント作業】\n${docList.split(/[、,]/).map(d => '・' + d.trim()).join('\n')}`,
+    prerequisites: `本サービスは、お客様の業務を支援する作業として提供されるものとします。
+支援作業の対応時間は、 平日標準勤務時間（9:00～18:00）です。
+上記時間帯以外の作業に関しては、別途相談とさせていただきます。
+オンサイトでの作業は、${loc}のお客様指定施設での実施を想定しています。
+プロジェクトの打ち合わせは${meeting}程度を想定しています。
+対象製品に関しては保守契約を締結されていることを前提とさせていただきます。
+対象製品の障害発生時、その具体的な解決(収集資料の特定、問題解析、修正モジュールの作成、等)は、お客様からの要請によりテクニカルサポートにておこなわれます。当支援は、問題判別や資料収集、テクニカルサポートとの窓口としての役割を遂行されるお客様担当者様をお手伝いさせていただき、障害の早期解決が円滑におこなわれるための技術支援となります。
+提出するドキュメントは${docList}とさせていただきます。
+お客様にプロジェクトの全体管理をお願い致します。
+お客様には、IBMが本サービスを実施するにあたり、IBMが必要とする情報を書面にて提供していただきます。
+お客様には、IBMが本サービスを実施するにあたり、必要となる作業場所、付帯設備、事務消耗品および電話使用などの庶務サービス、ならびに必要なシステムや施設へのアクセスが可能な環境を提供していただきます。
+お客様には、作業にともなう既存システムのデータのバックアップおよびリストアの作業を提供していただきます。（お客様が必要と判断された場合のみ）
+お客様には、作業にともなう既存システムのOSのバックアップおよびリストアの作業を提供していただきます。（お客様が必要と判断された場合のみ）
+本サービスの対象は、お客様への直接の支援に限定させていただきます。
+IBMが本サービスを実施するために必要な範囲で、お客様の設備、ソフトウェア、ハードウェア、ネットワーク、および他の同様の資源をIBMおよびIBMの従契約者に使用可能にしていただく前提として、必要な全てのライセンスおよび承認はお客様にて取得して頂きます。お客様がこれらのライセンスおよび承認を遅滞なく取得することを怠ったことにより、IBMが本サービスを実施することに支障が発生した場合、その範囲でIBMは本サービスの責任を免除されるものとします。お客様がこれらのライセンスおよび承認を遅滞なく取得することを怠ったことにより、もし第三者がIBMに対して権利を主張した場合、その権利に関連してIBMが被ったコストおよび損害をお客様はIBMに対して補償することに同意いただきます。`,
+    outOfScope: `本サービスは次のサービスおよび作業等を含みません。
+・サービス終了後にお客様にて実施された作業に起因した問題の復旧作業
+・他社製品の性能、機能および品質等の保証および他社製品の導入の保証
+・プログラムの開発・改変にかかわるサービス
+・お客様によるプログラム変更に起因する障害に対するサービス
+${excl.split('\n').filter(l => l.trim()).map(l => l.startsWith('・') ? l : '・' + l).join('\n')}
+・ハードウェア機器やソフトウェアの障害対応
+※ ハードウェア機器やソフトウェアの障害時には、お客様に弊社テクニカルサポート窓口のコールをお願いします。`
   };
 
-  // Appendix Defaults (PPTX & Request Form 完全準拠)
+  // Appendix Defaults (XXXX支援_別紙年月日.doc & PPTX 完全準拠)
   appxDocData = {
-    title: `Storage Expert Labs 支援サービス別紙 (${cust} ${proj})`,
+    title: `別紙(確定料金方式用) — ${cust} ${proj}`,
     docNo: `APPX-STG-${Date.now().toString().slice(-6)}`,
-    scopeHours: `${f.totalHours}`,
-    location: loc,
+    serviceName: `${cust} ${proj}`,
+    targetProducts: prods,
+    quantity: "1式",
+    location: `${loc}のお客様指定施設およびIBM事業所内で支援作業を提供いたします。`,
     price: `¥${fmt(f.price)}`,
     travelCost: f.travelCost > 0 ? `¥${fmt(f.travelCost)}` : '¥0',
-    period: `${startY}年${startM}月1日 から ${dur} ヶ月間（または合意工数満了のいずれか早い方）`,
-    completion: `仕様書記載の成果物の納品完了、または本別紙に定める支援工数（${f.totalHours}時間）の消化、あるいはサービス期間の満了をもって本サービスは完了とします。`,
-    payment: `${req.paymentPlan || '各月（標準）'}（ご提供形態: ${req.contractType || '単独契約'}）`,
-    notes: `機密情報取扱い: ${req.confidential || '無し'} ${req.confidentialNote ? '(' + req.confidentialNote + ')' : ''}\n社内打合せ調整: ${req.meetingInternal || '調整します'} / 社外打合せ調整: ${req.meetingExternal || '調整します'}`
+    period: `${startY}年${startM}月1日 より ${startY}年${Math.min(12, startM + dur - 1)}月末日 まで`,
+    completion: `IBMからお客様への「支援サービス終了通知書」の提出または「サービス期間」の終了日のいずれか早い日にサービスの提供は終了します。`,
+    paymentDate: `${startY}年${Math.min(12, startM + dur - 1)}月末日`,
+    paymentAmount: `¥${fmt(f.price)}`,
+    notes: `お客様は、お客様個人データをこの契約範囲においてIBMに処理、取り扱わせる目的で、提供しないものとします。変更が生じた場合、お客様は、IBMに書面による通知を行うものとし、お客様のために行う個人データの処理には、別途締結するデータ処理補足契約書（http://ibm.com/dpa）と別表が適用され、これらは本契約の一部となるものとします。
+前項にもかかわらず、いずれかの当事者が、データ処理補足契約書の締結なく、お客様からIBMまたはその従契約者へ個人データの提供がなされていることに気がついた場合、当該当事者はすみやかに相手方へ通知し、個人データの返還またはその取り扱いについて合意するものとします。
+
+【IBMツール】
+IBMは、「サービス」の提供にあたり、生成AIツールおよびIBM Delivery Central Platformを含むIBMおよび他社製のツール（以下、「本IBMツール」といいます）を使用して、業務を遂行する場合があります。本IBMツールおよびその関連資料は、①お客様が当該ツールを閲覧またはアクセスできる場合であっても、本契約の下でお客様に提供されるものではなく、②その権利はIBMまたは他社に帰属するものとします。お客様が本IBMツールにアクセスし使用する場合、お客様は本IBMツールに適用される利用規約に従うものとします。本IBMツールがお客様環境にインストールされた場合、IBMは本IBMツールを「サービス」の終了後に削除するものとします。IBMは、別途同意がある場合（例えば、お客様がIBMにお客様固有のモデルのインスタンスを学習させるよう依頼した場合など）を除き、お客様のデータをモデルの学習のために使用しません。
+
+【お客様提供ツール】
+お客様が、本契約の下でIBMが提供する「サービス」に関連して、生成AIツールを含むお客様または他社製のツール（以下、「本お客様ツール」といいます）の使用を指示し、またはIBMに提供する場合、①お客様は、IBMが「サービス」の履行に必要な範囲で本お客様ツールを使用するために必要な権利を取得するものとし、②お客様は、本お客様ツールの使用（当該ツールの出力（アウトプット）および当該ツールにおけるお客様のデータの使用を含む。）について責任を負うものとします。
+
+【出力（アウトプット）】
+生成AIツールにより作成された出力結果は、IBMがお客様のために創作した「資料」とはみなされません。IBMがお客様にかかる出力（アウトプット）を提供する場合、当事者間において、かつ適用される法令で認められる範囲において、かかる出力（アウトプット）はお客様のものです。生成AIの特徴から、その生成された出力（アウトプット）はお客様固有のものではなく、他のお客様も生成AIツールより類似の出力（アウトプット）を得ることがあります。`
   };
 }
 
@@ -620,33 +655,28 @@ function renderSpecificationEditor(){
       </div>
 
       <div class="edit-clause">
-        <label>1. サービス名</label>
+        <label>サービス仕様書 標題</label>
         <input type="text" value="${escHtml(specDocData.title)}" class="edit-box" oninput="specDocData.title=this.value">
       </div>
 
       <div class="edit-clause">
-        <label>2. サービス対象 (対象製品・システム構成)</label>
-        <textarea rows="4" oninput="specDocData.target=this.value">${escHtml(specDocData.target)}</textarea>
+        <label>前文 (提供合意・責任者選任)</label>
+        <textarea rows="2" oninput="specDocData.intro=this.value">${escHtml(specDocData.intro||'')}</textarea>
       </div>
 
       <div class="edit-clause">
-        <label>3. サービス内容 (作業スコープ)</label>
-        <textarea rows="6" oninput="specDocData.scope=this.value">${escHtml(specDocData.scope)}</textarea>
+        <label>１．サービスの内容 (設計作業・構築作業・ドキュメント作業等)</label>
+        <textarea rows="8" oninput="specDocData.scope=this.value">${escHtml(specDocData.scope)}</textarea>
       </div>
 
       <div class="edit-clause">
-        <label>4. 提出ドキュメント (成果物)</label>
-        <textarea rows="4" oninput="specDocData.deliverables=this.value">${escHtml(specDocData.deliverables)}</textarea>
+        <label>２．サービスの前提条件 (業務支援・勤務時間・場所・保守・バックアップ・ライセンス等)</label>
+        <textarea rows="8" oninput="specDocData.prerequisites=this.value">${escHtml(specDocData.prerequisites)}</textarea>
       </div>
 
       <div class="edit-clause">
-        <label>5. サービスの前提条件 (Prerequisites)</label>
-        <textarea rows="5" oninput="specDocData.prerequisites=this.value">${escHtml(specDocData.prerequisites)}</textarea>
-      </div>
-
-      <div class="edit-clause">
-        <label>6. サービス適用外事項 (Out of Scope)</label>
-        <textarea rows="4" oninput="specDocData.outOfScope=this.value">${escHtml(specDocData.outOfScope)}</textarea>
+        <label>３．サービスの適用除外 (他社製品保証・プログラム改変・障害対応等)</label>
+        <textarea rows="6" oninput="specDocData.outOfScope=this.value">${escHtml(specDocData.outOfScope)}</textarea>
       </div>
     </div>
   `;
@@ -666,55 +696,69 @@ function renderAppendixEditor(){
       </div>
 
       <div class="edit-clause">
-        <label>1. サービス名</label>
-        <input type="text" value="${escHtml(appxDocData.title)}" class="edit-box" oninput="appxDocData.title=this.value">
+        <label>１．サービス名</label>
+        <input type="text" value="${escHtml(appxDocData.serviceName || appxDocData.title)}" class="edit-box" oninput="appxDocData.serviceName=this.value;appxDocData.title=this.value">
       </div>
 
       <div class="edit-clause">
-        <label>2. サービス対象範囲 (上限工数)</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input type="number" value="${escHtml(appxDocData.scopeHours)}" style="width:120px" class="edit-box" oninput="appxDocData.scopeHours=this.value">
-          <span>時間を上限とする技術支援を提供</span>
+        <label>２．サービス内容 (サービス対象範囲・提供場所)</label>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:8px">
+          <div>
+            <span style="font-size:11px;color:#64748b">対象機器・ソフトウェア製品名:</span>
+            <input type="text" value="${escHtml(appxDocData.targetProducts || '')}" class="edit-box" oninput="appxDocData.targetProducts=this.value">
+          </div>
+          <div>
+            <span style="font-size:11px;color:#64748b">数量:</span>
+            <input type="text" value="${escHtml(appxDocData.quantity || '1式')}" class="edit-box" oninput="appxDocData.quantity=this.value">
+          </div>
+        </div>
+        <div>
+          <span style="font-size:11px;color:#64748b">(2) サービス提供場所:</span>
+          <input type="text" value="${escHtml(appxDocData.location)}" class="edit-box" oninput="appxDocData.location=this.value">
         </div>
       </div>
 
       <div class="edit-clause">
-        <label>3. サービス提供場所</label>
-        <input type="text" value="${escHtml(appxDocData.location)}" class="edit-box" oninput="appxDocData.location=this.value">
-      </div>
-
-      <div class="edit-clause">
-        <label>4. サービス料金 (定価・税抜)</label>
+        <label>３．サービス料金 (確定料金合計)</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <span style="font-size:11px;color:#64748b">技術支援料金:</span>
+            <span style="font-size:11px;color:#64748b">確定料金合計:</span>
             <input type="text" value="${escHtml(appxDocData.price)}" class="edit-box" style="font-weight:700;color:#15803d" oninput="appxDocData.price=this.value">
           </div>
           <div>
-            <span style="font-size:11px;color:#64748b">交通費・宿泊費等実費:</span>
+            <span style="font-size:11px;color:#64748b">実費経費 (交通費・宿泊費等):</span>
             <input type="text" value="${escHtml(appxDocData.travelCost)}" class="edit-box" oninput="appxDocData.travelCost=this.value">
           </div>
         </div>
       </div>
 
       <div class="edit-clause">
-        <label>5. サービス期間</label>
+        <label>４．サービス期間（契約期間）</label>
         <input type="text" value="${escHtml(appxDocData.period)}" class="edit-box" oninput="appxDocData.period=this.value">
       </div>
 
       <div class="edit-clause">
-        <label>6. サービスの終了条件</label>
-        <textarea rows="3" oninput="appxDocData.completion=this.value">${escHtml(appxDocData.completion)}</textarea>
+        <label>５．サービスの終了</label>
+        <textarea rows="2" oninput="appxDocData.completion=this.value">${escHtml(appxDocData.completion)}</textarea>
       </div>
 
       <div class="edit-clause">
-        <label>7. 支払い計画</label>
-        <input type="text" value="${escHtml(appxDocData.payment)}" class="edit-box" oninput="appxDocData.payment=this.value">
+        <label>６．支払計画 (支払期日・支払金額)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <span style="font-size:11px;color:#64748b">支払期日:</span>
+            <input type="text" value="${escHtml(appxDocData.paymentDate || '')}" class="edit-box" oninput="appxDocData.paymentDate=this.value">
+          </div>
+          <div>
+            <span style="font-size:11px;color:#64748b">支払金額 (円):</span>
+            <input type="text" value="${escHtml(appxDocData.paymentAmount || appxDocData.price)}" class="edit-box" style="font-weight:700" oninput="appxDocData.paymentAmount=this.value">
+          </div>
+        </div>
       </div>
 
       <div class="edit-clause">
-        <label>8. その他特記事項</label>
-        <input type="text" value="${escHtml(appxDocData.notes)}" class="edit-box" oninput="appxDocData.notes=this.value">
+        <label>７．特記事項 (個人データ・IBMツール・お客様提供ツール・生成AI出力)</label>
+        <textarea rows="8" oninput="appxDocData.notes=this.value">${escHtml(appxDocData.notes)}</textarea>
       </div>
     </div>
   `;
@@ -750,34 +794,60 @@ function copyAllSlinkMeta(){
 function generateCleanDocHtml(type){
   if(type === 'spec'){
     return `
-      <h2>サービス仕様書 (Service Specification)</h2>
+      <h2>${escHtml(specDocData.title)}</h2>
       <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">文書番号: ${escHtml(specDocData.docNo)}</div>
-      <h3>1. サービス名</h3><p><strong>${escHtml(specDocData.title)}</strong></p>
-      <h3>2. サービス対象</h3><p>${escHtml(specDocData.target).replace(/\n/g, '<br>')}</p>
-      <h3>3. サービス内容 (作業スコープ)</h3><p>${escHtml(specDocData.scope).replace(/\n/g, '<br>')}</p>
-      <h3>4. 提出ドキュメント (成果物)</h3><p>${escHtml(specDocData.deliverables).replace(/\n/g, '<br>')}</p>
-      <h3>5. サービスの前提条件</h3><p>${escHtml(specDocData.prerequisites).replace(/\n/g, '<br>')}</p>
-      <h3>6. サービス適用外事項</h3><p>${escHtml(specDocData.outOfScope).replace(/\n/g, '<br>')}</p>
+      <p>${escHtml(specDocData.intro || '').replace(/\n/g, '<br>')}</p>
+      
+      <h3>１．サービスの内容</h3>
+      <p>${escHtml(specDocData.scope || '').replace(/\n/g, '<br>')}</p>
+      
+      <h3>２．サービスの前提条件</h3>
+      <p>${escHtml(specDocData.prerequisites || '').replace(/\n/g, '<br>')}</p>
+      
+      <h3>３．サービスの適用除外</h3>
+      <p>${escHtml(specDocData.outOfScope || '').replace(/\n/g, '<br>')}</p>
+      <p style="text-align:right;margin-top:20px">以上</p>
     `;
   } else {
     return `
-      <h2>サービス別紙 (Service Appendix)</h2>
+      <h2>${escHtml(appxDocData.title)}</h2>
       <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">別紙番号: ${escHtml(appxDocData.docNo)}</div>
-      <h3>1. サービス名</h3><p><strong>${escHtml(appxDocData.title)}</strong></p>
-      <h3>2. サービス対象範囲</h3><p>仕様書記載の支援作業に対し、合計 <strong>${escHtml(appxDocData.scopeHours)} 時間</strong> を上限とする技術支援を提供します。</p>
-      <h3>3. サービス提供場所</h3><p><strong>${escHtml(appxDocData.location)}</strong></p>
-      <h3>4. サービス料金</h3>
+      
+      <h3>１．サービス名</h3>
+      <p><strong>${escHtml(appxDocData.serviceName || appxDocData.title)}</strong></p>
+      
+      <h3>２．サービス内容</h3>
+      <p>サービス仕様書記載のサービスが、下記サービス対象範囲に対して提供されます。</p>
+      <p><strong>(１) サービス対象範囲</strong><br>サービス対象機器・ソフトウェア</p>
       <table>
-        <thead><tr><th>項目</th><th>数量</th><th style="text-align:right">金額(税抜)</th><th>備考</th></tr></thead>
+        <thead><tr><th>製品名</th><th style="text-align:right;width:120px">数量</th></tr></thead>
         <tbody>
-          <tr><td>技術支援料金</td><td>1式 (${escHtml(appxDocData.scopeHours)}h)</td><td style="text-align:right;font-weight:700">${escHtml(appxDocData.price)}</td><td>Labor/Contingency込</td></tr>
-          ${appxDocData.travelCost !== '¥0' ? `<tr><td>実費経費</td><td>1式</td><td style="text-align:right">${escHtml(appxDocData.travelCost)}</td><td>交通費・宿泊費等</td></tr>` : ''}
+          <tr><td>${escHtml(appxDocData.targetProducts || '対象ストレージ製品')}</td><td style="text-align:right">${escHtml(appxDocData.quantity || '1式')}</td></tr>
         </tbody>
       </table>
-      <h3>5. サービス期間</h3><p><strong>${escHtml(appxDocData.period)}</strong></p>
-      <h3>6. サービスの終了条件</h3><p>${escHtml(appxDocData.completion).replace(/\n/g, '<br>')}</p>
-      <h3>7. 支払い計画</h3><p>${escHtml(appxDocData.payment)}</p>
-      <h3>8. その他特記事項</h3><p>${escHtml(appxDocData.notes)}</p>
+      <p><strong>(２) サービス提供場所</strong><br>${escHtml(appxDocData.location)}</p>
+      
+      <h3>３．サービス料金</h3>
+      <p>確定料金合計 <strong>${escHtml(appxDocData.price)}</strong><br><span style="font-size:12px;color:#64748b">上記金額には、別途消費税が加算されます。</span></p>
+      
+      <h3>４．サービス期間（契約期間）</h3>
+      <p><strong>${escHtml(appxDocData.period)}</strong></p>
+      
+      <h3>５．サービスの終了</h3>
+      <p>${escHtml(appxDocData.completion).replace(/\n/g, '<br>')}</p>
+      
+      <h3>６．支払計画</h3>
+      <table>
+        <thead><tr><th>支 払 期 日</th><th style="text-align:right;width:180px">支 払 金 額（円）</th></tr></thead>
+        <tbody>
+          <tr><td>${escHtml(appxDocData.paymentDate || '')}</td><td style="text-align:right">${escHtml(appxDocData.paymentAmount || appxDocData.price)}</td></tr>
+          <tr style="background:#f8fafc;font-weight:700"><td>合 計</td><td style="text-align:right">${escHtml(appxDocData.paymentAmount || appxDocData.price)}</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:#64748b">上記金額には、いずれも別途消費税が加算されます。</p>
+      
+      <h3>７．特記事項</h3>
+      <p>${escHtml(appxDocData.notes).replace(/\n/g, '<br>')}</p>
     `;
   }
 }
@@ -813,6 +883,49 @@ ${bodyContent}
   a.click();
   URL.revokeObjectURL(a.href);
   showToast("HTMLファイルを保存しました");
+}
+
+function downloadSingleDoc(type){
+  const cust = ((stateData.basic && stateData.basic.customerName) || 'Quotation').replace(/[\\/:*?"<>|]/g,'_');
+  const title = type === 'spec' ? '仕様書' : '別紙';
+  const bodyContent = generateCleanDocHtml(type);
+
+  const docHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="UTF-8">
+<title>${title} - ${cust}</title>
+<!--[if gte mso 9]>
+<xml>
+ <w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>100</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+ </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  @page { size: A4 portrait; margin: 25mm 20mm; }
+  body { font-family: "MS Mincho", "Hiragino Mincho ProN", serif; font-size: 10.5pt; line-height: 1.6; color: #000000; }
+  h2 { font-size: 16pt; font-weight: bold; text-align: center; margin-bottom: 20pt; font-family: "MS Gothic", sans-serif; }
+  h3 { font-size: 11pt; font-weight: bold; margin-top: 14pt; margin-bottom: 4pt; font-family: "MS Gothic", sans-serif; }
+  p { margin: 4pt 0; text-indent: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
+  th, td { border: 1pt solid #000000; padding: 5pt 8pt; font-size: 10pt; }
+  th { background: #f0f0f0; font-weight: bold; }
+</style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+
+  const blob = new Blob([docHtml], {type:"application/msword;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${cust}_${title}.doc`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`Wordドキュメント(.doc)を保存しました: ${cust}_${title}.doc`);
 }
 
 function downloadFullPackageHtml(){
