@@ -1278,10 +1278,21 @@ function restoreFormData(d){
   if(d.otherMembers) document.getElementById('f-others').value = d.otherMembers;
 
   if(d.offering){
-    const offRad = document.querySelector(`input[name="offering"][value="${d.offering}"]`);
-    if(offRad){
-      offRad.checked = true;
-    } else {
+    let matchedOff = false;
+    const offRads = document.querySelectorAll('input[name="offering"]');
+    offRads.forEach(r => {
+      if(r.value === "__other__") return;
+      if(r.value === d.offering || d.offering.includes(r.value) || r.value.includes(d.offering) ||
+         (d.offering.includes("Storage Expert Labs") && r.value.includes("Storage Expert Labs")) ||
+         (d.offering.includes("Power Expert Labs") && r.value.includes("Power Expert Labs")) ||
+         (d.offering.includes("zHW Expert Labs") && r.value.includes("zHW Expert Labs")) ||
+         (d.offering.includes("zTPS Expert Labs") && r.value.includes("zTPS Expert Labs")) ||
+         (d.offering.includes("zHW GDPS") && r.value.includes("zHW GDPS"))) {
+        r.checked = true;
+        matchedOff = true;
+      }
+    });
+    if(!matchedOff){
       const otherRad = document.querySelector('input[name="offering"][value="__other__"]');
       if(otherRad) otherRad.checked = true;
       document.getElementById('f-offering-other').value = d.offering;
@@ -1290,16 +1301,38 @@ function restoreFormData(d){
 
   if(d.products && Array.isArray(d.products)){
     const checks = document.querySelectorAll('#fg-product input[type=checkbox]');
-    checks.forEach(c => {
-      c.checked = d.products.includes(c.value);
+    const unmatched = [];
+    d.products.forEach(p => {
+      let matched = false;
+      checks.forEach(c => {
+        if(c.value === "__other_prod__") return;
+        const cv = c.value;
+        if(p === cv || p.includes(cv) || cv.includes(p) ||
+           (p.includes("Virtualize") && cv.includes("Virtualize")) ||
+           (p.includes("DS8K") && cv.includes("DS8K")) ||
+           (p.includes("Scale System") && cv.includes("Scale System")) ||
+           (p.includes("SSS") && cv.includes("Scale System")) ||
+           (p.includes("Protect") && cv.includes("Protect")) ||
+           (p.includes("Ceph") && cv.includes("Ceph")) ||
+           (p.includes("Fusion") && cv.includes("Fusion")) ||
+           (p.includes("Cloud Object Storage") && cv.includes("Cloud Object Storage")) ||
+           (p.includes("COS") && cv.includes("Cloud Object Storage")) ||
+           (p.includes("SAN Switch") && cv.includes("SAN Switch")) ||
+           (p.includes("テープ") && cv.includes("テープ")) ||
+           (p.includes("Insights") && cv.includes("Insights")) ||
+           (p.includes("Spectrum Control") && cv.includes("Spectrum Control")) ||
+           (p.includes("Discover") && cv.includes("Discover")) ||
+           (p.includes("Scale") && !p.includes("System") && cv === "Storage Scale")) {
+          c.checked = true;
+          matched = true;
+        }
+      });
+      if(!matched) unmatched.push(p);
     });
-    // Check for custom products
-    const known = Array.from(checks).map(c => c.value);
-    const customProds = d.products.filter(p => !known.includes(p));
-    if(customProds.length > 0){
+    if(unmatched.length > 0){
       const otherCheck = document.querySelector('#fg-product input[value="__other_prod__"]');
       if(otherCheck) otherCheck.checked = true;
-      document.getElementById('f-product-other').value = customProds.join(', ');
+      document.getElementById('f-product-other').value = unmatched.join(', ');
     }
   }
 
@@ -1362,22 +1395,27 @@ function restoreFormData(d){
 
   if(d.preChecks && Array.isArray(d.preChecks)){
     d.preChecks.forEach(pc => {
-      if(pc.yn){
-        const ynSelect = document.getElementById(pc.id + "-yn");
-        if(ynSelect) ynSelect.value = pc.yn;
-      }
-      if(pc.note !== undefined){
-        const noteInput = document.getElementById(pc.id + "-note");
-        if(noteInput) noteInput.value = pc.note;
-      }
+      const elYn = document.getElementById(pc.id + "-yn");
+      const elNote = document.getElementById(pc.id + "-note");
+      if(elYn && pc.yn) elYn.value = pc.yn;
+      if(elNote && (pc.note !== undefined && pc.note !== "")) elNote.value = pc.note;
     });
   }
 
   if(d.contractType){
-    const ctRad = document.querySelector(`input[name="contract-type"][value="${d.contractType}"]`);
-    if(ctRad){
-      ctRad.checked = true;
-    } else {
+    let matchedCt = false;
+    const ctRads = document.querySelectorAll('input[name="contract-type"]');
+    ctRads.forEach(r => {
+      if(r.value === "__other_ct__") return;
+      if(r.value === d.contractType || d.contractType.includes(r.value) || r.value.includes(d.contractType) ||
+         (d.contractType.includes("単独契約") && r.value.includes("単独契約")) ||
+         (d.contractType.includes("ワーク分割") && r.value.includes("ワーク分割")) ||
+         (d.contractType.includes("DOU") && r.value.includes("DOU"))) {
+        r.checked = true;
+        matchedCt = true;
+      }
+    });
+    if(!matchedCt){
       const ctOtherRad = document.querySelector('input[name="contract-type"][value="__other_ct__"]');
       if(ctOtherRad) ctOtherRad.checked = true;
       document.getElementById('f-ct-other').value = d.contractType;
@@ -1385,10 +1423,19 @@ function restoreFormData(d){
   }
 
   if(d.dealType){
-    const dtRad = document.querySelector(`input[name="deal-type"][value="${d.dealType}"]`);
-    if(dtRad){
-      dtRad.checked = true;
-    } else {
+    let matchedDt = false;
+    const dtRads = document.querySelectorAll('input[name="deal-type"]');
+    dtRads.forEach(r => {
+      if(r.value === "__other_dt__") return;
+      if(r.value === d.dealType || d.dealType.includes(r.value) || r.value.includes(d.dealType) ||
+         (d.dealType.includes("サブコン") && r.value.includes("サブコン")) ||
+         (d.dealType.includes("直販") && !d.dealType.includes("サブコン") && r.value.includes("直販") && !r.value.includes("サブコン")) ||
+         (d.dealType.includes("BP商流") && r.value.includes("BP商流"))) {
+        r.checked = true;
+        matchedDt = true;
+      }
+    });
+    if(!matchedDt){
       const dtOtherRad = document.querySelector('input[name="deal-type"][value="__other_dt__"]');
       if(dtOtherRad) dtOtherRad.checked = true;
       document.getElementById('f-dt-other').value = d.dealType;
@@ -1396,10 +1443,19 @@ function restoreFormData(d){
   }
 
   if(d.paymentPlan){
-    const payRad = document.querySelector(`input[name="payment"][value="${d.paymentPlan}"]`);
-    if(payRad){
-      payRad.checked = true;
-    } else {
+    let matchedPay = false;
+    const payRads = document.querySelectorAll('input[name="payment"]');
+    payRads.forEach(r => {
+      if(r.value === "__other_pay__") return;
+      if(r.value === d.paymentPlan || d.paymentPlan.includes(r.value) || r.value.includes(d.paymentPlan) ||
+         (d.paymentPlan.includes("各月") && r.value.includes("各月")) ||
+         (d.paymentPlan.includes("支払い一回") && r.value.includes("支払い一回")) ||
+         (d.paymentPlan.includes("一括") && r.value.includes("支払い一回"))) {
+        r.checked = true;
+        matchedPay = true;
+      }
+    });
+    if(!matchedPay){
       const payOtherRad = document.querySelector('input[name="payment"][value="__other_pay__"]');
       if(payOtherRad) payOtherRad.checked = true;
       document.getElementById('f-pay-other').value = d.paymentPlan;
@@ -1407,7 +1463,8 @@ function restoreFormData(d){
   }
 
   if(d.monthlyReport){
-    const repRad = document.querySelector(`input[name="report"][value="${d.monthlyReport}"]`);
+    const repVal = (d.monthlyReport.includes("有") && !d.monthlyReport.includes("無")) ? "有" : (d.monthlyReport.includes("無") ? "無" : d.monthlyReport);
+    const repRad = document.querySelector(`input[name="report"][value="${repVal}"]`);
     if(repRad) repRad.checked = true;
   }
 }
@@ -1592,10 +1649,9 @@ function parseQuotationRequestExcel(wb) {
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error("シートが見つかりません");
 
-  // Helper to read cell
   const getCell = (col, row) => {
     const c = ws[col + row];
-    return c ? (c.w || String(c.v || "")).trim() : "";
+    return c ? (c.w || String(c.v !== undefined ? c.v : "")).trim() : "";
   };
 
   const data = {
@@ -1629,25 +1685,47 @@ function parseQuotationRequestExcel(wb) {
     meetingExternal: "調整します",
     preChecks: [],
     contractType: "支援契約（Expert Labsの単独契約）",
-    dealType: "直販（エンドユーザ様-IBM）",
+    dealType: "直販（サブコン）",
     paymentPlan: "各月（標準）",
     monthlyReport: "無"
   };
 
-  // Convert sheet to array of rows for fuzzy scanning
+  const CHECKED_SYMBOLS = ["■", "◾️", "☑", "✔", "●"];
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+
+  // Pre-check definition keys for robust fuzzy matching
+  const ynMatchRules = [
+    { id: "yn1", key: "SOセールスにおけるSTGテクニカル支援依頼プロセス" },
+    { id: "yn2", key: "相談者名", isText: true },
+    { id: "yn3", key: "SAレビューやTCTを実施" },
+    { id: "yn4", key: "SAレビューやTCT以外の提案時に必要なレビュー" },
+    { id: "yn5", key: "提案前チェックリスト" },
+    { id: "yn6", key: "パフォーマンスの妥当性" },
+    { id: "yn7", key: "キャパシティーの妥当性" },
+    { id: "yn8", key: "適切なサポート条件" },
+    { id: "yn9", key: "制限/前提事項" },
+    { id: "yn10", key: "例外承認" },
+    { id: "yn11", key: "適切な保守契約" },
+    { id: "yn12", key: "適切な運用支援サービス契約" }
+  ];
+
   for (let R = range.s.r; R <= range.e.r; ++R) {
     const rowNum = R + 1;
+    const aVal = getCell('A', rowNum);
     const bVal = getCell('B', rowNum);
     const cVal = getCell('C', rowNum);
     const dVal = getCell('D', rowNum);
+    const eVal = getCell('E', rowNum);
+    const fVal = getCell('F', rowNum);
+    const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
 
+    // 1. Basic Info
     if (bVal.includes("記入日")) {
       const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
       if (match) {
         data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
       } else {
-        data.createdDate = cVal;
+        data.createdDate = cVal.replace(/20xx\/xx\/xx/i, new Date().toISOString().slice(0, 10));
       }
     } else if (bVal.includes("記入者")) {
       data.author = cVal;
@@ -1660,7 +1738,7 @@ function parseQuotationRequestExcel(wb) {
       else data.bpCustomerNo = cVal;
     } else if (bVal.includes("DNSO")) {
       data.dnsoNo = cVal;
-    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+    } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
       data.oppNoProduct = cVal;
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
       data.oppNoService = cVal;
@@ -1672,17 +1750,32 @@ function parseQuotationRequestExcel(wb) {
       data.tsName = cVal;
     } else if (bVal.includes("その他案件関係者")) {
       data.otherMembers = cVal;
-    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
-        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    }
+
+    // 2. Offering (rows 20 - 26)
+    if (rowNum >= 20 && rowNum <= 26) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援対象Offering")) {
+          data.offering = clean;
+        }
       }
-    } else if (rowNum >= 27 && rowNum <= 41) {
-      // Product candidates
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
-        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
-        if (pName && !data.products.includes(pName)) data.products.push(pName);
+    }
+
+    // 3. Product Selection (rows 27 - 41)
+    if (rowNum >= 27 && rowNum <= 41) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援対象製品を選択")) {
+          if (!data.products.includes(clean)) data.products.push(clean);
+        }
       }
-    } else if (bVal.includes("サービス期間")) {
+    }
+
+    // 4. Service Content (rows 42 - 52)
+    if (bVal.includes("サービス期間")) {
       const parts = cVal.split(/～|~/);
       if (parts.length >= 1) {
         const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
@@ -1711,52 +1804,84 @@ function parseQuotationRequestExcel(wb) {
     } else if (bVal.includes("サービス除外事項")) {
       data.serviceExclusions = cVal;
     } else if (bVal.includes("機密情報取扱い")) {
-      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) {
+      if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "有り") || cVal.includes(s + " 有り")) || cVal.includes("■有り") || cVal.includes("◾️有り")) {
+        data.confidential = "有り";
+      } else if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "無し") || cVal.includes(s + " 無し")) || cVal.includes("■無し") || cVal.includes("◾️無し")) {
+        data.confidential = "無し";
+      } else if (cVal.includes("有り")) {
         data.confidential = "有り";
       } else {
         data.confidential = "無し";
       }
-      data.confidentialNote = dVal;
-    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
-      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
-      else if (cVal.includes("不要")) data.meetingInternal = "不要";
-    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
-      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
-      else if (cVal.includes("不要")) data.meetingExternal = "不要";
-    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
-        data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+      if (dVal && !dVal.includes("機密保持契約締結情報")) data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
+      if (cVal.includes("不要") || (cVal.includes("□") && cVal.includes("不要") && !cVal.includes("■不要"))) {
+        data.meetingInternal = "調整します";
+      } else if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
+        data.meetingInternal = "不要";
+      } else {
+        data.meetingInternal = "調整します";
       }
-    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
-        data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
+      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
+        data.meetingExternal = "不要";
+      } else {
+        data.meetingExternal = "調整します";
       }
-    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) {
-        data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-      }
-    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
-      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
-      else data.monthlyReport = "無";
     }
 
-    // Pre-checks scanning (rows 55 - 70)
-    if (rowNum >= 55 && rowNum <= 70) {
-      if (bVal && !bVal.includes("事前確認事項") && !bVal.includes("確認事項")) {
-        const ans = (dVal || cVal).trim();
-        if (ans === "Y" || ans === "N" || ans === "N/A" || bVal.includes("相談者名")) {
-          // matched precheck
-          const matchedItem = YN_ITEMS.find(it => bVal.includes(it.label.slice(0, 10)) || it.label.includes(bVal.slice(0, 10)));
-          if (matchedItem) {
-            data.preChecks.push({
-              id: matchedItem.id,
-              category: matchedItem.category,
-              label: matchedItem.label,
-              yn: ans === "Y" || ans === "N" || ans === "N/A" ? ans : "",
-              note: matchedItem.type === "text" ? ans : ""
-            });
+    // 5. Pre-Checks (rows 53 - 71)
+    if (rowNum >= 54 && rowNum <= 71) {
+      ynMatchRules.forEach(rule => {
+        if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
+          let ynVal = "";
+          const candidates = [dVal, eVal, fVal, cVal];
+          for (let cand of candidates) {
+            const up = cand.toUpperCase().trim();
+            if (up === "Y" || up === "N" || up === "N/A") {
+              ynVal = up;
+              break;
+            }
+          }
+          const noteVal = rule.isText ? (cVal || dVal || eVal) : (eVal || fVal || "");
+          const existing = data.preChecks.find(p => p.id === rule.id);
+          if (!existing) {
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal });
+          } else {
+            if (ynVal) existing.yn = ynVal;
+            if (noteVal) existing.note = noteVal;
           }
         }
+      });
+    }
+
+    // 6. Contract Info (rows 72 - 91)
+    if (rowNum >= 74 && rowNum <= 78) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援のご提供形態")) data.contractType = clean;
+      }
+    }
+    if (rowNum >= 79 && rowNum <= 83) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("契約形態を選択")) data.dealType = clean;
+      }
+    }
+    if (rowNum >= 84 && rowNum <= 87) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支払い計画を選択")) data.paymentPlan = clean;
+      }
+    }
+    if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s + "有") || rowStr.includes(s + " 有")) || rowStr.includes("■有") || rowStr.includes("◾️有")) {
+        data.monthlyReport = "有";
+      } else {
+        data.monthlyReport = "無";
       }
     }
   }
