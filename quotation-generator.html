@@ -2842,7 +2842,7 @@ function parseQuotationRequestExcel(wb) {
 
   const getCell = (col, row) => {
     const c = ws[col + row];
-    return c ? (c.w || String(c.v || "")).trim() : "";
+    return c ? (c.w || String(c.v !== undefined ? c.v : "")).trim() : "";
   };
 
   const data = {
@@ -2876,22 +2876,44 @@ function parseQuotationRequestExcel(wb) {
     meetingExternal: "調整します",
     preChecks: [],
     contractType: "支援契約（Expert Labsの単独契約）",
-    dealType: "直販（エンドユーザ様-IBM）",
+    dealType: "直販（サブコン）",
     paymentPlan: "各月（標準）",
     monthlyReport: "無"
   };
 
+  const CHECKED_SYMBOLS = ["■", "◾️", "☑", "✔", "●"];
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
+
+  const ynMatchRules = [
+    { id: "yn1", key: "SOセールスにおけるSTGテクニカル支援依頼プロセス" },
+    { id: "yn2", key: "相談者名", isText: true },
+    { id: "yn3", key: "SAレビューやTCTを実施" },
+    { id: "yn4", key: "SAレビューやTCT以外の提案時に必要なレビュー" },
+    { id: "yn5", key: "提案前チェックリスト" },
+    { id: "yn6", key: "パフォーマンスの妥当性" },
+    { id: "yn7", key: "キャパシティーの妥当性" },
+    { id: "yn8", key: "適切なサポート条件" },
+    { id: "yn9", key: "制限/前提事項" },
+    { id: "yn10", key: "例外承認" },
+    { id: "yn11", key: "適切な保守契約" },
+    { id: "yn12", key: "適切な運用支援サービス契約" }
+  ];
+
   for (let R = range.s.r; R <= range.e.r; ++R) {
     const rowNum = R + 1;
+    const aVal = getCell('A', rowNum);
     const bVal = getCell('B', rowNum);
     const cVal = getCell('C', rowNum);
     const dVal = getCell('D', rowNum);
+    const eVal = getCell('E', rowNum);
+    const fVal = getCell('F', rowNum);
+    const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
 
+    // 1. Basic Info
     if (bVal.includes("記入日")) {
       const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
       if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
-      else data.createdDate = cVal;
+      else data.createdDate = cVal.replace(/20xx\/xx\/xx/i, new Date().toISOString().slice(0, 10));
     } else if (bVal.includes("記入者")) {
       data.author = cVal;
     } else if (bVal.includes("お客様名")) {
@@ -2903,7 +2925,7 @@ function parseQuotationRequestExcel(wb) {
       else data.bpCustomerNo = cVal;
     } else if (bVal.includes("DNSO")) {
       data.dnsoNo = cVal;
-    } else if (bVal.includes("Opportunity No") && bVal.includes("HW/SW")) {
+    } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
       data.oppNoProduct = cVal;
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
       data.oppNoService = cVal;
@@ -2915,16 +2937,30 @@ function parseQuotationRequestExcel(wb) {
       data.tsName = cVal;
     } else if (bVal.includes("その他案件関係者")) {
       data.otherMembers = cVal;
-    } else if (bVal.includes("Offering") || (rowNum >= 20 && rowNum <= 26 && cVal.includes("Expert Labs"))) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
-        data.offering = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+    }
+
+    // 2. Offering (rows 20 - 26)
+    if (rowNum >= 20 && rowNum <= 26) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援対象Offering")) data.offering = clean;
       }
-    } else if (rowNum >= 27 && rowNum <= 41) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑") || cVal.includes("✔") || cVal.includes("●")) {
-        const pName = cVal.replace(/^[■◾️☑✔●\s□]+/, '').replace(/（.*）/, '').trim();
-        if (pName && !data.products.includes(pName)) data.products.push(pName);
+    }
+
+    // 3. Product Selection (rows 27 - 41)
+    if (rowNum >= 27 && rowNum <= 41) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援対象製品を選択")) {
+          if (!data.products.includes(clean)) data.products.push(clean);
+        }
       }
-    } else if (bVal.includes("サービス期間")) {
+    }
+
+    // 4. Service Content (rows 42 - 52)
+    if (bVal.includes("サービス期間")) {
       const parts = cVal.split(/～|~/);
       if (parts.length >= 1) {
         const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
@@ -2953,26 +2989,86 @@ function parseQuotationRequestExcel(wb) {
     } else if (bVal.includes("サービス除外事項")) {
       data.serviceExclusions = cVal;
     } else if (bVal.includes("機密情報取扱い")) {
-      if (cVal.includes("有り") || cVal.includes("■有り") || cVal.includes("◾️有り")) data.confidential = "有り";
-      else data.confidential = "無し";
-      data.confidentialNote = dVal;
-    } else if (bVal.includes("社内関係者との打ち合わせ") || bVal.includes("社内")) {
-      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingInternal = "調整します";
-      else if (cVal.includes("不要")) data.meetingInternal = "不要";
-    } else if (bVal.includes("社外関係者との打ち合わせ") || bVal.includes("社外")) {
-      if (cVal.includes("調整します") || cVal.includes("■") || cVal.includes("◾️")) data.meetingExternal = "調整します";
-      else if (cVal.includes("不要")) data.meetingExternal = "不要";
-    } else if (bVal.includes("ご提供形態") || (rowNum >= 74 && rowNum <= 78)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.contractType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-    } else if (bVal.includes("契約形態") || (rowNum >= 79 && rowNum <= 83)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.dealType = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-    } else if (bVal.includes("支払い計画") || (rowNum >= 84 && rowNum <= 87)) {
-      if (cVal.includes("■") || cVal.includes("◾️") || cVal.includes("☑")) data.paymentPlan = cVal.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-    } else if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
-      if (cVal.includes("■有") || cVal.includes("◾️有") || cVal.includes("☑有") || cVal === "有") data.monthlyReport = "有";
-      else data.monthlyReport = "無";
+      if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "有り") || cVal.includes(s + " 有り")) || cVal.includes("■有り") || cVal.includes("◾️有り")) {
+        data.confidential = "有り";
+      } else if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "無し") || cVal.includes(s + " 無し")) || cVal.includes("■無し") || cVal.includes("◾️無し")) {
+        data.confidential = "無し";
+      } else if (cVal.includes("有り")) {
+        data.confidential = "有り";
+      } else {
+        data.confidential = "無し";
+      }
+      if (dVal && !dVal.includes("機密保持契約締結情報")) data.confidentialNote = dVal;
+    } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
+      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
+        data.meetingInternal = "不要";
+      } else {
+        data.meetingInternal = "調整します";
+      }
+    } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
+      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
+        data.meetingExternal = "不要";
+      } else {
+        data.meetingExternal = "調整します";
+      }
+    }
+
+    // 5. Pre-Checks (rows 53 - 71)
+    if (rowNum >= 54 && rowNum <= 71) {
+      ynMatchRules.forEach(rule => {
+        if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
+          let ynVal = "";
+          const candidates = [dVal, eVal, fVal, cVal];
+          for (let cand of candidates) {
+            const up = cand.toUpperCase().trim();
+            if (up === "Y" || up === "N" || up === "N/A") {
+              ynVal = up;
+              break;
+            }
+          }
+          const noteVal = rule.isText ? (cVal || dVal || eVal) : (eVal || fVal || "");
+          const existing = data.preChecks.find(p => p.id === rule.id);
+          if (!existing) {
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal });
+          } else {
+            if (ynVal) existing.yn = ynVal;
+            if (noteVal) existing.note = noteVal;
+          }
+        }
+      });
+    }
+
+    // 6. Contract Info (rows 72 - 91)
+    if (rowNum >= 74 && rowNum <= 78) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支援のご提供形態")) data.contractType = clean;
+      }
+    }
+    if (rowNum >= 79 && rowNum <= 83) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("契約形態を選択")) data.dealType = clean;
+      }
+    }
+    if (rowNum >= 84 && rowNum <= 87) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
+        const cell = cVal || bVal;
+        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
+        if (clean && !clean.includes("支払い計画を選択")) data.paymentPlan = clean;
+      }
+    }
+    if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s + "有") || rowStr.includes(s + " 有")) || rowStr.includes("■有") || rowStr.includes("◾️有")) {
+        data.monthlyReport = "有";
+      } else {
+        data.monthlyReport = "無";
+      }
     }
   }
+
   return data;
 }
 
