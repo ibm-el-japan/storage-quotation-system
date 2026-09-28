@@ -418,6 +418,36 @@ function loadContextState(){
     }
     if(rawReq) {
       const req = JSON.parse(rawReq);
+      let sYear = 2026, sMonth = 4, pMonths = 12;
+      if (req.startDate) {
+        const m = req.startDate.match(/^(\d{4})[-/](\d{1,2})/);
+        if (m) { sYear = parseInt(m[1]); sMonth = parseInt(m[2]); }
+      }
+      if (req.startDate && req.endDate) {
+        const d1 = new Date(req.startDate);
+        const d2 = new Date(req.endDate);
+        pMonths = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+      }
+
+      const kosuObj = {};
+      if (req.workload) {
+        kosuObj["des1"] = { values: [req.workload.design || 0] };
+        kosuObj["bld2"] = { values: [req.workload.build || 0] };
+        kosuObj["tst3"] = { values: [req.workload.test || 0] };
+        kosuObj["doc1"] = { values: [req.workload.doc || 0] };
+        kosuObj["qa1"]  = { values: [req.workload.qa || 0] };
+        kosuObj["mtg1"] = { values: [req.workload.pm || 0] };
+      }
+
+      const travelList = [];
+      if (req.otherCost) {
+        const oc = req.otherCost;
+        const placeName = req.workLocationDetail || req.workLocation || "現地オンサイト";
+        if (oc.trips > 0) travelList.push({ type: "交通費", place: placeName, unit: oc.tripUnit || 28000, qty: 1, cnt: oc.trips });
+        if (oc.stays > 0) travelList.push({ type: "宿泊費", place: placeName, unit: oc.stayUnit || 10000, qty: 1, cnt: oc.stays });
+        if (oc.allowanceUnit > 0) travelList.push({ type: "出張手当", place: placeName, unit: oc.allowanceUnit, qty: 1, cnt: oc.stays || oc.trips });
+      }
+
       stateData = {
         version: 4,
         basic: {
@@ -426,14 +456,16 @@ function loadContextState(){
           laborRate: 17600,
           contingency: 0.10,
           gp: 0.36,
-          startYear: 2026,
-          startMonth: 4,
-          periodMonths: 12
+          startYear: sYear,
+          startMonth: sMonth,
+          periodMonths: pMonths
         },
         oppNoProduct: req.oppNoProduct || "006gR0000045s0hQAA",
         oppNoService: req.oppNoService || "006gR000005I1M9QAK",
         salesName: req.salesName || "営業担当",
         tsName: req.tsName || "TS担当",
+        kosuData: kosuObj,
+        travelRows: travelList,
         requestFormData: req
       };
       initDocsFromState();
