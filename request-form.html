@@ -511,13 +511,13 @@
       <div class="form-row">
         <label class="field-label">サービス提供場所（支援作業実施場所）<span class="req">*</span></label>
         <div class="check-grid" style="grid-template-columns:repeat(auto-fill, minmax(180px, 1fr))">
-          <label class="check-item selected"><input type="radio" name="place" value="リモート" checked> <span>リモート中心</span></label>
-          <label class="check-item"><input type="radio" name="place" value="お客様先（オンサイト）"> <span>お客様先（オンサイト）</span></label>
-          <label class="check-item"><input type="radio" name="place" value="リモート＋オンサイト"> <span>リモート ＋ オンサイト</span></label>
-          <label class="check-item"><input type="radio" name="place" value="IBM社内"> <span>IBM社内</span></label>
+          <label class="check-item selected"><input type="radio" name="place" value="リモート" checked onchange="deriveOnsiteDaysFromLocationAndWorkload()"> <span>リモート中心</span></label>
+          <label class="check-item"><input type="radio" name="place" value="お客様先（オンサイト）" onchange="deriveOnsiteDaysFromLocationAndWorkload()"> <span>お客様先（オンサイト）</span></label>
+          <label class="check-item"><input type="radio" name="place" value="リモート＋オンサイト" onchange="deriveOnsiteDaysFromLocationAndWorkload()"> <span>リモート ＋ オンサイト</span></label>
+          <label class="check-item"><input type="radio" name="place" value="IBM社内" onchange="deriveOnsiteDaysFromLocationAndWorkload()"> <span>IBM社内</span></label>
         </div>
         <div style="margin-top:6px">
-          <input type="text" id="f-place-detail" placeholder="場所詳細・オンサイト時の最寄り駅（例: 東京都〇〇区 / 最寄り駅: 〇〇駅）" />
+          <input type="text" id="f-place-detail" placeholder="場所詳細・オンサイト時の最寄り駅（例: 東京都〇〇区 / 最寄り駅: 〇〇駅）" oninput="deriveOnsiteDaysFromLocationAndWorkload()" />
         </div>
         <p class="err-msg" id="e-place">支援場所を選択してください</p>
       </div>
@@ -977,48 +977,110 @@ function goStep(n){
 // (見積り関連情報整理.xlsx / ストレージ見積関連資料.pptx 準拠)
 // ============================================================
 function parseWorkDetailForHours(){
-  const text = document.getElementById("f-detail").value;
-  const matchDesign = text.match(/設計[^\d]*(\d+)\s*h/i);
-  const matchBuild = text.match(/構築[^\d]*(\d+)\s*h/i);
-  const matchTest = text.match(/テスト[^\d]*(\d+)\s*h/i);
-  const matchDoc = text.match(/ドキュメント[^\d]*(\d+)\s*h/i);
-  const matchQa = text.match(/QA[^\d]*(\d+)\s*h/i);
+  const text = document.getElementById("f-detail").value || "";
+  
+  // Extract all hours matching categories (handling multiple products/items)
+  let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
+  
+  // Match patterns like "・設計 (40h)" or "設計: 40時間" or "設計 40h"
+  const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
 
-  if(matchDesign) document.getElementById("f-h-design").value = parseInt(matchDesign[1], 10);
-  if(matchBuild) document.getElementById("f-h-build").value = parseInt(matchBuild[1], 10);
-  if(matchTest) document.getElementById("f-h-test").value = parseInt(matchTest[1], 10);
-  if(matchDoc) document.getElementById("f-h-doc").value = parseInt(matchDoc[1], 10);
-  if(matchQa) document.getElementById("f-h-qa").value = parseInt(matchQa[1], 10);
+  const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+  const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+  const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+  const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+  const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+  if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+  // If parsed from text, update fields
+  if(sumDesign > 0) document.getElementById("f-h-design").value = sumDesign;
+  if(sumBuild > 0) document.getElementById("f-h-build").value = sumBuild;
+  if(sumTest > 0) document.getElementById("f-h-test").value = sumTest;
+  if(sumDoc > 0) document.getElementById("f-h-doc").value = sumDoc;
+  if(sumQa > 0) document.getElementById("f-h-qa").value = sumQa;
+  if(sumPm > 0) document.getElementById("f-h-pm").value = sumPm;
+
+  // Auto-estimate onsite days based on work location and build/test hours
+  deriveOnsiteDaysFromLocationAndWorkload();
 
   autoCalcMonthlyPlan();
 }
 
+// Automatically derive onsite days & travel from location & hours
+function deriveOnsiteDaysFromLocationAndWorkload(){
+  const locRadio = document.querySelector('input[name="place"]:checked');
+  const locVal = locRadio ? locRadio.value : "";
+  const locDetail = document.getElementById("f-place-detail").value || "";
+  const hBuild = parseInt(document.getElementById("f-h-build").value, 10) || 0;
+  const hTest = parseInt(document.getElementById("f-h-test").value, 10) || 0;
+
+  const isOnsite = locVal.includes("オンサイト") || locVal.includes("お客様先") || locDetail.includes("県") || locDetail.includes("市") || locDetail.includes("駅");
+
+  if(isOnsite){
+    // Estimate onsite days: Build + Test hours / 8h per day (e.g. 64h -> 8 days)
+    const onsiteWorkHours = hBuild + hTest;
+    const estDays = Math.max(1, Math.round(onsiteWorkHours / 8));
+    
+    // Set default onsite days if not manually changed or is 0
+    const curOnsite = parseInt(document.getElementById("f-onsite-days").value, 10) || 0;
+    if(curOnsite === 0 || curOnsite === 8){
+      document.getElementById("f-onsite-days").value = estDays;
+    }
+  } else if(locVal === "リモート" && !locDetail){
+    document.getElementById("f-onsite-days").value = 0;
+    document.getElementById("f-trip-cnt").value = 0;
+    document.getElementById("f-stay-nights").value = 0;
+  }
+
+  autoCalcOtherCost();
+}
+
 function autoCalcOtherCost(){
   const onsiteDays = parseInt(document.getElementById("f-onsite-days").value, 10) || 0;
-  let tripCnt = parseInt(document.getElementById("f-trip-cnt").value, 10);
-  let stayNights = parseInt(document.getElementById("f-stay-nights").value, 10);
+  let tripInput = document.getElementById("f-trip-cnt");
+  let stayInput = document.getElementById("f-stay-nights");
 
-  // If trips/stays not manually set, derive from onsite days (移動回数は予備20%見込み)
-  if(onsiteDays > 0 && isNaN(tripCnt)){
-    tripCnt = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
-    document.getElementById("f-trip-cnt").value = tripCnt;
-  }
-  if(onsiteDays > 1 && isNaN(stayNights)){
-    stayNights = Math.max(0, onsiteDays - 1);
-    document.getElementById("f-stay-nights").value = stayNights;
+  // Rule from 見積り関連情報整理.xlsx / ストレージ見積関連資料.pptx:
+  // 移動回数は予備として20%程度を見込む (e.g. 2日オンサイト -> 1往復 * 1.2 = 1〜2回, 8日オンサイト -> 4往復 * 1.2 = 5回)
+  if(onsiteDays > 0){
+    const defaultTrips = Math.max(1, Math.round((onsiteDays * 0.5) * 1.2));
+    const defaultStays = Math.max(0, onsiteDays - 1);
+    
+    if(!tripInput.value || tripInput.value === "0"){
+      tripInput.value = defaultTrips;
+    }
+    if(!stayInput.value || stayInput.value === "0"){
+      stayInput.value = defaultStays;
+    }
+  } else {
+    if(tripInput.value === "" || tripInput.value === "1") tripInput.value = 0;
+    if(stayInput.value === "" || stayInput.value === "1") stayInput.value = 0;
   }
 
+  const tripCnt = parseInt(tripInput.value, 10) || 0;
+  const stayNights = parseInt(stayInput.value, 10) || 0;
   const tripUnit = parseInt(document.getElementById("f-trip-unit").value, 10) || 0;
   const stayUnit = parseInt(document.getElementById("f-stay-unit").value, 10) || 0;
   const allowanceUnit = parseInt(document.getElementById("f-allowance-type").value, 10) || 0;
 
-  const totalTrip = (tripCnt || 0) * tripUnit;
-  const totalStay = (stayNights || 0) * stayUnit;
-  const totalAllowance = (stayNights || tripCnt || 0) * allowanceUnit;
+  const totalTrip = tripCnt * tripUnit;
+  const totalStay = stayNights * stayUnit;
+  // If overnight allowance, multiplied by stay nights; if day trip middle/long distance, multiplied by trip count
+  const allowanceMultiplier = allowanceUnit >= 3200 ? stayNights : tripCnt;
+  const totalAllowance = allowanceMultiplier * allowanceUnit;
   const grandOtherCost = totalTrip + totalStay + totalAllowance;
 
-  document.getElementById("f-other-cost-total").textContent = `¥${grandOtherCost.toLocaleString()}`;
-  return { onsiteDays, tripCnt, stayNights, tripUnit, stayUnit, allowanceUnit, grandOtherCost };
+  document.getElementById("f-other-cost-total").textContent = `¥${grandOtherCost.toLocaleString()} (交通費:¥${totalTrip.toLocaleString()} / 宿泊費:¥${totalStay.toLocaleString()} / 手当:¥${totalAllowance.toLocaleString()})`;
+  return { onsiteDays, tripCnt, stayNights, tripUnit, stayUnit, allowanceUnit, grandOtherCost, totalTrip, totalStay, totalAllowance };
 }
 
 function autoCalcMonthlyPlan(){
@@ -1883,6 +1945,55 @@ function parseQuotationRequestExcel(wb) {
       } else {
         data.monthlyReport = "無";
       }
+    }
+  }
+
+  // Auto-parse workload and other costs directly from extracted workDetail, location, and dates
+  if (data.workDetail) {
+    let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
+    const text = data.workDetail;
+    const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+    const totalH = (sumDesign || 40) + (sumBuild || 40) + (sumTest || 24) + (sumDoc || 16) + (sumQa || 16) + (sumPm || 12);
+    data.workload = {
+      design: sumDesign || 40,
+      build: sumBuild || 40,
+      test: sumTest || 24,
+      doc: sumDoc || 16,
+      qa: sumQa || 16,
+      pm: sumPm || 12,
+      totalHours: totalH
+    };
+
+    const isOnsite = (data.workLocation && (data.workLocation.includes("オンサイト") || data.workLocation.includes("お客様先"))) ||
+                    (data.workLocationDetail && (data.workLocationDetail.includes("県") || data.workLocationDetail.includes("市") || data.workLocationDetail.includes("駅")));
+    if (isOnsite) {
+      const onsiteWorkHours = (sumBuild || 40) + (sumTest || 24);
+      const onsiteDays = Math.max(1, Math.round(onsiteWorkHours / 8));
+      const trips = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
+      const stays = Math.max(0, onsiteDays - 1);
+      const tripUnit = 28000;
+      const stayUnit = 10000;
+      const allowanceUnit = 4000;
+      const totalTrip = trips * tripUnit;
+      const totalStay = stays * stayUnit;
+      const totalAllowance = stays * allowanceUnit;
+      data.otherCost = {
+        onsiteDays, trips, stays, tripUnit, stayUnit, allowanceUnit,
+        totalTrip, totalStay, totalAllowance,
+        totalOtherCost: totalTrip + totalStay + totalAllowance
+      };
     }
   }
 
