@@ -457,6 +457,54 @@ function parseQuotationRequestExcel(wb) {
     }
   }
 
+  if (data.workDetail) {
+    let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
+    const text = data.workDetail;
+    const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+    const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
+    if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+
+    const totalH = (sumDesign || 40) + (sumBuild || 40) + (sumTest || 24) + (sumDoc || 16) + (sumQa || 16) + (sumPm || 12);
+    data.workload = {
+      design: sumDesign || 40,
+      build: sumBuild || 40,
+      test: sumTest || 24,
+      doc: sumDoc || 16,
+      qa: sumQa || 16,
+      pm: sumPm || 12,
+      totalHours: totalH
+    };
+
+    const isOnsite = (data.workLocation && (data.workLocation.includes("オンサイト") || data.workLocation.includes("お客様先"))) ||
+                    (data.workLocationDetail && (data.workLocationDetail.includes("県") || data.workLocationDetail.includes("市") || data.workLocationDetail.includes("駅")));
+    if (isOnsite) {
+      const onsiteWorkHours = (sumBuild || 40) + (sumTest || 24);
+      const onsiteDays = Math.max(1, Math.round(onsiteWorkHours / 8));
+      const trips = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
+      const stays = Math.max(0, onsiteDays - 1);
+      const tripUnit = 28000;
+      const stayUnit = 10000;
+      const allowanceUnit = 4000;
+      const totalTrip = trips * tripUnit;
+      const totalStay = stays * stayUnit;
+      const totalAllowance = stays * allowanceUnit;
+      data.otherCost = {
+        onsiteDays, trips, stays, tripUnit, stayUnit, allowanceUnit,
+        totalTrip, totalStay, totalAllowance,
+        totalOtherCost: totalTrip + totalStay + totalAllowance
+      };
+    }
+  }
+
   return data;
 }
 
