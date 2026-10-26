@@ -72,7 +72,7 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
 <div id="app">
   <header>
     <div class="top-row">
-      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.5.2</span></h1>
+      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.5.3</span></h1>
       <div><span style="font-size:12px;color:#94a3b8">Expert Labs Storage Division</span></div>
     </div>
     <p>Quotation Request 提出から Estimated Cost 試算、S-LINK / 仕様書・別紙の自動生成までを一気通貫で自動化する独立システム</p>
@@ -174,7 +174,7 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
         <div class="tstep">
           <span class="tstep-num">STEP 4</span>
           <div class="tstep-title">work/ へ保存・履歴記録</div>
-          <div class="tstep-desc">「💾 保存 → GitHubへ」または「☁️ API保存」で <code>work/</code> へ保存。<code>WORK_LOG.md</code> に記録されます。</div>
+          <div class="tstep-desc">「💾 保存 → GitHubへ」または「☁️ API保存」で、<strong>非公開リポジトリ</strong> <code>ibmkevin/storage-quotation-work</code> の <code>work/</code> へ保存。顧客情報を含むため公開リポジトリには置きません。</div>
         </div>
       </div>
 
@@ -182,8 +182,8 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
         <a href="https://github.com/ibm-el-japan/storage-quotation-system" target="_blank" class="qlink">
           🐙 GitHub 専用リポジトリ (storage-quotation-system)
         </a>
-        <a href="https://github.com/ibm-el-japan/storage-quotation-system/tree/main/work" target="_blank" class="qlink outline">
-          📁 案件作業ファイルフォルダ (work/)
+        <a href="https://github.com/ibmkevin/storage-quotation-work/tree/main/work" target="_blank" class="qlink outline">
+          📁 案件作業ファイル (非公開リポジトリ・要招待)
         </a>
         <a href="https://github.com/ibm-el-japan/storage-quotation-system/blob/main/WORK_LOG.md" target="_blank" class="qlink outline">
           📝 変更履歴 (WORK_LOG.md)
@@ -567,7 +567,7 @@ function parseQuotationRequestExcel(wb) {
     }
   });
   data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
-  // 反映元セル: 値が入っている項目ごとに、依頼シート上のセル番地(例: C44)を保持する (v2.5.2)
+  // 反映元セル: 値が入っている項目ごとに、依頼シート上のセル番地(例: C44)を保持する (v2.5.3)
   data.cells = {};
   Object.keys(refs).forEach(k => {
     if (isEmptyVal(data[k])) return;

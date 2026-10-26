@@ -1,5 +1,8 @@
 # Storage Quotation System — 案件作業ファイル
 
+> **注意（v2.5.3〜）**: このリポジトリ（`ibm-el-japan/storage-quotation-system`）は**公開**です。顧客情報を含む案件ファイルは置かないでください。
+> 案件ファイルは非公開リポジトリ **`ibmkevin/storage-quotation-work`**（要招待）の `work/` に保存します。ツールの「保存 → GitHubへ」「GitHubから開く」は自動的にそちらを使います。
+
 本フォルダ（`work/`）は、Storage Quotation System（見積もり作成ツール）で作成した案件別の見積もり作業用 HTML ファイルをチームで共有・保管するためのディレクトリです。
 
 ---

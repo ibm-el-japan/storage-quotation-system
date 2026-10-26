@@ -1,6 +1,6 @@
 # Storage Quotation System — プロジェクト文脈 (引継ぎ・改善用)
 
-最終更新: v2.5.2 (2026-10)。継続的な改善のために、ここまでの要件・決定事項・既知の課題を1か所にまとめる。
+最終更新: v2.5.3 (2026-10)。継続的な改善のために、ここまでの要件・決定事項・既知の課題を1か所にまとめる。
 詳細な分析・突合表・テスト結果は [`ANALYSIS_REVIEW_2026-10.md`](ANALYSIS_REVIEW_2026-10.md)、変更履歴は [`../WORK_LOG.md`](../WORK_LOG.md)、
 Bob スキル本体は [`skill/SKILL.md`](skill/SKILL.md)。
 
@@ -37,6 +37,7 @@ IBM Expert Labs Japan（ストレージ）の見積業務を自動化する。
 | v2.4.0 | Phase2: スライド「EL ストレージにおけるInput、Output」2–5 と「Cost Plan Sheet作成ツール」13–18 を反映。項目名統一、`cps-input.html` 追加 |
 | v2.5.0 | Phase3: 依頼記入シート(テンプレート)の完全反映、グレー=参考例/黒=実入力の判別、取得元の文字色表示 |
 | v2.5.1 | Labor単価を年度×Band表（2026〜2029、基準 B8）へ更新。既定は開始年のB8に連動、手入力は保持。工数/交通費タブに取得元表示、打合せ回数→定例打ち合わせ工数 |
+| v2.5.3 | 案件ファイルの保存先を非公開リポジトリ `ibmkevin/storage-quotation-work` へ変更。管理者パスワードを平文からソルト付き SHA-256 に変更 |
 | v2.5.2 | 依頼シートの反映元セル（例: C44）を赤字で表示（基本情報・期間・チェックシート・工数・交通費・取込状況パネル）。`data.cells` / `preChecks[].cell` |
 
 ## 5. Phase3 (v2.5.0) の要点
@@ -68,7 +69,7 @@ IBM Expert Labs Japan（ストレージ）の見積業務を自動化する。
 - [ ] 見積詳細入力ツールの正式JSONスキーマが不明。現在の `cps-input/1` は暫定仕様。RunExcel 連携は範囲外。
 - [ ] 事前確認事項12項目は取込状況パネルと依頼フォームに表示。概算見積の入力欄としては持たない。必要なら追加。
 - [ ] 支払い計画（R10）は営業確認が前提。CPS登録後に別紙へ反映するフローの運用確認。
-- [ ] アプリ内 GitHub 連携 (`GH_REPO_OWNER` / `GH_REPO_NAME`) は公開リポジトリ `ibm-el-japan/storage-quotation-system` を指す。リポジトリ名・公開範囲の整理が必要。
+- [x] アプリ内 GitHub 連携 (`GH_REPO_OWNER` / `GH_REPO_NAME`) は v2.5.3 で非公開リポジトリ `ibmkevin/storage-quotation-work` に変更済み。利用者には同リポジトリへの招待（Write）と PAT（repo スコープ）が必要。
 - [ ] 顧客データ（`work/` 配下の案件ファイル、CPS xlsm の単価表）は **公開リポジトリへ置かない**。
 
 ## 8. Labor単価 (v2.5.1)
@@ -79,3 +80,13 @@ CPS の Hourly Recovery Cost（`CostPlanSheetTPS2026v1.xlsm`）は別の単価�
 - テスト用の黒字版テンプレートは `tests/make_black_template.py` で生成（`tests/tpl_black.xlsx`、Git管理外）。
 - BSD `sed -i` が使えない環境のため、一括置換は python を使った。
 - ページ先頭の `let` 変数は jsdom の `window` に出ない。`w.eval('...')` で読む。
+
+## 9. GitHub 連携と管理者パスワード (v2.5.3)
+- アプリ本体（公開）: `ibm-el-japan/storage-quotation-system`（GitHub Pages）。顧客データ・CPS 単価表（xlsm）は置かない。
+- 案件ファイル（非公開）: `ibmkevin/storage-quotation-work` の `work/`。ツールの「保存 → GitHubへ」「GitHubから開く」「API保存」はここだけを使う。PAT は `repo` スコープ、リポジトリへの招待が必要。
+- 非公開リポジトリのため、PAT なしでは一覧取得できない（取得時に入力を促す）。
+- 管理者パスワードは `quotation-generator.html` に **ハッシュのみ** 保持（`ADMIN_PW_SALT` + `ADMIN_PW_SHA256`）。平文は置かない。
+  - 変更手順: `python3 -c "import hashlib;print(hashlib.sha256(('sqs-admin-v1:'+'新パスワード').encode()).hexdigest())"` の出力を `ADMIN_PW_SHA256` に設定。
+  - これは画面の出し分け用。実際のアクセス制御は GitHub の権限と PAT。ハッシュは公開されるため、強い（長いランダムな）パスワードにする。
+  - 新パスワードはユーザーに別途伝達済み。リポジトリやドキュメントには記載しない。
+- 旧 `work/`（公開リポジトリ）には案件ファイルが無いことを確認済み（README のみ）。

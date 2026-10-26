@@ -41,7 +41,7 @@ Storage Sales / Tech Sales による依頼入力から、Expert Labs による�
 - **取得元の文字色(v2.5.0)**: 赤＝依頼シート(黒字の実入力)、グレー斜体＝依頼シート(グレーの参考記入例)、青＝システムが決定・補完した値、黒＝手入力。入力欄・チェックリスト・取込状況パネル・S-LINK項目・依頼フォームで共通。グレー/黒はセルのフォント色から自動判別し、お客様向け出力には色を含めない。
 - **出張費アシスタント(v2.3.0)**: 事業所・距離区分(短/中/遠、`出張判定図.pdf`で判定)・日帰り/宿泊・人数から、構築+テスト工数ベースで訪問回数・宿泊数・出張手当を算定(予備20%)。人数・交通費単価は手入力。
 - 前バージョンとのスナップショット比較を行う **Visual Diff（差分表示モーダル）** を完備。
-- GitHub `work/` フォルダ連携（案件作業ファイルの保存・読込）に対応。
+- GitHub `work/` フォルダ連携（案件作業ファイルの保存・読込）に対応。**案件ファイルは非公開リポジトリ `ibmkevin/storage-quotation-work`（要招待）に保存し、公開リポジトリには置きません**（v2.5.3）。
 
 ### 5. CPS入力（見積詳細）(`cps-input.html`) — v2.4.0
 - **別メニュー(R8)**: S-LINK・仕様書生成とは独立。概算見積の「作成・出力」→「CPS入力へ渡す」で、期間・承認GP%・Risk Level(Contingency率から最近似)・月別工数(TEL内)・Other Cost・概算見積り価格を引き継ぐ。
@@ -59,7 +59,7 @@ Storage Sales / Tech Sales による依頼入力から、Expert Labs による�
 
 ---
 
-## 👥 チーム共同編集フロー (`work/` フォルダ)
+## 👥 チーム共同編集フロー (非公開リポジトリ `ibmkevin/storage-quotation-work` の `work/`)
 
 1. [ポータル](https://ibm-el-japan.github.io/storage-quotation-system/) または [概算見積シート](https://ibm-el-japan.github.io/storage-quotation-system/quotation-generator.html) を開きます。
 2. 「**📂 GitHubから開く**」で `work/` フォルダ内の案件作業ファイルを選択して読み込みます。
@@ -83,7 +83,7 @@ ibm-el-japan/storage-quotation-system
 ├── 出張判定図.pdf               ← 出張距離区分の判定図(参照用)
 ├── WORK_LOG.md                  ← 案件作業ログ & システム更新記録
 ├── README.md                    ← システム全体説明書 (本書)
-└── work/                        ← チームの案件作業ファイル置き場
+└── work/                        ← （公開側は説明のみ。実際の案件ファイルは非公開リポジトリ ibmkevin/storage-quotation-work に保存）
     └── README.md
 ```
 
