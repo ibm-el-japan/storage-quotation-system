@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>見積詳細入力ツール連携 (CPS Input) — Expert Labs Storage</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.6;color:#1e293b;background:#f1f5f9;padding:16px 16px 80px}
+.container{max-width:1250px;margin:0 auto}
+.top-nav{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;font-weight:600}
+.top-nav a{color:#1e3a8a;text-decoration:none}.top-nav a:hover{text-decoration:underline}
+.header{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);color:#fff;border-radius:8px 8px 0 0;padding:18px 26px}
+.header h1{font-size:18px}.header p{font-size:12px;color:#cbd5e1;margin-top:4px}
+.ver{font-size:11px;background:#3b82f6;border-radius:10px;padding:2px 9px;margin-left:8px}
+.layout{display:flex;gap:0;background:#fff;border:1px solid #cbd5e1;border-radius:0 0 8px 8px;min-height:520px}
+.side{width:230px;flex-shrink:0;background:#f8fafc;border-right:1px solid #cbd5e1;padding:14px 0}
+.side .st{display:flex;gap:8px;align-items:center;padding:8px 16px;cursor:pointer;font-size:13px;color:#334155;border-left:3px solid transparent}
+.side .st:hover{background:#e2e8f0}.side .st.active{background:#fff;border-left-color:#1e3a8a;font-weight:700;color:#1e3a8a}
+.side .st .n{width:20px;height:20px;border-radius:50%;background:#cbd5e1;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.side .st.done .n{background:#15803d}
+.prog{padding:10px 16px;font-size:12px;color:#64748b}
+.bar{height:6px;background:#e2e8f0;border-radius:3px;margin-top:4px}.bar>i{display:block;height:100%;background:#15803d;border-radius:3px}
+.main{flex:1;padding:22px 26px;min-width:0}
+.main h2{font-size:16px;color:#0f172a;border-bottom:2px solid #1e3a8a;padding-bottom:6px;margin-bottom:12px}
+.hint{font-size:12px;color:#64748b;margin-bottom:10px}
+.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.fld label{display:block;font-size:11px;font-weight:700;color:#64748b;margin-bottom:2px}
+input,select{font-family:inherit;font-size:13px;border:1px solid #cbd5e1;border-radius:4px;padding:5px 8px;width:100%;background:#fff}
+input:focus,select:focus{outline:none;border-color:#2563eb}
+.tw{overflow-x:auto;margin-bottom:10px}
+table{border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #cbd5e1;padding:3px 4px;white-space:nowrap}
+th{background:#f1f5f9;font-weight:700;text-align:center}
+td input{padding:3px 4px;font-size:12px}
+td.sub,th.sub{background:#eef6ff;font-weight:700;text-align:right;padding:3px 8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:5px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;color:#fff;background:#1e3a8a}
+.btn:hover{opacity:.88}.btn.s{background:#64748b}.btn.g{background:#15803d}.btn.v{background:#7c3aed}.btn.d{background:#dc2626;padding:3px 8px;font-size:11px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.badge{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.b-tool{background:#ede9fe;color:#6d28d9}.b-auto{background:#dcfce7;color:#166534}.b-man{background:#e2e8f0;color:#475569}.b-tmpl{background:#fef3c7;color:#92400e}
+.sum td{padding:4px 10px}.sum td.v{text-align:right;font-weight:700}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-nav">
+    <a href="index.html">← システムポータルへ戻る</a>
+    <a href="quotation-generator.html">📊 概算見積シート</a>
+    <a href="slink-spec-generator.html">📑 S-LINK / 仕様書生成</a>
+  </div>
+  <div class="header">
+    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.1</span></h1>
+    <p>Cost Plan Sheet（CostPlanSheetTPS2026v1）の入力ツール。概算見積シートの出力を入力として引き継ぎ、CPS作成用 JSON を出力します（スライド14〜18）。S-LINK・仕様書生成とは独立した別メニューです。</p>
+  </div>
+  <div class="layout">
+    <div class="side" id="side"></div>
+    <div class="main" id="main"></div>
+  </div>
+</div>
+<script>
+// ===== CostPlanSheetTPS2026v1 のパラメーター (パラメーターシートより) =====
+const TEMPLATE = 'CostPlanSheetTPS2026v1';
+const BASE_YEAR = 2026;           // パラメーター!B2 (インフレ率適用基準年)
+const C_INF = 1.03;               // パラメーター!C20 Cost Infla率
+const BANDS = [['Band 6',13100],['Band 7',16400],['Band 8',18600],['Band 9',21800],['Band 10',25200],['Executive',25200]];
+const RISK = [[1,0.04,'Low'],[2,0.05,'Low'],[3,0.07,'Low'],[4,0.09,'Medium'],[5,0.14,'Medium'],[6,0.18,'Medium'],[7,0.22,'High'],[8,0.26,'High'],[9,0.30,'High']];
+// 見積詳細シートの行数上限
+const LIMITS = {telIn:10, telOut:20, other:10, sso:10, sub:10, h2:15, h2o:10};
+const STEPS = ['基本情報','TEL 内コスト','TEL 外コスト','Other Cost','SSO','連結子会社','Harmony-2 子会社','H-2 Other Cost','サマリー・出力'];
+const SECTIONS = {
+  telIn:  {step:1, label:'TEL 内コスト', kind:'hourly', band:true,  note:'TEL メンバーの名前（役割）, Band, 工数(時間)を入力。Hourly Cost はパラメーターシートの Recovery Rate（Band6: ¥13,100 / Band7: ¥16,400 / Band8: ¥18,600 / Band9: ¥21,800 / Band10・Executive: ¥25,200）。'},
+  telOut: {step:2, label:'TEL 外コスト', kind:'hourly', band:false, note:'TEL 外(IBM Consulting、LAB 等)メンバーの名前（役割）, 単価(Hourly), 工数(時間)を入力。単価の確認方法はパラメーターシート参照。'},
+  other:  {step:3, label:'Other Cost',   kind:'amount', note:'Non-Labor 部門または費目名称（交通費など）を明記し、金額(円)を月別に入力（IBMからの Harmony-2 対象子会社出向社員経費を含む）。'},
+  sso:    {step:4, label:'SSO',          kind:'monthly', note:'SSO(NI+Cなど）の名称, 単価（Monthly Cost・任意）, 工数（人月）を会社単位で入力。'},
+  sub:    {step:5, label:'連結子会社',   kind:'monthly', note:'エクサ、コベルコシステムなど連結対象子会社の名称, 単価（Monthly Cost・任意）, 工数（人月）を会社単位で入力。'},
+  h2:     {step:6, label:'Harmony-2 対象子会社', kind:'hourly', band:true, note:'Harmony-2対象子会社（ISC-J, ISE等）の名称, 単価（Hourly）, 工数（時間）を会社単位で入力。'},
+  h2o:    {step:7, label:'Harmony-2 対象子会社 Other Cost', kind:'amount', note:'Harmony-2対象子会社の名称, 費目名称（交通費など）と金額(円)を月別に入力（IBMからの出向社員経費は除く）。'}
+};
+const KEYS = Object.keys(SECTIONS);
+
+// ===== 状態 =====
+let S = null, cur = 0, visited = {};
+const fmt = n => Number(n || 0).toLocaleString('ja-JP');
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+const parseIso = s => { const m = String(s || '').match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; };
+
+function emptyRow(key) {
+  const sec = SECTIONS[key], n = months().length;
+  const base = {name: '', src: 'manual'};
+  if (sec.kind === 'hourly') return Object.assign(base, {band: sec.band ? 'Band 8' : '', hourly: sec.band ? 18600 : 0, hours: new Array(n).fill(0)});
+  if (sec.kind === 'monthly') return Object.assign(base, {monthly: 0, units: new Array(n).fill(0)});
+  return Object.assign(base, {amounts: new Array(n).fill(0)});
+}
+function defaultState() {
+  const s = {basic: {customerName:'', projectName:'', oppNo:'', oo:'', pptl:'', pjtl:'', start:'', end:'', gp:30, risk:2, fromEstimate:false},
+    price: 0, priceSrc: 'manual', payment: {mode:'monthly', unit:10000, confirmed:false, rows:[]}, src: {}};
+  KEYS.forEach(k => s[k] = []);
+  return s;
+}
+
+// 期間 → 月リスト
+function months() {
+  const a = parseIso(S.basic.start), b = parseIso(S.basic.end), out = [];
+  if (!a || !b || b < a) return out;
+  let y = a.getUTCFullYear(), m = a.getUTCMonth() + 1;
+  while ((y < b.getUTCFullYear() || (y === b.getUTCFullYear() && m <= b.getUTCMonth() + 1)) && out.length < 36) {
+    out.push({y, m}); m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+// 見積詳細シートの Inflation Rate: =POWER(CInf, IF(YEAR<基準年, 0, YEAR-基準年))
+const factor = i => { const y = months()[i].y; return y < BASE_YEAR ? 1 : Math.pow(C_INF, y - BASE_YEAR); };
+function cellCost(key, row, i) {
+  const k = SECTIONS[key].kind;
+  const v = k === 'hourly' ? (+row.hourly || 0) * (+row.hours[i] || 0)
+          : k === 'monthly' ? (+row.monthly || 0) * (+row.units[i] || 0) : (+row.amounts[i] || 0);
+  return v * factor(i);
+}
+const rowCost = (key, row) => months().reduce((t, _, i) => t + cellCost(key, row, i), 0);
+const secMonth = (key, i) => S[key].reduce((t, r) => t + cellCost(key, r, i), 0);
+const secTotal = key => S[key].reduce((t, r) => t + rowCost(key, r), 0);
+const contRate = () => (RISK.find(r => r[0] === +S.basic.risk) || [0, 0])[1];
+function totals() {
+  const t = {}; KEYS.forEach(k => t[k] = secTotal(k));
+  t.internal = t.telIn + t.telOut;                                   // 3. 社内コスト合計 (1+2)
+  t.cost = t.internal + t.other + t.sso + t.sub + t.h2 + t.h2o;      // 9. コスト合計
+  t.cont = t.cost * contRate();                                      // 10. Contingency
+  t.costCont = t.cost + t.cont;                                      // 11. コスト合計(Cont含む)
+  t.price = +S.price || 0;
+  t.gpAmt = t.price ? t.price - t.cost : 0;                          // サービスGP額（Contを含まない）
+  t.gpPct = t.price ? 1 - t.cost / t.price : 0;
+  t.apprGp = t.price ? 1 - t.costCont / t.price : 0;                 // 承認GP%（Contを含む）
+  t.refPrice = (1 - S.basic.gp / 100) > 0 ? t.costCont / (1 - S.basic.gp / 100) : 0; // 仮売上(POC) = コスト(Cont含)/(1-承認GP%)
+  return t;
+}
+
+// ===== 概算見積シートからの引継ぎ =====
+function loadHandoff() {
+  S = defaultState();
+  let h = null;
+  try { h = JSON.parse(sessionStorage.getItem('STORAGE_QUOTATION_CPS_INPUT') || 'null'); } catch (e) {}
+  if (!h) return false;
+  const b = S.basic;
+  ['customerName','projectName','oppNo','oo','pptl','pjtl','start','end'].forEach(k => { if (h[k]) b[k] = h[k]; });
+  if (h.gp != null) b.gp = Math.round(h.gp * 1000) / 10;
+  if (h.contingency != null) {            // Contingency率に最も近い Risk Level
+    let best = RISK[0]; RISK.forEach(r => { if (Math.abs(r[1] - h.contingency) < Math.abs(best[1] - h.contingency)) best = r; });
+    b.risk = best[0];
+  }
+  b.fromEstimate = true;
+  if (h.price) { S.price = h.price; S.priceSrc = 'auto'; }
+  const n = months().length;
+  const fit = a => { const o = new Array(n).fill(0); (a || []).forEach((v, i) => { if (i < n) o[i] = v; }); return o; };
+  if (h.monthlyHours) {
+    const r = emptyRow('telIn'); r.name = h.telName || 'Expert Labs Storage'; r.band = 'Band 8'; r.hourly = 18600; r.hours = fit(h.monthlyHours); r.src = 'tool';
+    S.telIn.push(r);
+  }
+  (h.otherCosts || []).forEach(o => { const r = emptyRow('other'); r.name = o.name; r.amounts = fit(o.amounts); r.src = 'tool'; S.other.push(r); });
+  if (h.paymentPlan && /一回|1回/.test(h.paymentPlan)) S.payment.mode = 'once';
+  return true;
+}
+
+// ===== 支払計画の既定値 (スライド18) — Tool算出・編集可・要営業確認 =====
+// サンプルCPS(支払計画シート)に合わせ、請求日=各サービス月の月末、支払期日=請求日+30日。金額は提示額を均等配分(端数は最終回)。
+function genPayment() {
+  const P = S.payment, ms = months(), price = +S.price || 0;
+  if (!ms.length || !price) { P.rows = []; return; }
+  const bill = m => new Date(Date.UTC(m.y, m.m, 0));                  // 月末
+  const plus30 = d => new Date(d.getTime() + 30 * 86400000);
+  const list = P.mode === 'once' ? [ms[ms.length - 1]] : ms;
+  const unit = Math.max(1, +P.unit || 1);
+  const each = P.mode === 'once' ? price : Math.floor(price / list.length / unit) * unit;
+  let acc = 0;
+  P.rows = list.map((m, i) => {
+    const amt = i === list.length - 1 ? price - acc : each; acc += amt;
+    return {bill: iso(bill(m)), due: iso(plus30(bill(m))), amount: amt};
+  });
+}
+const payTotal = () => S.payment.rows.reduce((t, r) => t + (+r.amount || 0), 0);
+
+// ===== 描画 =====
+function renderSide() {
+  const done = STEPS.slice(0, 8).filter((_, i) => visited[i]).length;
+  document.getElementById('side').innerHTML = STEPS.map((s, i) =>
+    '<div class="st' + (i === cur ? ' active' : '') + (visited[i] && i < 8 ? ' done' : '') + '" onclick="go(' + i + ')"><span class="n">' + (visited[i] && i < 8 ? '✓' : i) + '</span>' + s + '</div>').join('') +
+    '<div class="prog">進捗: ' + done + '/8 ステップ完了<div class="bar"><i style="width:' + (done / 8 * 100) + '%"></i></div></div>' +
+    '<div class="prog">テンプレート: ' + TEMPLATE + '</div>' +
+    '<div class="btns" style="padding:0 16px"><label class="btn s" style="font-size:11px">📂 JSONを読み込む<input type="file" accept=".json" style="display:none" onchange="importJson(this)"></label></div>';
+}
+function go(i) { visited[cur] = true; cur = i; if (i === 8 && !S.payment.rows.length) genPayment(); render(); }
+function render() {
+  renderSide();
+  const m = document.getElementById('main');
+  m.innerHTML = cur === 0 ? stepBasic() : cur === 8 ? stepSummary() : stepTable(KEYS[cur - 1]);
+  updateCalc();
+}
+const badge = s => s === 'tool' ? '<span class="badge b-tool">Tool</span>' : s === 'auto' ? '<span class="badge b-auto">Auto</span>' : s === 'tmpl' ? '<span class="badge b-tmpl">Template</span>' : '<span class="badge b-man">Manual</span>';
+function navBtns() {
+  return '<div class="btns">' + (cur > 0 ? '<button class="btn s" onclick="go(' + (cur - 1) + ')">← 戻る</button>' : '') +
+    (cur < 8 ? '<button class="btn" onclick="go(' + (cur + 1) + ')">次へ →</button>' : '') +
+    (cur > 0 && cur < 8 ? '<button class="btn d" style="padding:7px 14px;font-size:12.5px" onclick="clearSec()">クリア</button>' : '') + '</div>';
+}
+function stepBasic() {
+  const b = S.basic, f = (id, label, v, extra) => '<div class="fld"><label>' + label + '</label><input id="' + id + '" value="' + esc(v) + '" ' + (extra || '') + ' oninput="setBasic(\'' + id + '\',this.value)"></div>';
+  const n = months().length, yrs = n ? new Set(months().map(x => x.y)).size : 0;
+  return '<h2>0. 基本情報</h2>' +
+    (b.fromEstimate ? '<div class="warn" style="background:#f0fdf4;border-color:#86efac;color:#166534">概算見積シートの出力を入力として引き継ぎました。<span class="badge b-tool">Tool</span> / <span class="badge b-auto">Auto</span> の値は内容を確認し、必要に応じて編集してください。</div>'
+      : '<div class="warn">概算見積シートからの引継ぎデータがありません。手入力するか、<a href="quotation-generator.html">概算見積シート</a>の「作成・出力」タブから「CPS入力へ渡す」を実行してください。</div>') +
+    '<div class="grid2">' + f('customerName','お客様名', b.customerName) + f('projectName','プロジェクト名（サービス名）', b.projectName) +
+    f('oppNo','Opp No.', b.oppNo) + f('oo','OO（Opportunity Owner の Notes ID）', b.oo) + f('pptl','PPTL（Notes ID）', b.pptl) + f('pjtl','PJTL（Notes ID）', b.pjtl) +
+    '<div class="fld"><label>サービス期間（開始）' + badge(b.fromEstimate ? 'auto' : 'manual') + '</label><input type="date" id="start" value="' + esc(b.start) + '" onchange="setBasic(\'start\',this.value,true)"></div>' +
+    '<div class="fld"><label>サービス期間（終了）</label><input type="date" id="end" value="' + esc(b.end) + '" onchange="setBasic(\'end\',this.value,true)"></div>' +
+    '<div class="fld"><label>承認GP%（試算用）</label><input type="number" id="gp" step="0.1" value="' + esc(b.gp) + '" oninput="setBasic(\'gp\',this.value)"></div>' +
+    '<div class="fld"><label>リスクレベル（→ Contingency率）</label><select id="risk" onchange="setBasic(\'risk\',this.value)">' +
+    RISK.map(r => '<option value="' + r[0] + '"' + (r[0] === +b.risk ? ' selected' : '') + '>' + r[0] + ' — ' + r[2] + ' Risk (' + Math.round(r[1] * 100) + '%)</option>').join('') + '</select></div></div>' +
+    '<p class="hint" style="margin-top:10px">期間: ' + n + 'ヶ月' + (yrs > 1 ? ' / ' + yrs + '年にまたがるため、RunExcel が複数年マクロで「サブ◯年目」「見積詳細◯年目」を作成します（Windows + マクロ有効のExcelが必要）。' : '') +
+    ' インフレ率適用基準年: ' + BASE_YEAR + ' / Cost Infla率: ' + C_INF + '</p>' + navBtns();
+}
+function setBasic(id, v, rebuild) {
+  S.basic[id] = (id === 'gp' || id === 'risk') ? +v : v;
+  if (rebuild) {            // 期間が変わったら月列を再構成
+    const n = months().length;
+    KEYS.forEach(k => S[k].forEach(r => ['hours','units','amounts'].forEach(a => { if (r[a]) { r[a] = r[a].slice(0, n); while (r[a].length < n) r[a].push(0); } })));
+    render();
+  } else updateCalc();
+}
+function stepTable(key) {
+  const sec = SECTIONS[key], ms = months();
+  if (!ms.length) return '<h2>' + sec.step + '. ' + sec.label + '</h2><div class="warn">先に「0. 基本情報」でサービス期間（開始・終了）を入力してください。</div>' + navBtns();
+  const arr = S[key], k = sec.kind;
+  let h = '<h2>' + sec.step + '. ' + sec.label + '</h2><p class="hint">' + sec.note + '</p><div class="tw"><table><thead><tr><th>#</th><th>名前' + (sec.band ? '/Band' : '') + '</th>' +
+    (k === 'hourly' ? '<th>Hourly Cost (¥/h)</th>' : k === 'monthly' ? '<th>Monthly Cost (¥)</th>' : '') + '<th>Infl.</th>' +
+    ms.map(m => '<th>' + String(m.y).slice(2) + '/' + pad(m.m) + '</th>').join('') +
+    '<th>' + (k === 'amount' ? '' : k === 'hourly' ? '時間計' : '人月計') + '</th><th>金額(¥)</th><th></th></tr></thead><tbody>';
+  arr.forEach((r, ri) => {
+    h += '<tr><td>' + (ri + 1) + badge(r.src) + '</td><td><input style="width:150px" value="' + esc(r.name) + '" oninput="setRow(\'' + key + '\',' + ri + ',\'name\',this.value)">' +
+      (sec.band ? '<select style="width:96px" onchange="setBand(\'' + key + '\',' + ri + ',this.value)">' + BANDS.map(b => '<option' + (b[0] === r.band ? ' selected' : '') + '>' + b[0] + '</option>').join('') + '</select>' : '') + '</td>';
+    if (k === 'hourly') h += '<td><input type="number" style="width:80px" value="' + esc(r.hourly) + '" oninput="setRow(\'' + key + '\',' + ri + ',\'hourly\',+this.value)"></td>';
+    if (k === 'monthly') h += '<td><input type="number" style="width:100px" value="' + esc(r.monthly) + '" oninput="setRow(\'' + key + '\',' + ri + ',\'monthly\',+this.value)"></td>';
+    h += '<td id="inf-' + key + '-' + ri + '" class="sub">' + (factor(0) > 1 || ms.some(m => m.y > BASE_YEAR) ? '3%' : '0') + '</td>';
+    const a = k === 'hourly' ? 'hours' : k === 'monthly' ? 'units' : 'amounts';
+    ms.forEach((_, i) => h += '<td><input type="number" step="any" style="width:' + (k === 'amount' ? 74 : 52) + 'px" value="' + (r[a][i] || '') + '" oninput="setCell(\'' + key + '\',' + ri + ',' + i + ',this.value)"></td>');
+    h += '<td id="qt-' + key + '-' + ri + '" class="sub"></td><td id="rt-' + key + '-' + ri + '" class="sub"></td><td><button class="btn d" onclick="delRow(\'' + key + '\',' + ri + ')">✕</button></td></tr>';
+  });
+  h += '<tr><td colspan="' + (k === 'amount' ? 3 : 4) + '" class="sub">SubTotal (¥)</td>' + ms.map((_, i) => '<td id="sm-' + key + '-' + i + '" class="sub"></td>').join('') + '<td class="sub"></td><td id="st-' + key + '" class="sub"></td><td></td></tr></tbody></table></div>' +
+    (arr.length < LIMITS[key] ? '<button class="btn g" onclick="addRow(\'' + key + '\')">＋ ' + (sec.band ? 'メンバー' : '行') + 'を追加</button>' : '<p class="hint">この区分の上限(' + LIMITS[key] + '行)に達しました。</p>') +
+    '<p class="hint" style="margin-top:8px">金額 = 単価 × 工数 × Inflation Rate（基準年 ' + BASE_YEAR + ' 超の年は ' + C_INF + '^(年−基準年)）。</p>' + navBtns();
+  return h;
+}
+function setBand(key, ri, band) { const r = S[key][ri]; r.band = band; r.hourly = (BANDS.find(b => b[0] === band) || [0, 0])[1]; r.src = r.src === 'tool' ? 'manual' : r.src; render(); }
+function setRow(key, ri, f, v) { const r = S[key][ri]; r[f] = v; if (r.src !== 'manual') { r.src = 'manual'; } updateCalc(); }
+function setCell(key, ri, i, v) { const r = S[key][ri], k = SECTIONS[key].kind; r[k === 'hourly' ? 'hours' : k === 'monthly' ? 'units' : 'amounts'][i] = +v || 0; if (r.src === 'tool') r.src = 'manual'; updateCalc(); }
+function addRow(key) { if (S[key].length < LIMITS[key]) { S[key].push(emptyRow(key)); render(); } }
+function delRow(key, ri) { S[key].splice(ri, 1); render(); }
+function clearSec() { const key = KEYS[cur - 1]; if (confirm(SECTIONS[key].label + ' の入力をクリアしますか？')) { S[key] = []; render(); } }
+// ===== 計算結果の反映 =====
+function updateCalc() {
+  const ms = months();
+  if (cur >= 1 && cur <= 7) {
+    const key = KEYS[cur - 1], k = SECTIONS[key].kind;
+    S[key].forEach((r, ri) => {
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      const q = (k === 'hourly' ? r.hours : k === 'monthly' ? r.units : null);
+      set('qt-' + key + '-' + ri, q ? q.reduce((a, b) => a + (+b || 0), 0) : '');
+      set('rt-' + key + '-' + ri, fmt(Math.round(rowCost(key, r))));
+    });
+    ms.forEach((_, i) => { const e = document.getElementById('sm-' + key + '-' + i); if (e) e.textContent = fmt(Math.round(secMonth(key, i))); });
+    const st = document.getElementById('st-' + key); if (st) st.textContent = fmt(Math.round(secTotal(key)));
+  }
+  if (cur === 8) {
+    const t = totals(), set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const pct = v => (v * 100).toFixed(1) + '%';
+    set('t-telin', fmt(Math.round(t.telIn))); set('t-telout', fmt(Math.round(t.telOut))); set('t-other', fmt(Math.round(t.other)));
+    set('t-sso', fmt(Math.round(t.sso))); set('t-sub', fmt(Math.round(t.sub))); set('t-h2', fmt(Math.round(t.h2))); set('t-h2o', fmt(Math.round(t.h2o)));
+    set('t-cost', fmt(Math.round(t.cost))); set('t-contr', pct(contRate())); set('t-cont', fmt(Math.round(t.cont))); set('t-costcont', fmt(Math.round(t.costCont)));
+    set('t-gpamt', t.price ? fmt(Math.round(t.gpAmt)) : '—'); set('t-gp', t.price ? pct(t.gpPct) : '—'); set('t-agp', t.price ? pct(t.apprGp) : '—');
+    set('t-ref', fmt(Math.round(t.refPrice)));
+    const pt = payTotal(), e = document.getElementById('pay-chk');
+    if (e) e.innerHTML = !S.payment.rows.length ? '' : (pt === (+S.price || 0) ? '<span style="color:#15803d">✔ 支払合計 ¥' + fmt(pt) + ' = 提示額</span>' : '<span style="color:#b45309">⚠ 支払合計 ¥' + fmt(pt) + ' が提示額 ¥' + fmt(+S.price || 0) + ' と一致しません</span>');
+    const pe = document.getElementById('pay-tot'); if (pe) pe.textContent = fmt(pt);
+  }
+}
+
+// ===== 8. サマリー・出力 =====
+function stepSummary() {
+  const P = S.payment, ms = months();
+  const row = (l, id, note) => '<tr><td>' + l + '</td><td class="v" id="' + id + '"></td><td style="color:#64748b">' + (note || '') + '</td></tr>';
+  let h = '<h2>8. サマリー・出力</h2>' +
+    '<div class="grid2" style="margin-bottom:12px"><div class="fld"><label>お客様への提示額（サービス料金・税抜 ¥）' + badge(S.priceSrc) + '</label><input type="number" id="price" value="' + esc(S.price || '') + '" oninput="setPrice(this.value)"></div></div>' +
+    '<p class="hint">提示額は概算見積シートの概算見積り価格を引き継ぎます（スライド5: 見積り金額 → CPS）。CPSの「サービス料金」(メイン!O21)に入力される値です。</p>' +
+    '<div class="tw"><table class="sum"><tbody>' +
+    row('1. TEL 内コスト','t-telin') + row('2. TEL 外コスト','t-telout') + row('4. Other Cost','t-other') + row('5. SSO','t-sso') + row('6. 連結子会社','t-sub') +
+    row('7. Harmony-2 対象子会社','t-h2') + row('8. Harmony-2 対象子会社 Other Cost','t-h2o') +
+    row('<b>9. コスト合計</b>','t-cost','(1+2+4+5+6+7+8)') + row('Contingency率','t-contr','リスクレベル ' + S.basic.risk + ' に対応') + row('10. Contingency額','t-cont') + row('<b>11. コスト合計（Cont含む）</b>','t-costcont') +
+    row('サービスGP額','t-gpamt','コストにContingencyを含まない') + row('サービスGP%','t-gp','コストにContingencyを含まない') + row('承認GP%','t-agp','コストにContingencyを含む') +
+    row('仮売上（参考：コスト(Cont含)÷(1−承認GP%)）','t-ref','提示額の目安。サービス料金は営業確認の値を使用') +
+    '</tbody></table></div>' +
+    '<h2 style="margin-top:18px">支払計画 <span class="badge b-tool">Tool（既定値）</span><span class="badge b-tmpl">要営業確認</span></h2>' +
+    '<div class="warn">支払計画は営業が確定するものです（Meeting Memo）。ここでは <b>提示額とサービス期間から算出した既定値</b> を表示します（スライド18）。営業確認のうえ、必要に応じて下表を編集し「営業確認済み」にチェックしてください。<br>算出ルール: 請求日＝各サービス月の月末 / 支払期日＝請求日＋30日（サンプルCPSの支払計画に準拠）/ 金額＝提示額を均等配分（端数は最終回）。</div>' +
+    '<div class="grid2"><div class="fld"><label>分割方法</label><select onchange="setPay(\'mode\',this.value)"><option value="monthly"' + (P.mode === 'monthly' ? ' selected' : '') + '>各月（標準）</option><option value="once"' + (P.mode === 'once' ? ' selected' : '') + '>支払い一回（終了月に請求）</option></select></div>' +
+    '<div class="fld"><label>金額の丸め単位（¥）</label><select onchange="setPay(\'unit\',+this.value)">' + [1, 1000, 10000, 100000].map(u => '<option value="' + u + '"' + (+P.unit === u ? ' selected' : '') + '>' + fmt(u) + '</option>').join('') + '</select></div></div>' +
+    '<div class="btns"><button class="btn v" onclick="regenPay()">🔄 既定値を再計算</button><button class="btn s" onclick="addPay()">＋ 行を追加</button></div>' +
+    '<div class="tw" style="margin-top:10px"><table><thead><tr><th>#</th><th>請求日</th><th>支払期日</th><th>金額(¥)</th><th>日数</th><th></th></tr></thead><tbody>';
+  P.rows.forEach((r, i) => {
+    const d1 = parseIso(r.bill), d2 = parseIso(r.due);
+    h += '<tr><td>' + (i + 1) + '</td><td><input type="date" value="' + esc(r.bill) + '" onchange="setPayRow(' + i + ',\'bill\',this.value)"></td><td><input type="date" value="' + esc(r.due) + '" onchange="setPayRow(' + i + ',\'due\',this.value)"></td>' +
+      '<td><input type="number" style="width:120px;text-align:right" value="' + esc(r.amount) + '" oninput="setPayRow(' + i + ',\'amount\',this.value,true)"></td><td class="sub">' + (d1 && d2 ? Math.round((d2 - d1) / 86400000) : '') + '</td>' +
+      '<td><button class="btn d" onclick="delPay(' + i + ')">✕</button></td></tr>';
+  });
+  h += '<tr><td colspan="3" class="sub">合計</td><td class="sub" id="pay-tot"></td><td></td><td></td></tr></tbody></table></div><div id="pay-chk" style="font-size:12px;margin-bottom:6px"></div>' +
+    '<label style="display:flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600"><input type="checkbox" style="width:auto" ' + (P.confirmed ? 'checked' : '') + ' onchange="S.payment.confirmed=this.checked"> 営業に確認済み（確定した支払計画である）</label>' +
+    '<h2 style="margin-top:18px">出力</h2>' +
+    '<div class="warn">出力JSONを作業フォルダへ移動し、PowerShell「RunExcel」を実行するとCPS（Excel）が作成されます（スライド14）。実行環境は IBM Box 作業フォルダ（<code>…\\IBM SLS Storage\\Operation\\見積り関連AI自動化\\.bob_見積り</code>）。JSONの項目構成は本ツールの暫定仕様です。既存の「見積詳細入力ツール」のJSONと異なる場合は、RunExcel 側の読込みキーとの対応付けが必要です。</div>' +
+    '<div class="btns"><button class="btn g" onclick="exportJson()">💾 CPS用JSONをダウンロード</button><button class="btn s" onclick="go(7)">← 戻る</button></div>';
+  return h;
+}
+function setPrice(v) { S.price = +v || 0; S.priceSrc = 'manual'; updateCalc(); }
+function setPay(k, v) { S.payment[k] = v; regenPay(); }
+function regenPay() { genPayment(); S.payment.confirmed = false; render(); }
+function addPay() { S.payment.rows.push({bill: '', due: '', amount: 0}); render(); }
+function delPay(i) { S.payment.rows.splice(i, 1); render(); }
+function setPayRow(i, f, v, live) {
+  const r = S.payment.rows[i]; r[f] = f === 'amount' ? (+v || 0) : v; S.payment.confirmed = false;
+  if (f === 'bill' && v) { const d = parseIso(v); r.due = iso(new Date(d.getTime() + 30 * 86400000)); }
+  if (live) updateCalc(); else render();
+}
+function clearSecAll() { KEYS.forEach(k => S[k] = []); }
+
+// ===== JSON 出力 / 読込 =====
+const JSON_SCHEMA = 'cps-input/1';
+function buildJson() {
+  const t = totals(), ms = months(), b = S.basic;
+  const sectionOut = key => S[key].map(r => {
+    const o = {name: r.name, source: r.src};
+    if (r.band) o.band = r.band;
+    if (r.hourly != null) o.hourlyCost = r.hourly;
+    if (r.monthly != null) o.monthlyCost = r.monthly;
+    const a = r.hours || r.units || r.amounts;
+    o[r.hours ? 'hours' : r.units ? 'manMonths' : 'amounts'] = a.slice(0, ms.length);
+    return o;
+  });
+  const j = {
+    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.1', generatedAt: new Date().toISOString(),
+    note: '項目構成は暫定仕様（既存の見積詳細入力ツールのJSON仕様とは要すり合わせ）',
+    main: {
+      customerName: b.customerName, projectName: b.projectName, oppNo: b.oppNo, oo: b.oo, pptl: b.pptl, pjtl: b.pjtl,
+      servicePeriod: {start: b.start, end: b.end}, approvedGpPct: b.gp, riskLevel: +b.risk, contingencyRate: contRate(),
+      costInflation: C_INF, inflationBaseYear: BASE_YEAR, servicePrice: +S.price || 0
+    },
+    months: ms.map(m => m.y + '/' + pad(m.m)),
+    sections: {}, totals: {},
+    paymentPlan: {source: 'tool-default', confirmedBySales: !!S.payment.confirmed, mode: S.payment.mode,
+      rows: S.payment.rows.map((r, i) => ({no: i + 1, billingDate: r.bill, dueDate: r.due, amount: +r.amount || 0}))}
+  };
+  KEYS.forEach(k => j.sections[k] = sectionOut(k));
+  Object.keys(t).forEach(k => j.totals[k] = Math.round(t[k] * 1000) / 1000);
+  return j;
+}
+function stamp() { const d = new Date(); return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); }
+function exportJson() {
+  if (!months().length) { alert('サービス期間（開始・終了）を入力してください。'); return; }
+  const j = buildJson();
+  if (!j.main.servicePrice) { if (!confirm('提示額が未入力です（CPSのサービス料金は空欄になります）。続行しますか？')) return; }
+  if (S.payment.rows.length && !S.payment.confirmed && !confirm('支払計画は営業未確認の既定値です。このまま出力しますか？')) return;
+  const blob = new Blob([JSON.stringify(j, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'CostPlan_見積詳細_' + stamp() + '.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importJson(input) {
+  const f = input.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    try {
+      const j = JSON.parse(e.target.result);
+      if (j.schema !== JSON_SCHEMA) throw new Error('このツールが出力したJSON（schema: ' + JSON_SCHEMA + '）ではありません');
+      S = defaultState(); const m = j.main, b = S.basic;
+      Object.assign(b, {customerName: m.customerName, projectName: m.projectName, oppNo: m.oppNo, oo: m.oo, pptl: m.pptl, pjtl: m.pjtl,
+        start: m.servicePeriod.start, end: m.servicePeriod.end, gp: m.approvedGpPct, risk: m.riskLevel});
+      S.price = m.servicePrice || 0; S.priceSrc = 'manual';
+      KEYS.forEach(k => (j.sections[k] || []).forEach(o => {
+        const r = emptyRow(k); r.name = o.name; r.src = o.source || 'manual';
+        if (o.band != null) r.band = o.band; if (o.hourlyCost != null) r.hourly = o.hourlyCost; if (o.monthlyCost != null) r.monthly = o.monthlyCost;
+        if (o.hours) r.hours = o.hours; if (o.manMonths) r.units = o.manMonths; if (o.amounts) r.amounts = o.amounts;
+        S[k].push(r);
+      }));
+      const p = j.paymentPlan || {}; S.payment.mode = p.mode || 'monthly'; S.payment.confirmed = !!p.confirmedBySales;
+      S.payment.rows = (p.rows || []).map(r => ({bill: r.billingDate, due: r.dueDate, amount: r.amount}));
+      cur = 0; visited = {}; render();
+    } catch (err) { alert('JSON読込エラー: ' + err.message); }
+    input.value = '';
+  };
+  rd.readAsText(f);
+}
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => {
+  loadHandoff();
+  genPayment();
+  render();
+});
+</script>
+</body>
+</html>

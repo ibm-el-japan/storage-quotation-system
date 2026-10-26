@@ -1,0 +1,41 @@
+const {load, t, XLSX, ROOT, summary} = require('./harness');
+console.log('[T1] request-sheet parse + import (Quotation Request Form.xlsx)');
+const w = load('quotation-generator.html');
+const wb = XLSX.readFile(ROOT + 'Quotation Request Form.xlsx');
+const req = w.parseQuotationRequestExcel(wb);
+console.log('  parsed:', JSON.stringify({docs: req.docs, meet: req.meetingFrequency, excl: req.serviceExclusions, loc: req.workLocation}));
+t('docs parsed (red-text C46)', req.docs.length >= 4, req.docs);
+t('meeting parsed (red-text C47)', /週/.test(req.meetingFrequency), req.meetingFrequency);
+t('exclusions parsed (red-text C48)', /ネットワーク/.test(req.serviceExclusions));
+w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(req));
+w.checkIncomingRequestHandoff();
+const cl = n => w.eval('CHECKLIST_DATA').find(s => s.title === n);
+const svc = cl('サービス内容').items.filter(i => i.text.trim());
+console.log('  サービス内容:', JSON.stringify(svc.map(i => i.text)));
+t('R4: no stray 設計/構築/稼動テスト/ドキュメント/Q&A bullet-only lines', !svc.some(i => /^[・\s]*(設計|構築|稼動テスト|ドキュメント|Q&A)\s*$/.test(i.text)), svc.map(i=>i.text));
+t('R4: no "以下の製品の支援" header line', !svc.some(i => /以下の製品/.test(i.text)));
+t('R4: no ①②製品見出し行', !svc.some(i => /^[①②]/.test(i.text)));
+t('template defaults kept (1.設計作業)', svc.some(i => /設計作業/.test(i.text)));
+const docs = cl('提出ドキュメント').items;
+t('R2: 基本設計書 checked auto', docs.find(i => i.text === '基本設計書').checked && docs.find(i => i.text === '基本設計書').src === 'auto');
+t('R2: 詳細設計書 added (not in template)', docs.some(i => i.text === '詳細設計書' && i.checked));
+t('R3: 未指定の導入手順書 stays unchecked', !docs.find(i => i.text === '導入手順書').checked);
+const exc = cl('サービスの適用除外 — 全体').items.filter(i => i.tag === '個別除外');
+t('R2: exclusions merged (5件, 先頭)', exc.length >= 4 && cl('サービスの適用除外 — 全体').items[0].tag === '個別除外', exc.map(i => i.text));
+const prem = cl('前提').items.find(i => /打ち合わせ/.test(i.text) && i.src === 'auto');
+t('R2: meeting count merged into 前提', !!prem && /週/.test(prem.text), prem && prem.text);
+// idempotent re-import
+w.checkIncomingRequestHandoff();
+t('re-import no duplicates (exclusions)', cl('サービスの適用除外 — 全体').items.filter(i => i.tag === '個別除外').length === exc.length);
+t('re-import no duplicates (service)', cl('サービス内容').items.filter(i => i.tag === '要件依頼').length === svc.filter(i => i.tag === '要件依頼').length);
+// R1 badges
+const doc = w.document;
+t('R1: ext-docs badge Auto', /依頼シート/.test(doc.querySelector('#ext-docs').closest('.info-row').querySelector('.src-badge').textContent));
+t('R1: coverage table rendered', doc.querySelectorAll('#cov-body tr').length >= 10);
+t('R5: review warning shown until confirmed', /未確認/.test(doc.getElementById('cov-warn').textContent));
+doc.getElementById('cov-reviewed').checked = true; doc.getElementById('cov-reviewed').dispatchEvent(new w.Event('change'));
+t('R5: warning cleared after SE confirm', doc.getElementById('cov-warn').textContent === '');
+// manual edit flips badge
+const el = doc.getElementById('ext-meeting'); el.value = '週1回'; el.dispatchEvent(new w.Event('input'));
+t('R1: edit flips Auto→Manual', /手入力/.test(el.closest('.info-row').querySelector('.src-badge').textContent));
+summary();

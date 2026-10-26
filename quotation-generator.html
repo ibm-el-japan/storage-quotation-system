@@ -16,6 +16,37 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
 #top-nav-bar a:hover{text-decoration:underline}
 .sys-badge{background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 
+/* Provenance (Source) Badges */
+.src-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:0.02em;vertical-align:middle;margin-left:6px;line-height:1.4}
+/* 値の取得元を文字色でも区別する (v2.5.0):
+   赤=依頼シート(黒字の実入力) / グレー斜体=依頼シート(グレーの参考記入例) / 青=システムが決定・補完 / 黒=手入力 */
+.src-auto{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+.src-ref{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+.src-template{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.src-manual{background:#f1f5f9;color:#111827;border:1px solid #cbd5e1}
+.src-tool{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+.txt-auto{color:#c00000;font-weight:600}
+.txt-ref{color:#8b8f98;font-style:italic}
+.txt-sys{color:#1d4ed8}
+.txt-man{color:#111827}
+.cov-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.cov-tbl th,.cov-tbl td{border:1px solid #d5dfee;padding:4px 8px;text-align:left;vertical-align:top}
+.cov-tbl th{background:#eaf1fb;color:#1a3a5c}
+.cov-ok{color:#047857;font-weight:700}
+.cov-empty{color:#b45309;font-weight:700}
+.cov-pend{color:#7c3aed;font-weight:700}
+.cov-ref{color:#6b7280;font-weight:700}
+.cov-sys{color:#1d4ed8;font-weight:700}
+.cov-sec{background:#f1f5f9;color:#1a3a5c;font-weight:700;text-align:left}
+.cov-note{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;font-size:12px;padding:6px 10px;border-radius:6px;margin:6px 0}
+.cov-legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;margin:6px 0}
+
+/* Highlight input background based on source */
+.input-src-auto{background:#fff5f5 !important;border-color:#fca5a5 !important;color:#c00000 !important}
+.input-src-ref{background:#f9fafb !important;border-color:#d1d5db !important;color:#8b8f98 !important;font-style:italic}
+.input-src-tool,.input-src-template{background:#f5f9ff !important;border-color:#bfdbfe !important;color:#1d4ed8 !important}
+.input-src-manual{background:#fff !important;border-color:#cbd5e1 !important;color:#111827 !important}
+
 /* Pipeline Handoff Alert */
 #handoff-banner{background:#e0f2fe;border-bottom:2px solid #38bdf8;color:#0369a1;padding:10px 20px;font-size:12.5px;display:none;align-items:center;justify-content:space-between}
 #handoff-banner.show{display:flex}
@@ -225,7 +256,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
   <div>
     <a href="index.html">← 総合ポータル</a> |
     <a href="request-form.html">見積もり依頼記入シート</a> |
-    <a href="slink-spec-generator.html">S-LINK / 仕様書生成</a>
+    <a href="slink-spec-generator.html">S-LINK / 仕様書生成</a> |
+    <a href="cps-input.html">CPS入力（見積詳細）</a>
   </div>
   <div>
     <span class="sys-badge">Expert Labs Storage Pipeline v2.0</span>
@@ -251,7 +283,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.1.0</span>
+    <span class="ver" id="ver-badge">v2.5.1</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -291,45 +323,18 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <input type="text" id="customer-name" placeholder="例: 株式会社〇〇 様" oninput="syncBasicInfo()">
             </div>
             <div class="info-row">
-              <label>案件名</label>
+              <label>サービス名（旧: 案件名）</label>
               <input type="text" id="project-name" placeholder="例: ×× 導入支援案件" oninput="syncBasicInfo()">
             </div>
             <div class="info-row">
-              <label>Labor 単価（円/時間）</label>
+              <label>Labor 単価（円/時間・基準 B8）</label>
               <div style="display:flex;gap:4px">
-                <input type="number" id="labor-rate" value="17900" oninput="recalcAll()" style="flex:1">
-                <select id="labor-rate-preset" onchange="applyLaborRatePreset(this.value)" style="width:110px;font-size:11px;padding:3px" title="年度・Band別単価プリセット">
+                <input type="number" id="labor-rate" value="17600" oninput="onLaborRateEdit()" style="flex:1">
+                <select id="labor-rate-preset" onchange="applyLaborRatePreset(this.value)" style="width:110px;font-size:11px;padding:3px" title="年度・Band別単価プリセット（基準は B8）">
                   <option value="">単価選択...</option>
-                  <optgroup label="2025年">
-                    <option value="12200">2025 B6 (12,200)</option>
-                    <option value="15300">2025 B7 (15,300)</option>
-                    <option value="17400">2025 B8 (17,400)</option>
-                    <option value="20000">2025 B9 (20,000)</option>
-                    <option value="22900">2025 B10 (22,900)</option>
-                  </optgroup>
-                  <optgroup label="2026年 (標準)">
-                    <option value="12600">2026 B6 (12,600)</option>
-                    <option value="15800">2026 B7 (15,800)</option>
-                    <option value="17900" selected>2026 B8 (17,900)</option>
-                    <option value="20600">2026 B9 (20,600)</option>
-                    <option value="23600">2026 B10 (23,600)</option>
-                  </optgroup>
-                  <optgroup label="2027年">
-                    <option value="13000">2027 B6 (13,000)</option>
-                    <option value="16300">2027 B7 (16,300)</option>
-                    <option value="18400">2027 B8 (18,400)</option>
-                    <option value="21200">2027 B9 (21,200)</option>
-                    <option value="24300">2027 B10 (24,300)</option>
-                  </optgroup>
-                  <optgroup label="2028年">
-                    <option value="13400">2028 B6 (13,400)</option>
-                    <option value="16800">2028 B7 (16,800)</option>
-                    <option value="19000">2028 B8 (19,000)</option>
-                    <option value="21800">2028 B9 (21,800)</option>
-                    <option value="25000">2028 B10 (25,000)</option>
-                  </optgroup>
                 </select>
               </div>
+              <span id="labor-rate-hint" style="font-size:11px;color:#57606a"></span>
             </div>
             <div class="info-row">
               <label>Contingency（例: 0.10 = 10%）</label>
@@ -383,7 +388,39 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <label>期間（月数）</label>
               <input type="number" id="period-months" value="12" min="1" max="60" oninput="rebuildKosuMonths()">
             </div>
+            <div class="info-row">
+              <label>サービス開始年月日</label>
+              <input type="date" id="svc-start" onchange="applySvcDates()">
+            </div>
+            <div class="info-row">
+              <label>サービス終了年月日</label>
+              <input type="date" id="svc-end" onchange="applySvcDates()">
+            </div>
           </div>
+          <p class="hint">開始・終了年月日を入力すると、開始年/月・期間（月数）に反映されます。別紙・S-LINK契約期間・CPS入力ツールで使用します。</p>
+        </div>
+      </div>
+
+      <!-- 依頼シート取込状況 (R1/R2/R5) -->
+      <div class="card" id="import-coverage-card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>📥 依頼シート取込状況・値の取得元</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="cov-legend">
+            <span>値の取得元（文字色）:</span>
+            <span class="src-badge src-auto">赤文字: 依頼シート（黒字＝実入力）</span>
+            <span class="src-badge src-ref">グレー斜体: 依頼シート（グレー＝参考記入例）</span>
+            <span class="src-badge src-tool">青文字: システムが決定・補完</span>
+            <span class="src-badge src-manual">黒文字: 手入力</span>
+          </div>
+          <div id="cov-body"><p class="hint">依頼シート（Excel）を取り込むと、ここに項目ごとの取込結果が表示されます。</p></div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:8px;font-weight:600;color:#1a3a5c">
+            <input type="checkbox" id="cov-reviewed" onchange="_elReviewed=this.checked;updateReviewWarning()">
+            EL SEが取込内容を確認・補完した（取込結果は確定値ではありません）
+          </label>
+          <div id="cov-warn" style="font-size:12px;color:#b45309;margin-top:4px"></div>
         </div>
       </div>
 
@@ -407,6 +444,18 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
             <div class="info-row"><label>サービス提供場所</label><input type="text" id="ext-location" placeholder="例: リモート / 東京都〇〇区 (〇〇駅)"></div>
             <div class="info-row"><label>打合せ回数・頻度</label><input type="text" id="ext-meeting" placeholder="例: 週2回 (各1時間) @リモート"></div>
             <div class="info-row"><label>提出ドキュメント</label><input type="text" id="ext-docs" placeholder="例: 基本設計書、詳細設計書、導入手順書"></div>
+            <div class="info-row"><label>その他案件関係者名</label><input type="text" id="ext-others" placeholder="例: SA 〇〇、CE 〇〇"></div>
+            <div class="info-row"><label>提供形態（支援契約など）</label><input type="text" id="ext-contract" placeholder="例: 支援契約（Expert Labsの単独契約）"></div>
+            <div class="info-row"><label>契約形態（直販サブコンなど）</label><input type="text" id="ext-deal" placeholder="例: 直販（サブコン）"></div>
+            <div class="info-row"><label>支払い計画（各月など）※営業確認</label><input type="text" id="ext-pay" placeholder="例: 各月（標準） ※確定はCPSの支払計画"></div>
+            <div class="info-row"><label>月次報告書の提出の必要性</label><input type="text" id="ext-report" placeholder="例: 無"></div>
+            <div class="info-row"><label>機密情報取り扱い</label><input type="text" id="ext-conf" placeholder="例: 無し"></div>
+            <div class="info-row"><label>記入日</label><input type="text" id="ext-created" placeholder="例: 2026/10/01"></div>
+            <div class="info-row"><label>記入者</label><input type="text" id="ext-author" placeholder="例: 山田 太郎"></div>
+            <div class="info-row" style="grid-column:1/-1"><label>サービス内容（概要）</label><input type="text" id="ext-summary" placeholder="依頼シート「サービス内容」欄"></div>
+            <div class="info-row"><label>社内関係者との打ち合わせの調整</label><input type="text" id="ext-mtg-int" placeholder="例: 調整します"></div>
+            <div class="info-row"><label>社外関係者との打ち合わせの調整</label><input type="text" id="ext-mtg-ext" placeholder="例: 調整します"></div>
+            <div class="info-row" style="grid-column:1/-1"><label>サービス特有の前提、除外条件</label><input type="text" id="ext-excl" placeholder="例: ・ネットワーク関連作業は対象外"></div>
           </div>
         </div>
       </div>
@@ -439,6 +488,53 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
     <!-- TAB 4: 交通費等 -->
     <div id="tab-travel" class="tab-panel">
+      <div class="card" id="travel-assist-card">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>🧭 出張費アシスタント（距離区分・訪問回数の算定）</h3>
+          <span class="ti">▼</span>
+        </div>
+        <div class="card-body">
+          <p class="hint">事業所と距離区分（<a href="出張判定図.pdf" target="_blank">出張判定図.pdf</a>：赤=中距離／青=遠距離）を選ぶと、構築・テスト工数から訪問回数・宿泊数・出張手当を算定します。
+            <span class="src-badge src-tool">システム</span>=自動算出、<span class="src-badge src-manual">手入力</span>=手入力。人数・単価は手入力です。</p>
+          <div class="info-grid">
+            <div class="info-row"><label>基点事業所 <span class="src-badge src-manual">手入力</span></label>
+              <select id="ta-office" onchange="taChanged()">
+                <option value="">（未選択）</option><option>東京都内（基点:東京駅）</option><option>名古屋</option><option>大阪</option><option>幕張</option>
+              </select></div>
+            <div class="info-row"><label>距離区分（出張判定図で判定） <span class="src-badge src-manual">手入力</span></label>
+              <select id="ta-zone" onchange="taZoneChanged()">
+                <option value="">（未選択）</option><option value="short">短距離（日帰り圏）</option><option value="mid">中距離（赤）</option><option value="long">遠距離（青）</option>
+              </select></div>
+            <div class="info-row"><label>出張形態 <span id="ta-mode-badge" class="src-badge src-tool">システム</span></label>
+              <select id="ta-mode" onchange="taModeChanged()"><option value="day">日帰り</option><option value="stay">宿泊</option></select></div>
+            <div class="info-row"><label>人数 <span class="src-badge src-manual">手入力</span></label>
+              <input type="number" id="ta-people" min="1" value="1" oninput="taChanged()"></div>
+            <div class="info-row"><label>現地作業時間 h（構築＋テスト） <span id="ta-hours-badge" class="src-badge src-tool">システム</span></label>
+              <input type="number" id="ta-hours" min="0" value="0" oninput="taHoursEdited()"></div>
+            <div class="info-row"><label>週あたり稼働時間 h <span class="src-badge src-template">システム</span></label>
+              <input type="number" id="ta-weekh" min="1" value="40" oninput="taChanged()"></div>
+            <div class="info-row"><label>1回の出張あたり宿泊数（宿泊時） <span class="src-badge src-template">システム</span></label>
+              <input type="number" id="ta-npt" min="0" value="4" oninput="taChanged()"></div>
+            <div class="info-row"><label>往復交通費 円/人 <span class="src-badge src-manual">手入力</span></label>
+              <input type="number" id="ta-fare" min="0" value="" placeholder="例: 28000" oninput="taChanged()"></div>
+            <div class="info-row"><label>宿泊費 円/泊（上限10,000） <span class="src-badge src-template">システム</span></label>
+              <input type="number" id="ta-lodge" min="0" value="10000" oninput="taChanged()"></div>
+            <div class="info-row"><label>食事（宿泊出張手当の判定） <span class="src-badge src-manual">手入力</span></label>
+              <select id="ta-meal" onchange="taChanged()">
+                <option value="4000">朝食×・夕食× → 4,000円</option><option value="3200">朝食○・夕食× → 3,200円</option>
+                <option value="1300">朝食×・夕食○ → 1,300円</option><option value="500">朝食○・夕食○ → 500円</option>
+              </select></div>
+            <div class="info-row"><label>片道移動時間 h（遠距離時の工数目安） <span class="src-badge src-manual">手入力</span></label>
+              <input type="number" id="ta-travelh" min="0" step="0.5" value="0" oninput="taChanged()"></div>
+          </div>
+          <div id="ta-result" style="margin-top:10px"></div>
+          <div class="bg-row" style="margin-top:8px">
+            <button class="btn bp bsm" onclick="taApply()">▶ 下表「その他費用」に反映</button>
+            <span style="font-size:12px;color:#57606a">反映後も下表で自由に修正できます（修正した行は Manual 表示になります）</span>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header" onclick="toggleCard(this)">
           <h3>💴 その他費用</h3>
@@ -498,6 +594,15 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tbody>
             </table>
           </div>
+          <p class="hint" style="margin-top:10px"><b>算定ルール（出張費アシスタント）</b></p>
+          <ul style="font-size:12px;line-height:1.7;margin:0 0 0 18px;color:#334155">
+            <li>宿泊出張: 訪問回数＝ 現地作業h ÷ 週あたり稼働h（切上げ）＝週数。宿泊数＝訪問回数×1回あたり宿泊数。</li>
+            <li>日帰り出張: 訪問回数＝ 現地作業h ÷ 8h（切上げ）＝現地作業日数。</li>
+            <li>訪問回数・宿泊数とも予備20%を加算（切上げ）。</li>
+            <li>出張手当: 宿泊時＝宿泊出張手当（食事別）×宿泊数。日帰り時＝中距離1,500円／遠距離3,500円×訪問回数。短距離は手当なし。</li>
+            <li>中距離以上はPC借用費を必ず計上。遠距離は 片道移動時間×2×訪問回数×0.5 を工数に追加する目安として表示（工数は手入力のまま）。</li>
+            <li>※ 宿泊時に中距離/遠距離手当を併給するか、距離区分ごとの標準出張形態は未確定のため、運用ルールとして要確認（設計課題）。</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -513,6 +618,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
         <button class="btn" style="background:#0f766e;color:#fff" onclick="generateCustomerOutput()">📋 お客様提出用</button>
         <button class="btn" style="background:#0f766e;color:#fff" onclick="printCustomerOutput()">🖨️ お客様提出用 印刷/PDF</button>
         <button class="btn bv" onclick="handoffToSlink()">📑 S-LINK / 仕様書生成へ渡す →</button>
+        <button class="btn" style="background:#b45309;color:#fff" onclick="handoffToCps()" title="概算見積の出力をCPS(見積詳細入力ツール)の入力として渡します。S-LINK/仕様書生成とは別メニューです">🧮 CPS入力（見積詳細）へ渡す →</button>
       </div>
 
       <!-- 価格詳細パネル -->
@@ -576,8 +682,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.1.0 (Expert Labs Storage Integration Edition)</strong></td></tr>
-              <tr><td class="lc">リリース日</td><td style="text-align:left">2026-09-16</td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.1 (Request Sheet Coverage, Source Colour & Labor Rate B8 Edition)</strong></td></tr>
+              <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
               <tr><td class="lc">管理者</td><td style="text-align:left">Expert Labs Storage (ibmkevin)</td></tr>
@@ -603,6 +709,52 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.1</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">Labor単価 改定</span></td>
+                <td style="text-align:left;white-space:normal">
+                  Labor 単価を年度×Band表（2026〜2029年、基準 B8）に更新: 2026 B8=17,600 / 2027=17,900 / 2028=18,200 / 2029=18,500 円/h（B6〜B10 も同表）。
+                  既定値はサービス開始年の B8 に連動（システム補完＝青）。プリセットから選択または直接入力した単価は手入力として保持し、開始年を変えても上書きしない。表の範囲外の年は最も近い年の単価を使用。
+                  S-LINK/仕様書生成の単独起動時も開始年の B8 を使用。旧データ（保存済み単価が B8 と異なる場合）は保存値を維持。
+                </td>
+              </tr>
+              <tr>
+                <td><strong>v2.5.0</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:11px">依頼シート完全反映・取得元の文字色</span></td>
+                <td style="text-align:left;white-space:normal">
+                  「見積もり依頼記入シート_テンプレート.xlsx」の全項目（記入日・記入者・DNSO・BP名・その他案件関係者・サービス内容（概要）・社内外打合せ調整・事前確認事項12項目・契約情報）を取込・表示。グレー文字＝参考記入例／黒文字＝実入力をセルのフォント色から判別し、グレーは「参考例」として区別。
+                  値の取得元を文字色で表示: <span style="color:#c00000;font-weight:600">赤＝依頼シート（黒字の実入力）</span>、<span style="color:#8b8f98;font-style:italic">グレー斜体＝依頼シート（グレーの参考例）</span>、<span style="color:#1d4ed8">青＝システムが決定・補完</span>、黒＝手入力。入力欄・チェックリスト・取込状況パネル・S-LINK・依頼シート入力フォームに適用。お客様向け出力は色なし。
+                  修正: 記入日「20xx/xx/xx」を本日付に置換しない／契約形態の「（例）…」注記を除去／提供場所を地名から判定／サービス側Opportunity No空欄時は製品側で補完（システム補完として表示）。
+                </td>
+              </tr>
+              <tr>
+                <td><strong>v2.4.0</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dcfce7;color:#166534;border-radius:4px;padding:1px 6px;font-size:11px">資料(Input/Output・CPS)反映</span></td>
+                <td style="text-align:left;white-space:normal">
+                  「EL ストレージにおけるInput、Output」(スライド2〜5)に合わせ項目名・項目を統一: 案件名→サービス名、サービス開始/終了年月日、その他案件関係者名、提供形態・契約形態・支払い計画・月次報告書・機密情報取り扱い、サービス特有の前提/除外条件を概算見積で編集可能に。
+                  仕様書のサービス内容を設計作業/構築作業/QA作業/提出ドキュメントに区分、別紙に製品×数量、S-LINKにOO・契約名・チームメンバーを追加。
+                  CPS(CostPlanSheetTPS2026v1)入力ツール連携ページ cps-input.html を別メニューとして追加(「CPS入力へ渡す」)。支払計画の既定値はツール算出・編集可・営業確認要。
+                </td>
+              </tr>
+              <tr>
+                <td><strong>v2.3.0</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 6px;font-size:11px">レビュー指摘対応</span></td>
+                <td style="text-align:left;white-space:normal">
+                  依頼シート取込状況パネルと取得元バッジ(Auto/Template/Tool/Manual)を基本情報欄へ拡張、EL SEの確認チェックを追加。
+                  赤字項目(提出ドキュメント・打合せ回数・除外事項)を前提/除外/ドキュメントのチェックリストへ取込。
+                  「設計・構築・稼動テスト…」の定型行がサービス内容に混入する不具合を修正、お客様提出用の作業内容欄に社内見積方針(hint)が出力される不具合を修正。
+                  出張費アシスタント(事業所・距離区分・日帰り/宿泊・人数・訪問回数の自動算定)を追加。
+                  S-LINK仕様書は前提条件を（1）（2）…で付番し、チェック済み項目のみ出力。別紙は現行書式(10pt・表なし)へ変更し、支払計画はCPS(.xlsm)から取り込み(ツールでは決定しない)。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v1.4.0</strong></td>
                 <td>2025-09-01</td>
@@ -799,7 +951,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.1.0';
+const APP_VERSION = 'v2.5.1';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
@@ -1166,8 +1318,46 @@ function buildKosuTable() {
 }
 
 function rebuildKosuMonths() {
+  syncSvcDatesFromPeriod();
   renderKosuTable(getMonthLabels());
   recalcAll();
+}
+
+// ----- サービス開始/終了年月日 (スライド4: サービス期間 = 開始年月日 + 終了年月日) -----
+function _iso(y, m, d) { return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+function _lastDay(y, m) { return new Date(y, m, 0).getDate(); }
+// 開始年/月/期間(月数)から導出した既定の開始日・終了日
+function derivedSvcDates() {
+  const ml = getMonthLabels();
+  const f = ml[0], l = ml[ml.length - 1];
+  return { start: _iso(f.y, f.m, 1), end: _iso(l.y, l.m, _lastDay(l.y, l.m)) };
+}
+// 年/月/期間が変わったとき、日付欄を同期する（同じ月内の日の指定は保持）
+function syncSvcDatesFromPeriod() {
+  const s = document.getElementById('svc-start'), e = document.getElementById('svc-end');
+  if (!s || !e) return;
+  const d = derivedSvcDates();
+  if (!s.value || s.value.slice(0, 7) !== d.start.slice(0, 7)) s.value = d.start;
+  if (!e.value || e.value.slice(0, 7) !== d.end.slice(0, 7)) e.value = d.end;
+}
+// 日付欄を編集したとき、開始年/月と期間(月数)へ反映
+function applySvcDates() {
+  const s = document.getElementById('svc-start').value, e = document.getElementById('svc-end').value;
+  const ms = s && s.match(/^(\d{4})-(\d{2})-(\d{2})/), me = e && e.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!ms) return;
+  document.getElementById('start-year').value = +ms[1];
+  document.getElementById('start-month').value = +ms[2];
+  if (me) {
+    const months = (+me[1] - +ms[1]) * 12 + (+me[2] - +ms[2]) + 1;
+    if (months >= 1) document.getElementById('period-months').value = months;
+    else showToast('終了年月日が開始年月日より前です');
+  }
+  renderKosuTable(getMonthLabels());
+  recalcAll();
+}
+function getServicePeriod() {
+  syncSvcDatesFromPeriod();
+  return { start: document.getElementById('svc-start').value, end: document.getElementById('svc-end').value };
 }
 
 function renderKosuTable(months) {
@@ -1297,21 +1487,6 @@ function recalcKosu(n) {
   return grandH;
 }
 
-function syncTravelFromKosu(totalTrips, totalNights) {
-  travelRows.forEach(r => {
-    if (r.linkedKosuField === 'trips') {
-      r.cnt = totalTrips;
-      const el = document.querySelector('#trow-' + r.id + ' td:nth-child(5) input');
-      if (el) el.value = totalTrips;
-    } else if (r.linkedKosuField === 'nights') {
-      r.cnt = totalNights;
-      const el = document.querySelector('#trow-' + r.id + ' td:nth-child(5) input');
-      if (el) el.value = totalNights;
-    }
-  });
-  recalcTravel();
-}
-
 function onKosuInput(rid, idx, val) {
   if (!kosuData[rid]) kosuData[rid] = {label:'', hint:'', values: new Array(60).fill(0)};
   kosuData[rid].values[idx] = parseFloat(val) || 0;
@@ -1390,11 +1565,31 @@ function buildChecklist() {
 
 function checklistRowHtml(si, ii, item) {
   const chk = item.checked ? 'checked' : '';
-  const tagHtml = item.tag ? ' <span class="req" style="float:right;margin-top:2px">' + escHtml(item.tag) + '</span>' : '';
+  const src = item.src || (item.tag === '要件依頼' || item.tag === '対象製品' || item.tag === '個別除外' ? 'auto' : 'template');
+  let srcBadge = '';
+  let inputClass = '';
+  if (src === 'auto') {
+    srcBadge = '<span class="src-badge src-auto" title="依頼シート（黒字＝実入力）から取得">依頼シート</span>';
+    inputClass = 'input-src-auto';
+  } else if (src === 'ref') {
+    srcBadge = '<span class="src-badge src-ref" title="依頼シート（グレー＝参考記入例）から取得。実入力ではありません">参考例</span>';
+    inputClass = 'input-src-ref';
+  } else if (src === 'manual') {
+    srcBadge = '<span class="src-badge src-manual" title="手動追加・手入力">手入力</span>';
+    inputClass = 'input-src-manual';
+  } else {
+    srcBadge = '<span class="src-badge src-template" title="システムが決定・補完（見積テンプレート既定値／ツール算出）">システム</span>';
+    inputClass = 'input-src-template';
+  }
+
+  const tagHtml = item.tag ? ' <span class="req" style="margin-left:4px">' + escHtml(item.tag) + '</span>' : '';
   return '<tr>' +
     '<td style="text-align:center"><input type="checkbox" ' + chk + ' onchange="CHECKLIST_DATA[' + si + '].items[' + ii + '].checked=this.checked"></td>' +
-    '<td style="display:flex;align-items:center;gap:4px"><input type="text" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value">' + tagHtml + '</td>' +
-    '<td><input type="text" value="' + escHtml(item.tag) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].tag=this.value" placeholder="タグ"></td>' +
+    '<td style="display:flex;align-items:center;gap:4px">' +
+      '<input type="text" class="' + inputClass + '" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value;CHECKLIST_DATA[' + si + '].items[' + ii + '].src=\'manual\';rebuildChecklistSection(' + si + ')">' +
+      srcBadge + tagHtml +
+    '</td>' +
+    '<td><input type="text" value="' + escHtml(item.tag || '') + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].tag=this.value" placeholder="タグ"></td>' +
     '<td class="np"><button class="btn bd bsm np" onclick="deleteChecklistRow(' + si + ',' + ii + ')">✕</button></td>' +
     '</tr>';
 }
@@ -1421,6 +1616,129 @@ function rebuildChecklistSection(si) {
   tbody.innerHTML = CHECKLIST_DATA[si].items.map((item, ii) => checklistRowHtml(si, ii, item)).join('');
 }
 
+// ===================== 出張費アシスタント (R6) =====================
+// ルール原典: 見積りテンプレート.xlsx「交通費等」/ 出張判定図.pdf（距離区分は人が図で判定）
+const TA_RULE = {
+  allowanceMid: 1500, allowanceLong: 3500,   // 中距離/遠距離 出張手当（日帰り）
+  lodgeCap: 10000,                            // 宿泊費上限（全国）
+  buffer: 0.20,                               // 移動回数・宿泊回数の予備
+  dayHours: 8,                                // 日帰り: 1日の現地作業時間
+  travelTimeFactor: 0.5                       // 遠距離: 移動時間×0.5 を工数に追加する目安
+};
+let _taHoursManual = false;
+let _taModeManual = false;
+
+function taOnsiteHoursFromKosu() {
+  const n = getMonthLabels().length;
+  let h = 0;
+  KOSU_SECTIONS.filter(sec => sec.id === 'build' || sec.id === 'test').forEach(sec => {
+    sec.rows.forEach(row => {
+      const d = kosuData[row.id];
+      if (!d || /移動時間/.test(d.label || row.label || '')) return;
+      h += sumRow(row.id, n);
+    });
+  });
+  return h;
+}
+
+function taCalc() {
+  const v = id => parseFloat((document.getElementById(id) || {}).value) || 0;
+  const zone = (document.getElementById('ta-zone') || {}).value || '';
+  const mode = (document.getElementById('ta-mode') || {}).value || 'day';
+  const people = Math.max(1, v('ta-people'));
+  const hours = v('ta-hours');
+  const weekH = Math.max(1, v('ta-weekh'));
+  const npt = v('ta-npt');
+  const lodge = Math.min(v('ta-lodge'), TA_RULE.lodgeCap);
+  const fare = v('ta-fare');
+  const meal = v('ta-meal');
+  const travelH = v('ta-travelh');
+  if (!zone || hours <= 0) return {ok: false, zone: zone, hours: hours};
+  const baseTrips = mode === 'stay' ? Math.ceil(hours / weekH) : Math.ceil(hours / TA_RULE.dayHours);
+  const trips = Math.ceil(baseTrips * (1 + TA_RULE.buffer));
+  const baseNights = mode === 'stay' ? baseTrips * npt : 0;
+  const nights = Math.ceil(baseNights * (1 + TA_RULE.buffer));
+  let allowUnit = 0, allowCnt = 0;
+  if (mode === 'stay') { allowUnit = meal; allowCnt = nights; }
+  else if (zone === 'mid') { allowUnit = TA_RULE.allowanceMid; allowCnt = trips; }
+  else if (zone === 'long') { allowUnit = TA_RULE.allowanceLong; allowCnt = trips; }
+  const pc = zone === 'mid' || zone === 'long';
+  const extraH = zone === 'long' ? travelH * 2 * trips * TA_RULE.travelTimeFactor : 0;
+  const total = fare * people * trips + lodge * people * nights + allowUnit * people * allowCnt;
+  return {ok: true, zone, mode, people, hours, baseTrips, trips, baseNights, nights, lodge, fare, allowUnit, allowCnt, pc, extraH, total};
+}
+
+function taRender() {
+  const box = document.getElementById('ta-result');
+  if (!box) return;
+  const r = taCalc();
+  if (!r.ok) {
+    box.innerHTML = '<div class="hint">距離区分を選択し、現地作業時間が1h以上になると算定結果を表示します。（短距離でも日帰り交通費が必要な場合は距離区分「短距離」を選択）</div>';
+    return;
+  }
+  const zl = {short: '短距離', mid: '中距離', long: '遠距離'}[r.zone];
+  let h = '<table class="cov-tbl"><thead><tr><th>項目</th><th>算定</th><th>根拠</th></tr></thead><tbody>';
+  h += '<tr><td>訪問回数</td><td><b>' + r.trips + ' 回</b>（' + r.baseTrips + '＋予備20%）</td><td>' + (r.mode === 'stay'
+    ? r.hours + 'h ÷ 週' + (document.getElementById('ta-weekh').value) + 'h ＝ ' + r.baseTrips + '週 → 1週1回の訪問'
+    : r.hours + 'h ÷ ' + TA_RULE.dayHours + 'h ＝ ' + r.baseTrips + '日 → 日帰り') + '</td></tr>';
+  if (r.mode === 'stay') h += '<tr><td>宿泊数</td><td><b>' + r.nights + ' 泊</b>（' + r.baseNights + '＋予備20%）</td><td>訪問回数 × 1回あたり' + document.getElementById('ta-npt').value + '泊</td></tr>';
+  h += '<tr><td>出張手当</td><td><b>¥' + fmt(r.allowUnit) + ' × ' + r.people + '名 × ' + r.allowCnt + '</b></td><td>' + (r.mode === 'stay' ? '宿泊出張手当（食事別）' : (r.zone === 'short' ? '短距離は手当なし' : zl + '出張手当（日帰り）')) + '</td></tr>';
+  h += '<tr><td>PC借用費</td><td>' + (r.pc ? '<b>計上必須</b>' : '不要') + '</td><td>中距離以上は必ず見積もる（単価は手入力）</td></tr>';
+  if (r.zone === 'long') h += '<tr><td>移動時間の工数目安</td><td>' + r.extraH + ' h</td><td>片道×2×訪問回数×0.5（工数タブへ手入力。自動加算はしません）</td></tr>';
+  h += '<tr><td><b>概算合計（PC借用費除く）</b></td><td colspan="2"><b>¥' + fmt(r.total) + '</b></td></tr></tbody></table>';
+  if (!r.fare) h += '<div style="font-size:12px;color:#b45309;margin-top:4px">※ 往復交通費が未入力です（金額は交通費を含まない概算です）。</div>';
+  box.innerHTML = h;
+}
+
+function taRefresh() {
+  if (!document.getElementById('ta-hours')) return;
+  if (!_taHoursManual) {
+    const hEl = document.getElementById('ta-hours');
+    const auto = taOnsiteHoursFromKosu();
+    if (parseFloat(hEl.value) !== auto) hEl.value = auto;
+  }
+  taRender();
+}
+function taChanged() { taRefresh(); }
+function taHoursEdited() {
+  _taHoursManual = true;
+  const b = document.getElementById('ta-hours-badge');
+  if (b) { b.className = 'src-badge src-manual'; b.textContent = '手入力'; }
+  taRender();
+}
+function taZoneChanged() {
+  // 標準の出張形態: 短距離・中距離=日帰り、遠距離=宿泊（運用ルール確定までの暫定。変更可）
+  if (!_taModeManual) {
+    const z = document.getElementById('ta-zone').value;
+    document.getElementById('ta-mode').value = z === 'long' ? 'stay' : 'day';
+  }
+  taRefresh();
+}
+function taModeChanged() {
+  _taModeManual = true;
+  const b = document.getElementById('ta-mode-badge');
+  if (b) { b.className = 'src-badge src-manual'; b.textContent = '手入力'; }
+  taRefresh();
+}
+
+// 算定結果を「その他費用」表へ反映（tr0:交通費 / tr1:宿泊費 / tr2:出張手当 / tr3:PC借用費）
+function taApply() {
+  const r = taCalc();
+  if (!r.ok) { showToast('距離区分と現地作業時間を入力してください'); return; }
+  const office = (document.getElementById('ta-office').value || '').replace(/（.*）/, '');
+  const zl = {short: '短距離', mid: '中距離', long: '遠距離'}[r.zone];
+  const place = [office, zl].filter(Boolean).join('・');
+  const byId = id => travelRows.find(x => x.id === id);
+  const t0 = byId('tr0'), t1 = byId('tr1'), t2 = byId('tr2'), t3 = byId('tr3');
+  if (t0) Object.assign(t0, {place: place, unit: r.fare || '', qty: r.people, cnt: r.trips, src: 'tool'});
+  if (t1) Object.assign(t1, {place: place, unit: r.lodge, qty: r.people, cnt: r.nights, src: 'tool'});
+  if (t2) Object.assign(t2, {place: place, unit: r.allowUnit, qty: r.people, cnt: r.allowCnt, src: 'tool'});
+  if (t3 && r.pc) Object.assign(t3, {place: place, qty: r.people, cnt: 1, src: t3.unit ? 'tool' : 'manual'});
+  buildTravelTable();
+  recalcAll();
+  showToast('出張費を反映しました' + (r.pc && !(t3 && t3.unit) ? '（PC借用費の単価は手入力してください）' : ''));
+}
+
 // ===================== TRAVEL =====================
 function buildTravelTable() {
   const tbody = document.getElementById('travel-tbody');
@@ -1429,18 +1747,20 @@ function buildTravelTable() {
 }
 
 function travelRowHtml(r) {
-  const linkedBadge = r.linkedKosuField === 'trips'
-    ? ' <span style="font-size:9px;background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 4px;margin-left:2px">→移動</span>'
-    : r.linkedKosuField === 'nights'
-    ? ' <span style="font-size:9px;background:#fef3c7;color:#78350f;border-radius:4px;padding:1px 4px;margin-left:2px">→宿泊</span>'
+  const srcBadge = r.src === 'tool'
+    ? ' <span class="src-badge src-tool" title="出張費アシスタントが算出（システム）">システム</span>'
+    : r.src === 'auto'
+    ? ' <span class="src-badge src-auto" title="依頼シートから取得">依頼シート</span>'
+    : r.src === 'manual'
+    ? ' <span class="src-badge src-manual" title="手入力">手入力</span>'
     : '';
-  const cntDisabled = r.linkedKosuField ? ' readonly style="background:#f0fdf4;border-color:#6ee7b7;min-width:55px;text-align:right"' : '';
+  const cls = r.src ? ' class="input-src-' + r.src + '"' : '';
   return '<tr id="trow-' + r.id + '">' +
-    '<td><input type="text" class="w" value="' + escHtml(r.type) + '" oninput="updateTravel(\'' + r.id + '\',\'type\',this.value)">' + linkedBadge + '</td>' +
+    '<td><input type="text" class="w" value="' + escHtml(r.type) + '" oninput="updateTravel(\'' + r.id + '\',\'type\',this.value)">' + srcBadge + '</td>' +
     '<td><input type="text" style="min-width:70px" value="' + escHtml(r.place) + '" oninput="updateTravel(\'' + r.id + '\',\'place\',this.value)"></td>' +
-    '<td><input type="number" min="0" value="' + escHtml(r.unit) + '" oninput="updateTravel(\'' + r.id + '\',\'unit\',this.value)"></td>' +
-    '<td><input type="number" min="1" value="' + escHtml(r.qty) + '" oninput="updateTravel(\'' + r.id + '\',\'qty\',this.value)"></td>' +
-    '<td><input type="number" min="0" value="' + escHtml(r.cnt) + '"' + cntDisabled + ' oninput="updateTravel(\'' + r.id + '\',\'cnt\',this.value)"></td>' +
+    '<td><input type="number" min="0"' + cls + ' value="' + escHtml(r.unit) + '" oninput="updateTravel(\'' + r.id + '\',\'unit\',this.value)"></td>' +
+    '<td><input type="number" min="1"' + cls + ' value="' + escHtml(r.qty) + '" oninput="updateTravel(\'' + r.id + '\',\'qty\',this.value)"></td>' +
+    '<td><input type="number" min="0"' + cls + ' value="' + escHtml(r.cnt) + '" oninput="updateTravel(\'' + r.id + '\',\'cnt\',this.value)"></td>' +
     '<td id="travel-total-' + r.id + '" style="font-weight:700">¥0</td>' +
     '<td><input type="text" class="w" value="' + escHtml(r.hint) + '" oninput="updateTravel(\'' + r.id + '\',\'hint\',this.value)"></td>' +
     '<td class="np"><button class="btn bd bsm np" onclick="deleteTravelRow(\'' + r.id + '\')">✕</button></td>' +
@@ -1452,6 +1772,16 @@ function updateTravel(rid, field, val) {
   if (!r) return;
   if (field === 'unit' || field === 'qty' || field === 'cnt') r[field] = parseFloat(val) || 0;
   else r[field] = val;
+  if ((r.src === 'tool' || r.src === 'auto') && field !== 'hint') {
+    r.src = 'manual';
+    const tr = document.getElementById('trow-' + r.id);
+    if (tr) {
+      const first = tr.querySelector('td');
+      const b = first.querySelector('.src-badge');
+      if (b) { b.className = 'src-badge src-manual'; b.textContent = '手入力'; b.title = '手入力'; }
+      tr.querySelectorAll('td:nth-child(3) input, td:nth-child(4) input, td:nth-child(5) input').forEach(i => { i.className = 'input-src-manual'; });
+    }
+  }
   recalcTravel();
 }
 
@@ -1487,6 +1817,7 @@ function deleteTravelRow(rid) {
 
 // ===================== RECALC ALL =====================
 function recalcAll() {
+  syncLaborRateByYear();
   const n = getMonthLabels().length;
   const grandH = recalcKosu(n);
   const travelGrand = recalcTravel();
@@ -1521,15 +1852,71 @@ function recalcAll() {
   const pdGp    = document.getElementById('pd-gp');      if (pdGp)      pdGp.textContent      = gpLabel;
   const pdTotal = document.getElementById('pd-total');   if (pdTotal)   pdTotal.textContent   = '¥' + fmt(Math.round(total));
   const pdRound = document.getElementById('pd-rounded'); if (pdRound)   pdRound.textContent   = '¥' + fmt(totalRd);
+  if (typeof taRefresh === 'function') taRefresh();
 }
 
 function syncBasicInfo() { recalcAll(); }
 
+// ----- Labor 単価 (円/時間): 年度 × Band。基準は B8 -----
+const LABOR_RATES = {
+  2026: { B6: 12400, B7: 15500, B8: 17600, B9: 20000, B10: 22900 },
+  2027: { B6: 12600, B7: 15800, B8: 17900, B9: 20400, B10: 23300 },
+  2028: { B6: 12800, B7: 16100, B8: 18200, B9: 20800, B10: 23700 },
+  2029: { B6: 13000, B7: 16400, B8: 18500, B9: 21200, B10: 24100 }
+};
+const LABOR_BASE_BAND = 'B8';
+// 表の範囲外の年は、最も近い年の単価を使う
+function laborYearFor(y) {
+  const ys = Object.keys(LABOR_RATES).map(Number);
+  const yr = parseInt(y, 10);
+  if (isNaN(yr)) return ys[0];
+  return Math.min(Math.max(yr, ys[0]), ys[ys.length - 1]);
+}
+function laborBaseRate(y) { return LABOR_RATES[laborYearFor(y)][LABOR_BASE_BAND]; }
+function buildLaborPresetOptions() {
+  const sel = document.getElementById('labor-rate-preset');
+  if (!sel) return;
+  let h = '<option value="">単価選択...</option>';
+  Object.keys(LABOR_RATES).forEach(y => {
+    h += '<optgroup label="' + y + '年' + '">';
+    Object.keys(LABOR_RATES[y]).forEach(band => {
+      const v = LABOR_RATES[y][band];
+      h += '<option value="' + v + '">' + y + ' ' + band + (band === LABOR_BASE_BAND ? '（基準）' : '') + ' (' + v.toLocaleString() + ')</option>';
+    });
+    h += '</optgroup>';
+  });
+  sel.innerHTML = h;
+}
+// 開始年に応じた B8 単価を既定値として反映する。利用者が単価を直接入力/選択した場合は上書きしない
+function syncLaborRateByYear() {
+  const el = document.getElementById('labor-rate');
+  const yEl = document.getElementById('start-year');
+  if (!el || !yEl || typeof setFieldSrc !== 'function') return;
+  const y = parseInt(yEl.value, 10), yr = laborYearFor(y);
+  const hint = document.getElementById('labor-rate-hint');
+  if (_fieldSrc['labor-rate'] === 'manual') {
+    if (hint) hint.textContent = '手入力/選択された単価を使用中（開始年 ' + y + ' の基準 B8 は ¥' + laborBaseRate(y).toLocaleString() + '）';
+    return;
+  }
+  const v = laborBaseRate(y);
+  if (String(el.value) !== String(v)) el.value = v;
+  setFieldSrc('labor-rate', 'tool');
+  if (hint) hint.textContent = yr === y
+    ? y + '年 ' + LABOR_BASE_BAND + ' の単価を適用（開始年に連動）'
+    : '開始年 ' + y + ' は単価表の範囲外のため ' + yr + '年 ' + LABOR_BASE_BAND + ' の単価を適用';
+}
+function onLaborRateEdit() {
+  setFieldSrc('labor-rate', 'manual');
+  syncLaborRateByYear();
+  recalcAll();
+}
 function applyLaborRatePreset(val) {
   if (!val) return;
   const num = parseInt(val, 10);
   if (!isNaN(num) && num > 0) {
     document.getElementById('labor-rate').value = num;
+    setFieldSrc('labor-rate', 'manual');
+    syncLaborRateByYear();
     recalcAll();
     showToast(`Labor 単価を ¥${num.toLocaleString()}/h に設定しました`);
   }
@@ -1851,7 +2238,11 @@ function generateCustomerOutput() {
   const tbl = document.createElement('table');
   tbl.className = 'co-quote-tbl';
   const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><td style="font-weight:700;font-size:15px;text-align:left;background:#dce6f4;border:1px solid #c8d6ea;padding:7px 12px;color:#1a3a5c">作業項目</td></tr>';
+  thead.innerHTML = '<tr>' +
+    '<th style="width:28%;text-align:left;background:#dce6f4;border:1px solid #c8d6ea;padding:7px 10px;color:#1a3a5c;font-weight:700">作業項目</th>' +
+    '<th style="width:12%;text-align:center;background:#dce6f4;border:1px solid #c8d6ea;padding:7px 10px;color:#1a3a5c;font-weight:700">工数</th>' +
+    '<th style="width:60%;text-align:left;background:#dce6f4;border:1px solid #c8d6ea;padding:7px 10px;color:#1a3a5c;font-weight:700">作業内容</th>' +
+    '</tr>';
   tbl.appendChild(thead);
 
   const tbody = document.createElement('tbody');
@@ -1859,7 +2250,8 @@ function generateCustomerOutput() {
     const secTotal = sec.rows.reduce((s, row) => s + sumRow(row.id, n), 0);
     if (secTotal === 0) return;
     const secTr = document.createElement('tr');
-    secTr.innerHTML = '<td class="co-quote-sec" contenteditable="true" style="border:1px solid #c8d6ea;text-align:left">' + escHtml(sec.label) + '</td>';
+    secTr.innerHTML = '<td class="co-quote-sec" contenteditable="true" colspan="3" style="border:1px solid #c8d6ea;text-align:left">' +
+      escHtml(sec.label) + '（小計 ' + (secTotal % 1 === 0 ? secTotal : secTotal.toFixed(1)) + 'h）</td>';
     const delBtn = document.createElement('button');
     delBtn.className = 'del-btn np';
     delBtn.textContent = '✕ 区分削除';
@@ -1873,7 +2265,10 @@ function generateCustomerOutput() {
       const rt = sumRow(row.id, n);
       if (rt === 0) return;
       const subTr = document.createElement('tr');
-      subTr.innerHTML = '<td class="co-quote-sub" contenteditable="true" style="border:1px solid #d8dde3">' + escHtml(d.label) + '</td>';
+      subTr.innerHTML =
+        '<td class="co-quote-sub" contenteditable="true" style="border:1px solid #d8dde3">' + escHtml(d.label) + '</td>' +
+        '<td contenteditable="true" style="border:1px solid #d8dde3;text-align:right">' + (rt % 1 === 0 ? rt : rt.toFixed(1)) + 'h</td>' +
+        '<td contenteditable="true" style="border:1px solid #d8dde3;text-align:left;white-space:normal">' + escHtml(d.customerNote || '') + '</td>';
       const rowDel = document.createElement('button');
       rowDel.className = 'del-btn np';
       rowDel.textContent = '✕';
@@ -1883,25 +2278,29 @@ function generateCustomerOutput() {
     });
 
     const sepTr = document.createElement('tr');
-    sepTr.innerHTML = '<td style="border:1px solid #d8dde3;height:6px;background:#fff"></td>';
+    sepTr.innerHTML = '<td colspan="3" style="border:1px solid #d8dde3;height:6px;background:#fff"></td>';
     tbody.appendChild(sepTr);
   });
 
   const totalTr = document.createElement('tr');
   totalTr.className = 'co-total-row';
   totalTr.innerHTML =
-    '<td style="border:1px solid #c8d6ea;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-    '<span contenteditable="true">参考見積額</span>' +
+    '<td colspan="3" style="border:1px solid #c8d6ea;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+    '<span contenteditable="true">合計工数 ' + (grandH % 1 === 0 ? grandH : grandH.toFixed(1)) + 'h ／ 参考見積額</span>' +
     '<span contenteditable="true">¥' + fmt(totalRounded) + '</span>' +
     '<button class="del-btn np" onclick="this.closest(\'tr\').remove()" title="削除">✕</button>' +
     '</td>';
   tbody.appendChild(totalTr);
 
   const note1Tr = document.createElement('tr');
-  note1Tr.innerHTML = '<td class="co-note" contenteditable="true" style="border:1px solid #d8dde3">（参考見積額には交通費や宿泊費等のその他費用が含まれています）</td>';
+  note1Tr.innerHTML = '<td colspan="3" class="co-note" contenteditable="true" style="border:1px solid #d8dde3">' +
+    (travelGrand > 0
+      ? '（参考見積額には交通費や宿泊費等のその他費用が含まれています）'
+      : '（交通費・宿泊費は作業場所およびオンサイト回数確定後に別途見積します）') +
+    '</td>';
   tbody.appendChild(note1Tr);
   const note2Tr = document.createElement('tr');
-  note2Tr.innerHTML = '<td class="co-note" contenteditable="true" style="border:1px solid #d8dde3">（IBM支援契約（準委任契約）でのGP およびContingencyを含んだお客様向け提供価格です）</td>';
+  note2Tr.innerHTML = '<td colspan="3" class="co-note" contenteditable="true" style="border:1px solid #d8dde3">（IBM支援契約（準委任契約）でのGP およびContingencyを含んだお客様向け提供価格です）</td>';
   tbody.appendChild(note2Tr);
 
   tbl.appendChild(tbody);
@@ -1924,7 +2323,10 @@ function addCustomerQuoteRow(btn) {
   if (!tbody) return;
   const totalRow = tbody.querySelector('.co-total-row');
   const newTr = document.createElement('tr');
-  newTr.innerHTML = '<td class="co-quote-sub" style="border:1px solid #d8dde3" contenteditable="true"></td>';
+  newTr.innerHTML =
+    '<td class="co-quote-sub" style="border:1px solid #d8dde3" contenteditable="true">新規作業項目</td>' +
+    '<td contenteditable="true" style="border:1px solid #d8dde3;text-align:right">0h</td>' +
+    '<td contenteditable="true" style="border:1px solid #d8dde3;text-align:left;white-space:normal">作業内容を入力</td>';
   const delBtn = document.createElement('button');
   delBtn.className = 'del-btn np';
   delBtn.textContent = '✕';
@@ -2524,8 +2926,24 @@ function collectState() {
       offering: (document.getElementById('ext-offering') || {}).value || '',
       workLocation: (document.getElementById('ext-location') || {}).value || '',
       meetingFrequency: (document.getElementById('ext-meeting') || {}).value || '',
-      docs: (document.getElementById('ext-docs') || {}).value || ''
+      docs: (document.getElementById('ext-docs') || {}).value || '',
+      otherMembers: (document.getElementById('ext-others') || {}).value || '',
+      contractType: (document.getElementById('ext-contract') || {}).value || '',
+      dealType: (document.getElementById('ext-deal') || {}).value || '',
+      paymentPlan: (document.getElementById('ext-pay') || {}).value || '',
+      monthlyReport: (document.getElementById('ext-report') || {}).value || '',
+      confidential: (document.getElementById('ext-conf') || {}).value || '',
+      serviceExclusions: (document.getElementById('ext-excl') || {}).value || '',
+      createdDate: (document.getElementById('ext-created') || {}).value || '',
+      author: (document.getElementById('ext-author') || {}).value || '',
+      serviceSummary: (document.getElementById('ext-summary') || {}).value || '',
+      meetingInternal: (document.getElementById('ext-mtg-int') || {}).value || '',
+      meetingExternal: (document.getElementById('ext-mtg-ext') || {}).value || '',
+      startDate: (document.getElementById('svc-start') || {}).value || '',
+      endDate: (document.getElementById('svc-end') || {}).value || ''
     },
+    fieldSrc: JSON.parse(JSON.stringify(_fieldSrc)),
+    elReviewed: _elReviewed,
     checklist: JSON.parse(JSON.stringify(CHECKLIST_DATA)),
     kosuData: kosuSnapshot,
     kosuSections: JSON.parse(JSON.stringify(KOSU_SECTIONS)),
@@ -2612,6 +3030,26 @@ function restoreState(state) {
   if (b.salesName !== undefined && document.getElementById('ext-sales')) document.getElementById('ext-sales').value = b.salesName;
   if (b.tsName !== undefined && document.getElementById('ext-ts')) document.getElementById('ext-ts').value = b.tsName;
   if (b.offering !== undefined && document.getElementById('ext-offering')) document.getElementById('ext-offering').value = b.offering;
+  [['ext-cust-no','customerNo'],['ext-bp-no','bpCustomerNo'],['ext-location','workLocation'],['ext-meeting','meetingFrequency'],['ext-docs','docs'],
+   ['ext-others','otherMembers'],['ext-contract','contractType'],['ext-deal','dealType'],['ext-pay','paymentPlan'],['ext-report','monthlyReport'],
+   ['ext-conf','confidential'],['ext-excl','serviceExclusions'],['svc-start','startDate'],['svc-end','endDate'],
+   ['ext-created','createdDate'],['ext-author','author'],['ext-summary','serviceSummary'],['ext-mtg-int','meetingInternal'],['ext-mtg-ext','meetingExternal']].forEach(([id,k]) => {
+    if (b[k] !== undefined && document.getElementById(id)) document.getElementById(id).value = b[k];
+  });
+  if (state.fieldSrc) {
+    _fieldSrc = {};
+    Object.keys(state.fieldSrc).forEach(id => setFieldSrc(id, state.fieldSrc[id]));
+    watchFieldEdits();
+  }
+  if (b.laborRate !== undefined && !(state.fieldSrc && state.fieldSrc['labor-rate'])) {
+    // 旧バージョンの保存データ: 保存された単価が開始年の B8 と異なれば手入力扱い
+    const yy = b.startYear !== undefined ? b.startYear : document.getElementById('start-year').value;
+    setFieldSrc('labor-rate', String(b.laborRate) === String(laborBaseRate(yy)) ? 'tool' : 'manual');
+  }
+  if (state.elReviewed !== undefined) {
+    _elReviewed = !!state.elReviewed;
+    const rv = document.getElementById('cov-reviewed'); if (rv) rv.checked = _elReviewed;
+  }
 
   if (state.checklist) CHECKLIST_DATA = JSON.parse(JSON.stringify(state.checklist));
   if (state.kosuSections) KOSU_SECTIONS = JSON.parse(JSON.stringify(state.kosuSections));
@@ -2623,13 +3061,255 @@ function restoreState(state) {
     });
   }
   if (state.travelRows) travelRows = JSON.parse(JSON.stringify(state.travelRows));
-  if (state.incomingRequestData) _incomingRequestData = state.incomingRequestData;
+  if (state.incomingRequestData) { _incomingRequestData = state.incomingRequestData; renderImportCoverage(_incomingRequestData); }
 
   buildChecklist();
   buildKosuTable();
   buildTravelTable();
   recalcAll();
 }
+
+// ----- 取込元の追跡 (R1) / 依頼シート取込の補助 (R2, R4, R5) -----
+let _fieldSrc = {};      // ext-* 等の入力欄ID -> 'auto' | 'tool' | 'manual'
+let _elReviewed = false; // EL SEが取込内容を確認済みか
+
+const EXT_FIELD_LABELS = {
+  'customer-name': 'お客様名', 'project-name': 'サービス名/案件名',
+  'ext-cust-no': 'お客様番号', 'ext-dnso': 'DNSO #',
+  'ext-opp-hw': 'Opportunity No（製品）', 'ext-opp-svc': 'Opportunity No（サービス）',
+  'ext-bp': 'ビジネス・パートナー様名', 'ext-bp-no': 'BP お客様番号',
+  'ext-sales': '担当営業名', 'ext-ts': '担当TS名',
+  'ext-offering': '支援対象製品 / Offering', 'ext-location': 'サービス提供場所',
+  'ext-meeting': '打合せ回数・頻度', 'ext-docs': '提出ドキュメント',
+  'ext-others': 'その他案件関係者名', 'ext-contract': '提供形態', 'ext-deal': '契約形態',
+  'ext-pay': '支払い計画', 'ext-report': '月次報告書', 'ext-conf': '機密情報取り扱い',
+  'ext-excl': 'サービス特有の前提、除外条件',
+  'ext-created': '記入日', 'ext-author': '記入者', 'ext-summary': 'サービス内容（概要）',
+  'ext-mtg-int': '社内関係者との打ち合わせの調整', 'ext-mtg-ext': '社外関係者との打ち合わせの調整'
+};
+
+// 入力欄ID -> 依頼シート解析結果(origin)のキー。依頼シートの取得元(黒字/グレー/補完)を引き当てる
+const EXT_ORIGIN_KEY = {
+  'customer-name': 'customerName', 'project-name': 'projectName', 'ext-cust-no': 'customerNo', 'ext-dnso': 'dnsoNo',
+  'ext-opp-hw': 'oppNoProduct', 'ext-opp-svc': 'oppNoService', 'ext-bp': 'bpName', 'ext-bp-no': 'bpCustomerNo',
+  'ext-sales': 'salesName', 'ext-ts': 'tsName', 'ext-offering': 'offering', 'ext-location': 'workLocation',
+  'ext-meeting': 'meetingFrequency', 'ext-docs': 'docs', 'ext-others': 'otherMembers', 'ext-contract': 'contractType',
+  'ext-deal': 'dealType', 'ext-pay': 'paymentPlan', 'ext-report': 'monthlyReport', 'ext-conf': 'confidential',
+  'ext-excl': 'serviceExclusions', 'svc-start': 'startDate', 'svc-end': 'endDate',
+  'ext-created': 'createdDate', 'ext-author': 'author', 'ext-summary': 'serviceSummary',
+  'ext-mtg-int': 'meetingInternal', 'ext-mtg-ext': 'meetingExternal'
+};
+// origin -> 取得元(src)。sheet=依頼シート黒字(赤) / reference=グレー参考例 / default=システム補完(青)
+function originToSrc(o) {
+  return o === 'sheet' ? 'auto' : o === 'reference' ? 'ref' : o === 'default' ? 'tool' : o === 'manual' ? 'manual' : '';
+}
+function reqSrc(req, key) {
+  const o = req && req.origin ? req.origin[key] : '';
+  return originToSrc(o) || 'auto';   // origin を持たない旧データは従来どおり依頼シート扱い
+}
+// 入力欄の「現在の取得元」(手入力で上書きされていれば manual)
+function currentOriginMap() {
+  const m = {};
+  Object.keys(EXT_ORIGIN_KEY).forEach(id => {
+    const src = _fieldSrc[id];
+    if (src) m[EXT_ORIGIN_KEY[id]] = src === 'auto' ? 'sheet' : src === 'ref' ? 'reference' : src === 'manual' ? 'manual' : 'default';
+  });
+  return m;
+}
+
+// 入力欄に取得元バッジと背景色を付ける
+function setFieldSrc(id, src) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  _fieldSrc[id] = src;
+  el.classList.remove('input-src-auto', 'input-src-ref', 'input-src-manual', 'input-src-tool', 'input-src-template');
+  el.classList.add('input-src-' + src);
+  const row = el.closest('.info-row');
+  const label = row ? row.querySelector('label') : null;
+  if (!label) return;
+  let badge = label.querySelector('.src-badge');
+  if (!badge) { badge = document.createElement('span'); label.appendChild(badge); }
+  const map = {
+    auto:   ['src-auto',   '依頼シート', '依頼シート（黒字＝実入力）から取得'],
+    ref:    ['src-ref',    '参考例', '依頼シート（グレー＝参考記入例）から取得。実入力ではありません'],
+    tool:   ['src-tool',   'システム', 'システムが決定・補完した値'],
+    manual: ['src-manual', '手入力', '手入力']
+  };
+  const m = map[src] || map.manual;
+  badge.className = 'src-badge ' + m[0];
+  badge.textContent = m[1];
+  badge.title = m[2];
+}
+
+// 取込後に利用者が値を編集したら Manual に切り替える
+function watchFieldEdits() {
+  Object.keys(EXT_FIELD_LABELS).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.srcWatch) return;
+    el.dataset.srcWatch = '1';
+    el.addEventListener('input', () => {
+      if (_fieldSrc[id] && _fieldSrc[id] !== 'manual') setFieldSrc(id, 'manual');
+      if (_incomingRequestData) renderImportCoverage(_incomingRequestData);
+    });
+  });
+}
+
+// 依頼シート「サービス内容（詳細）」を整理する (R4)。
+// 製品見出し行・見出し文・「設計/構築/稼動テスト/ドキュメント/Q&A」だけの定型箇条書きは
+// サービス内容の項目として取り込まない（定型は既定チェックリストが担う）。
+const WD_BOILERPLATE = /^[・\-－―\s　]*(設計|構築|稼[動働]テスト|テスト|ドキュメント(作成)?|Q\s*&\s*A|QA(支援)?)[\s　]*$/;
+const WD_HEADER = /^(以下の(製品|機器|ソフトウェア)の?(導入|構築)?支援(を行う)?[。:：]?|【.*】)$/;
+function cleanWorkDetail(text) {
+  const kept = [], dropped = [];
+  String(text || '').split(/\r?\n/).forEach(raw => {
+    const t = raw.replace(/\u3000/g, ' ').trim();
+    if (!t) return;
+    if (WD_HEADER.test(t) || WD_BOILERPLATE.test(t)) { dropped.push(t); return; }
+    // ①②… の製品見出し行（例: "① SSS6000 x 1セット"）は「サービス対象」側で扱うため残さない
+    if (/^[①-⑩]\s*\S+/.test(t) && !/[。.]$/.test(t)) { dropped.push(t); return; }
+    kept.push(t.replace(/^[・\-－―]\s*/, ''));
+  });
+  return { kept, dropped };
+}
+
+// 箇条書き文字列(・区切り/改行)を配列化
+function splitBullets(s) {
+  return String(s || '').split(/\r?\n|・/).map(x => x.replace(/\u3000/g, ' ').trim()).filter(Boolean);
+}
+
+// 同一テキスト(空白・記号差を無視)が既にあるか
+function normText(s) { return String(s || '').replace(/[\s\u3000・、。,.]/g, ''); }
+function sectionHas(sec, text) {
+  const n = normText(text);
+  return sec.items.some(it => it.text && normText(it.text) === n);
+}
+
+// 前提セクション内の「打合せ」「作業場所」行を依頼シートの値で置換 (R2)
+function mergeRequestIntoPremise(req) {
+  const sec = CHECKLIST_DATA.find(s => s.title === '前提');
+  if (!sec) return;
+  const loc = [req.workLocation, req.workLocationDetail].filter(Boolean).join(' ');
+  const isRemote = !!loc && /リモート/.test(loc) && !/オンサイト|お客様先/.test(loc);
+  const isOnsite = !!loc && /オンサイト|お客様先/.test(loc);
+  sec.items.forEach(it => {
+    if (/^プロジェクトの打ち合わせ場所は/.test(it.text) && req.meetingFrequency) {
+      it.text = 'プロジェクトの打ち合わせは ' + req.meetingFrequency.replace(/\s+/g, ' ') + ' を想定しています。';
+      it.checked = true; it.src = reqSrc(req, 'meetingFrequency');
+    }
+    if (isOnsite && /^必要な場合はオンサイトでの作業を実施します/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); }
+    if (isOnsite && /^作業場所はお客様指定施設/.test(it.text)) {
+      it.text = '作業場所は ' + loc + ' のお客様指定施設を想定しています。';
+      it.checked = true; it.src = reqSrc(req, 'workLocation');
+    }
+    if (isOnsite && /^サービスはリモートサポートとなります|^本サービスは、設計・構築のリモート支援/.test(it.text)) {
+      it.checked = false; it.src = 'tool';
+    }
+    if (isRemote && /^サービスはリモートサポートとなります/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); }
+  });
+}
+
+// 依頼シートの取込結果を項目別に一覧表示 (R1/R2)。
+// 見積もり依頼記入シート(テンプレート)の全項目を網羅し、値は取得元ごとの文字色で表示する (v2.5.0)。
+const PRECHECK_LABELS = {
+  yn1: 'SOセールスにおけるSTGテクニカル支援依頼プロセスの活用', yn2: '相談者名',
+  yn3: 'SAレビューやTCTの実施', yn4: 'SAレビューやTCT以外の提案時レビュー', yn5: '提案前チェックリストの活用',
+  yn6: 'パフォーマンスの妥当性（シミュレーションツール）', yn7: 'キャパシティーの妥当性（シミュレーションツール）',
+  yn8: '適切なサポート条件の確認', yn9: '制限/前提事項の確認', yn10: '正式サポート外構成の例外承認',
+  yn11: '支援契約終了後の保守契約の検討', yn12: '支援契約終了後の運用支援サービス契約の検討'
+};
+function srcClassOf(src) {
+  return src === 'auto' ? 'txt-auto' : src === 'ref' ? 'txt-ref' : src === 'manual' ? 'txt-man' : 'txt-sys';
+}
+function srcBadgeHtml(src) {
+  return src === 'auto' ? '<span class="src-badge src-auto">依頼シート</span>'
+       : src === 'ref' ? '<span class="src-badge src-ref">参考例（グレー）</span>'
+       : src === 'manual' ? '<span class="src-badge src-manual">手入力</span>'
+       : '<span class="src-badge src-tool">システム補完</span>';
+}
+function renderImportCoverage(req) {
+  const box = document.getElementById('cov-body');
+  if (!box) return;
+  const rows = [];
+  const cur = id => _fieldSrc[id];
+  // key: 依頼シートの項目キー / id: 対応する入力欄ID(手入力で上書きされたかの判定用)
+  const add = (label, key, value, id, note) => {
+    const has = Array.isArray(value) ? value.length > 0 : !!String(value || '').trim();
+    const shown = Array.isArray(value) ? value.join(' / ') : String(value || '');
+    const org = req.origin ? req.origin[key] : 'sheet';
+    let src = !has ? '' : (cur(id) === 'manual' ? 'manual' : reqSrc(req, key));
+    let state;
+    if (!has) state = '<span class="cov-empty">未入力</span>';
+    else if (src === 'ref') state = '<span class="cov-ref">参考例のみ（要確認）</span>';
+    else if (src === 'tool') state = '<span class="cov-sys">システム補完</span>';
+    else state = '<span class="cov-ok">✔ 取込済</span>';
+    const sh = shown.length > 110 ? shown.slice(0, 110) + '…' : shown;
+    rows.push('<tr><td>' + escHtml(label) + '</td><td>' + state + '</td><td class="' + srcClassOf(src) + '">' + escHtml(sh) + '</td><td>' +
+      (has ? srcBadgeHtml(src) : '') + (note ? ' <span style="color:#57606a">' + note + '</span>' : '') + '</td></tr>');
+  };
+  const sec = t => rows.push('<tr><td colspan="4" class="cov-sec">' + t + '</td></tr>');
+  const wd = cleanWorkDetail(req.workDetail);
+
+  sec('案件情報');
+  add('記入日', 'createdDate', req.createdDate, 'ext-created');
+  add('記入者', 'author', req.author, 'ext-author');
+  add('お客様名', 'customerName', req.customerName, 'customer-name');
+  add('サービス名（案件名）', 'projectName', req.projectName, 'project-name');
+  add('お客様番号', 'customerNo', req.customerNo, 'ext-cust-no');
+  add('DNSO #', 'dnsoNo', req.dnsoNo, 'ext-dnso');
+  add('Opportunity No（HW/SW製品）', 'oppNoProduct', req.oppNoProduct, 'ext-opp-hw');
+  add('Opportunity No（サービス）', 'oppNoService', req.oppNoService, 'ext-opp-svc',
+    (req.origin && req.origin.oppNoService === 'default') ? 'サービス側が空欄のため製品側の番号で補完（備考: HW/SW製品への登録でも可）' : '');
+  add('ビジネス・パートナー様名', 'bpName', req.bpName, 'ext-bp');
+  add('BP お客様番号', 'bpCustomerNo', req.bpCustomerNo, 'ext-bp-no');
+  add('担当営業名', 'salesName', req.salesName, 'ext-sales');
+  add('担当テクニカル・セールス名', 'tsName', req.tsName, 'ext-ts');
+  add('その他案件関係者名', 'otherMembers', req.otherMembers, 'ext-others');
+  sec('Offering / サービス対象製品');
+  add('Offering', 'offering', req.offering, 'ext-offering');
+  add('サービス対象製品', 'products', req.products || [], 'ext-offering');
+  sec('サービス内容');
+  add('サービス内容（概要）', 'serviceSummary', req.serviceSummary, 'ext-summary');
+  add('サービス期間 開始', 'startDate', req.startDate, 'svc-start');
+  add('サービス期間 終了', 'endDate', req.endDate, 'svc-end');
+  add('サービス提供場所', 'workLocation', [req.workLocation, req.workLocationDetail].filter(Boolean).join(' / '), 'ext-location');
+  add('サービス内容（詳細）', 'workDetail', wd.kept, '', '定型行 ' + wd.dropped.length + '件は除外');
+  add('提出ドキュメント', 'docs', req.docs, 'ext-docs');
+  add('打合せ回数', 'meetingFrequency', req.meetingFrequency, 'ext-meeting');
+  add('サービス除外事項', 'serviceExclusions', splitBullets(req.serviceExclusions), 'ext-excl');
+  add('機密情報取扱い', 'confidential', [req.confidential, req.confidentialNote].filter(Boolean).join(' '), 'ext-conf');
+  add('社内関係者との打ち合わせの調整', 'meetingInternal', req.meetingInternal, 'ext-mtg-int');
+  add('社外関係者との打ち合わせの調整', 'meetingExternal', req.meetingExternal, 'ext-mtg-ext');
+  sec('事前確認事項（Y / N）');
+  Object.keys(PRECHECK_LABELS).forEach(id => {
+    const pc = (req.preChecks || []).find(p => p.id === id) || { yn: '', note: '', origin: 'empty' };
+    const v = [pc.yn, pc.note].filter(Boolean).join(' ');
+    const src = !v ? '' : (pc.origin === 'reference' ? 'ref' : 'auto');
+    rows.push('<tr><td>' + escHtml(PRECHECK_LABELS[id]) + '</td><td>' + (!v ? '<span class="cov-empty">未入力</span>' : src === 'ref' ? '<span class="cov-ref">参考例のみ（要確認）</span>' : '<span class="cov-ok">✔ 取込済</span>') +
+      '</td><td class="' + srcClassOf(src) + '">' + escHtml(v) + '</td><td>' + (v ? srcBadgeHtml(src) : '') + '</td></tr>');
+  });
+  sec('契約情報');
+  add('ご提供形態', 'contractType', req.contractType, 'ext-contract');
+  add('契約形態', 'dealType', req.dealType, 'ext-deal');
+  add('月次作業報告書提出の必要性', 'monthlyReport', req.monthlyReport, 'ext-report');
+  rows.push('<tr><td>支払い計画</td><td><span class="cov-pend">営業確認</span></td><td class="' + srcClassOf(reqSrc(req, 'paymentPlan')) + '">' + escHtml(req.paymentPlan || '') +
+    '</td><td>' + srcBadgeHtml(cur('ext-pay') === 'manual' ? 'manual' : reqSrc(req, 'paymentPlan')) + ' <span style="color:#57606a">ツールでは確定しません（CPS登録後に別紙へ反映）</span></td></tr>');
+
+  const greyN = (req.greyKeys || []).length + (req.preChecks || []).filter(p => p.origin === 'reference').length;
+  const banner = (req.colorDetect === false)
+    ? '<div class="cov-note">文字色を判別できませんでした（ファイル形式による）。取込値はすべて「依頼シート」として扱っています。</div>'
+    : (greyN > 0 ? '<div class="cov-note">グレー文字（テンプレートの参考記入例）が <b>' + greyN + '項目</b> あります。実案件では黒字で記入されるため、'
+        + 'これらは実入力ではなく<b>参考例</b>として表示しています。内容を確認し、実際の値を入力してください。</div>' : '');
+  box.innerHTML = banner + '<table class="cov-tbl"><thead><tr><th style="width:26%">項目</th><th style="width:15%">状態</th><th>取込内容（文字色＝取得元）</th><th style="width:24%">取得元</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  updateReviewWarning();
+}
+
+function updateReviewWarning() {
+  const w = document.getElementById('cov-warn');
+  if (!w) return;
+  w.textContent = (_incomingRequestData && !_elReviewed)
+    ? '※ 依頼シートの取込結果は未確認です。内容を確認・補完のうえチェックしてください。' : '';
+}
+
 
 // ===================== PIPELINE INTEGRATION & HANDOFF =====================
 function checkIncomingRequestHandoff() {
@@ -2639,27 +3319,30 @@ function checkIncomingRequestHandoff() {
     const req = JSON.parse(raw);
     _incomingRequestData = req;
 
-    // Populate UI fields
-    if (req.customerName) document.getElementById('customer-name').value = req.customerName;
-    if (req.projectName) document.getElementById('project-name').value = req.projectName;
-    if (req.customerNo && document.getElementById('ext-cust-no')) document.getElementById('ext-cust-no').value = req.customerNo;
-    if (req.dnsoNo && document.getElementById('ext-dnso')) document.getElementById('ext-dnso').value = req.dnsoNo;
-    if (req.oppNoProduct && document.getElementById('ext-opp-hw')) document.getElementById('ext-opp-hw').value = req.oppNoProduct;
-    if (req.oppNoService && document.getElementById('ext-opp-svc')) document.getElementById('ext-opp-svc').value = req.oppNoService;
-    if (req.bpName && document.getElementById('ext-bp')) document.getElementById('ext-bp').value = req.bpName;
-    if (req.bpCustomerNo && document.getElementById('ext-bp-no')) document.getElementById('ext-bp-no').value = req.bpCustomerNo;
-    if (req.salesName && document.getElementById('ext-sales')) document.getElementById('ext-sales').value = req.salesName;
-    if (req.tsName && document.getElementById('ext-ts')) document.getElementById('ext-ts').value = req.tsName;
-    
+    // Populate UI fields (取得元バッジ付き / R1)
     const prodSummary = [req.offering, (req.products||[]).join(' / ')].filter(Boolean).join(' - ');
-    if (prodSummary && document.getElementById('ext-offering')) document.getElementById('ext-offering').value = prodSummary;
-
     const locSummary = [req.workLocation, req.workLocationDetail].filter(Boolean).join(' / ');
-    if (locSummary && document.getElementById('ext-location')) document.getElementById('ext-location').value = locSummary;
-    if (req.meetingFrequency && document.getElementById('ext-meeting')) document.getElementById('ext-meeting').value = req.meetingFrequency;
-    if (req.docs && document.getElementById('ext-docs')) {
-      document.getElementById('ext-docs').value = Array.isArray(req.docs) ? req.docs.join('、 ') : req.docs;
-    }
+    const docsText = Array.isArray(req.docs) ? req.docs.join('、 ') : (req.docs || '');
+    const fieldMap = [
+      ['customer-name', req.customerName], ['project-name', req.projectName],
+      ['ext-cust-no', req.customerNo], ['ext-dnso', req.dnsoNo],
+      ['ext-opp-hw', req.oppNoProduct], ['ext-opp-svc', req.oppNoService],
+      ['ext-bp', req.bpName], ['ext-bp-no', req.bpCustomerNo],
+      ['ext-sales', req.salesName], ['ext-ts', req.tsName],
+      ['ext-offering', prodSummary], ['ext-location', locSummary],
+      ['ext-meeting', req.meetingFrequency], ['ext-docs', docsText],
+      ['ext-others', req.otherMembers], ['ext-contract', req.contractType], ['ext-deal', req.dealType],
+      ['ext-pay', req.paymentPlan], ['ext-report', req.monthlyReport],
+      ['ext-conf', [req.confidential, req.confidentialNote].filter(Boolean).join(' ')],
+      ['ext-excl', req.serviceExclusions],
+      ['ext-created', req.createdDate], ['ext-author', req.author], ['ext-summary', req.serviceSummary],
+      ['ext-mtg-int', req.meetingInternal], ['ext-mtg-ext', req.meetingExternal]
+    ];
+    fieldMap.forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if (el && v) { el.value = v; setFieldSrc(id, reqSrc(req, EXT_ORIGIN_KEY[id])); }
+    });
+    watchFieldEdits();
 
     // eDOU detection from contractType
     if (req.contractType && req.contractType.includes("他部門のSLINK")) {
@@ -2682,6 +3365,10 @@ function checkIncomingRequestHandoff() {
       const months = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
       document.getElementById('period-months').value = months;
     }
+    // サービス開始/終了年月日 (日まで保持)
+    const _isoOf = v => { const m = String(v||'').match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); return m ? m[1] + '-' + m[2].padStart(2,'0') + '-' + m[3].padStart(2,'0') : ''; };
+    if (_isoOf(req.startDate)) { document.getElementById('svc-start').value = _isoOf(req.startDate); setFieldSrc('svc-start', reqSrc(req, 'startDate')); }
+    if (_isoOf(req.endDate)) { document.getElementById('svc-end').value = _isoOf(req.endDate); setFieldSrc('svc-end', reqSrc(req, 'endDate')); }
 
     // Auto-populate workload hours (if explicitly provided in req.workload, prioritize them)
     const n = getMonthLabels().length;
@@ -2733,53 +3420,89 @@ function checkIncomingRequestHandoff() {
         travelRows[0].place = placeName;
         travelRows[0].unit = oc.tripUnit || 28000;
         travelRows[0].cnt = oc.trips;
+        travelRows[0].src = 'auto';
       }
       if (oc.stays > 0) {
         travelRows[1].place = placeName;
         travelRows[1].unit = oc.stayUnit || 10000;
         travelRows[1].cnt = oc.stays;
+        travelRows[1].src = 'auto';
       }
       if (oc.allowanceUnit > 0) {
         travelRows[2].place = placeName;
         travelRows[2].unit = oc.allowanceUnit;
         travelRows[2].cnt = oc.stays || oc.trips;
+        travelRows[2].src = 'auto';
       }
       buildTravelTable();
     }
 
     // Auto-populate / check items in checklist
+    // サービス内容: 定型行(設計/構築/稼動テスト/ドキュメント/Q&A 等)は除外し、依頼シート固有の記述のみ取り込む (R4)。
+    // 依頼固有の記述が無い場合のみ既定の定型項目(1.設計作業〜5.QA)を残す。固有記述がある場合は v2.2.0 同様に置き換える (R2/R5)。
     if (req.workDetail) {
       const srvSec = CHECKLIST_DATA.find(s => s.title === "サービス内容");
       if (srvSec) {
-        srvSec.items.unshift({checked: true, text: req.workDetail, tag: "要件依頼"});
+        const { kept } = cleanWorkDetail(req.workDetail);
+        // 過去の取込分(要件依頼)を除いてから再取込し、重複を防ぐ
+        srvSec.items = srvSec.items.filter(it => it.tag !== '要件依頼');
+        // v2.2.0 方針維持: 依頼シート固有の記述がある場合は既定の汎用項目(Template)を置き換える。
+        // 定型行のみ(kept が空)の場合は既定項目を残す。手入力(Manual)項目は常に保持する。
+        if (kept.length > 0) srvSec.items = srvSec.items.filter(it => it.src === 'manual' || !it.text.trim());
+        const blanks = srvSec.items.filter(it => !it.text.trim());
+        const filled = srvSec.items.filter(it => it.text.trim());
+        const autoItems = kept
+          .filter(l => !sectionHas({items: filled}, l))
+          .map(l => ({ checked: true, text: l, tag: "要件依頼", src: reqSrc(req, 'workDetail') }));
+        srvSec.items = filled.concat(autoItems, blanks);
       }
     }
+    mergeRequestIntoPremise(req);
     if (req.products && req.products.length > 0) {
       const targetSec = CHECKLIST_DATA.find(s => s.title === "サービス対象");
       if (targetSec) {
-        req.products.forEach(p => {
-          targetSec.items.unshift({checked: true, text: "・" + p + " 支援一式", tag: "対象製品"});
-        });
+        const prodItems = req.products.map(p => ({
+          checked: true,
+          text: "・" + p + " 支援一式",
+          tag: "対象製品",
+          src: reqSrc(req, 'products')
+        }));
+        targetSec.items = prodItems;
       }
     }
-    if (req.docs && Array.isArray(req.docs) && req.docs.length > 0) {
+    // 提出ドキュメント: 既定項目と一致すればチェック、無ければ新規行として追加 (R2)
+    const reqDocs = Array.isArray(req.docs) ? req.docs : String(req.docs || '').split(/[、,，\n]|・/).map(s => s.trim()).filter(Boolean);
+    if (reqDocs.length > 0) {
       const docSec = CHECKLIST_DATA.find(s => s.title === "提出ドキュメント");
       if (docSec) {
-        docSec.items.forEach(it => {
-          if (req.docs.some(d => it.text.includes(d) || d.includes(it.text))) {
-            it.checked = true;
-          }
+        const cleanDocs = reqDocs.map(d => d.replace(/^[・\s]+/, '').trim()).filter(Boolean);
+        cleanDocs.forEach(d => {
+          const hit = docSec.items.find(it => it.text.trim() && (it.text.includes(d) || d.includes(it.text)));
+          if (hit) { hit.checked = true; hit.src = reqSrc(req, 'docs'); return; }
+          const blankIdx = docSec.items.findIndex(it => !it.text.trim());
+          const newItem = {checked: true, text: d, tag: "要件依頼", src: reqSrc(req, 'docs')};
+          if (blankIdx >= 0) docSec.items[blankIdx] = newItem; else docSec.items.push(newItem);
         });
       }
     }
+    // サービス除外事項: 再取込で重複しないよう過去の個別除外を除いてから先頭に追加 (R2)
     if (req.serviceExclusions) {
       const excSec = CHECKLIST_DATA.find(s => s.title.includes("適用除外"));
       if (excSec) {
-        excSec.items.unshift({checked: true, text: req.serviceExclusions, tag: "個別除外"});
+        excSec.items = excSec.items.filter(it => it.tag !== '個別除外');
+        const excLines = splitBullets(req.serviceExclusions);
+        const newItems = excLines
+          .filter(el => !sectionHas(excSec, el))
+          .map(el => ({checked: true, text: el, tag: "個別除外", src: reqSrc(req, 'serviceExclusions')}));
+        excSec.items = newItems.concat(excSec.items);
       }
     }
     buildChecklist();
     recalcAll();
+    _elReviewed = false;
+    const rv = document.getElementById('cov-reviewed');
+    if (rv) rv.checked = false;
+    renderImportCoverage(req);
 
     // Show handoff info banner
     const banner = document.getElementById('handoff-banner');
@@ -2821,6 +3544,22 @@ function handoffToSlink() {
     workLocation: (document.getElementById('ext-location')||{}).value || (_incomingRequestData||{}).workLocation || '',
     meetingFrequency: (document.getElementById('ext-meeting')||{}).value || (_incomingRequestData||{}).meetingFrequency || '',
     docs: (document.getElementById('ext-docs')||{}).value || (_incomingRequestData||{}).docs || '',
+    otherMembers: (document.getElementById('ext-others')||{}).value || (_incomingRequestData||{}).otherMembers || '',
+    contractType: (document.getElementById('ext-contract')||{}).value || (_incomingRequestData||{}).contractType || '',
+    dealType: (document.getElementById('ext-deal')||{}).value || (_incomingRequestData||{}).dealType || '',
+    paymentPlan: (document.getElementById('ext-pay')||{}).value || (_incomingRequestData||{}).paymentPlan || '',
+    monthlyReport: (document.getElementById('ext-report')||{}).value || (_incomingRequestData||{}).monthlyReport || '',
+    serviceExclusions: (document.getElementById('ext-excl')||{}).value || (_incomingRequestData||{}).serviceExclusions || '',
+    createdDate: (document.getElementById('ext-created')||{}).value || (_incomingRequestData||{}).createdDate || '',
+    author: (document.getElementById('ext-author')||{}).value || (_incomingRequestData||{}).author || '',
+    serviceSummary: (document.getElementById('ext-summary')||{}).value || (_incomingRequestData||{}).serviceSummary || '',
+    meetingInternal: (document.getElementById('ext-mtg-int')||{}).value || (_incomingRequestData||{}).meetingInternal || '',
+    meetingExternal: (document.getElementById('ext-mtg-ext')||{}).value || (_incomingRequestData||{}).meetingExternal || '',
+    origin: { ...((_incomingRequestData||{}).origin || {}), ...currentOriginMap() },
+    confidential: (() => { const v = (document.getElementById('ext-conf')||{}).value || ''; return v ? (/^有/.test(v) ? '有り' : '無し') : ((_incomingRequestData||{}).confidential || '無し'); })(),
+    confidentialNote: ((document.getElementById('ext-conf')||{}).value || '').replace(/^(有り|無し)\s*/, ''),
+    startDate: getServicePeriod().start,
+    endDate: getServicePeriod().end,
     scopeHours: grandH,
     estimatedPrice: totalStr,
     laborRate: document.getElementById('labor-rate').value,
@@ -2835,10 +3574,133 @@ function handoffToSlink() {
   window.location.href = "slink-spec-generator.html?src=quotation_generator";
 }
 
+// ===================== CPS (Cost Plan Sheet) 入力への引継ぎ =====================
+// 概算見積の出力 → CPS入力ツール(cps-input.html)の入力。S-LINK/仕様書生成とは独立した別メニュー (R8)。
+function buildCpsHandoff() {
+  recalcAll();
+  const ml = getMonthLabels(), n = ml.length;
+  const hours = ml.map((_, i) => {
+    let h = 0;
+    KOSU_SECTIONS.forEach(sec => sec.rows.forEach(r => { h += parseFloat((kosuData[r.id] || {values: []}).values[i]) || 0; }));
+    return h;
+  });
+  const totalH = hours.reduce((a, b) => a + b, 0);
+  // 交通費等は月の指定がないため、工数のある月へ工数比で按分（CPS側で編集可）
+  const other = [];
+  travelRows.forEach(r => {
+    const amt = (parseFloat(r.unit) || 0) * (parseFloat(r.qty) || 0) * (parseFloat(r.cnt) || 0);
+    if (!amt) return;
+    let acc = 0;
+    const amounts = hours.map((h, i) => {
+      if (!totalH) return i === 0 ? amt : 0;
+      const v = i === n - 1 ? amt - acc : Math.round(amt * h / totalH);
+      acc += v; return v;
+    });
+    other.push({name: ((r.type || '') + (r.place ? '（' + r.place + '）' : '')).trim() || 'その他', amounts});
+  });
+  const per = getServicePeriod();
+  return {
+    customerName: document.getElementById('customer-name').value,
+    projectName: document.getElementById('project-name').value,
+    oppNo: (document.getElementById('ext-opp-svc') || {}).value || '',
+    start: per.start, end: per.end,
+    gp: parseFloat(document.getElementById('gp').value) || 0,
+    contingency: parseFloat(document.getElementById('contingency').value) || 0,
+    price: parseInt(String(document.getElementById('sum-total').textContent).replace(/[^\d]/g, ''), 10) || 0,
+    monthlyHours: hours,
+    otherCosts: other,
+    paymentPlan: (document.getElementById('ext-pay') || {}).value || ''
+  };
+}
+function handoffToCps() {
+  sessionStorage.setItem('STORAGE_QUOTATION_CPS_INPUT', JSON.stringify(buildCpsHandoff()));
+  window.location.href = 'cps-input.html?src=quotation_generator';
+}
+
+// ---- 依頼シートのフォント色判定 (グレー=参考記入例 / 黒=実入力) ----
+// SheetJS は bookFiles:true で読み込むと wb.files に生XMLが残るため、styles / sharedStrings / sheet から文字色を判定する。
+function readSheetColors(wb, sheetName) {
+  const out = { grey: {}, greyCount: 0, available: false };
+  try {
+    const files = wb.files || {};
+    const dec = f => {
+      const o = files[f]; if (!o) return '';
+      const c = o.content;
+      if (typeof c === 'string') return c;
+      if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(c);
+      let s = '';
+      for (let i = 0; i < c.length; i += 8192) s += String.fromCharCode.apply(null, Array.prototype.slice.call(c, i, i + 8192));
+      try { return decodeURIComponent(escape(s)); } catch (e) { return s; }
+    };
+    const styles = dec('xl/styles.xml');
+    if (!styles) return out;
+    const isGreyTag = tag => {
+      if (!tag) return false;
+      const th = tag.match(/theme="(\d+)"/), ti = tag.match(/tint="(-?[\d.]+)"/), rg = tag.match(/rgb="([0-9A-Fa-f]{6,8})"/);
+      if (th && ti && parseFloat(ti[1]) <= -0.1 && (th[1] === '0' || th[1] === '2')) return true;
+      if (rg) {
+        const h = rg[1].slice(-6), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        return Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r >= 0x70 && r <= 0xDD;
+      }
+      return false;
+    };
+    const colorOf = xml => { const m = (xml || '').match(/<color\b[^>]*>/); return m ? m[0] : ''; };
+    const fontsBlock = (styles.match(/<fonts\b[\s\S]*?<\/fonts>/) || [''])[0];
+    const fontGrey = [];
+    fontsBlock.replace(/<font\s*\/>|<font(?:\s[^>]*)?>([\s\S]*?)<\/font>/g, (m, inner) => { fontGrey.push(isGreyTag(colorOf(inner))); return m; });
+    const xfBlock = (styles.match(/<cellXfs\b[\s\S]*?<\/cellXfs>/) || [''])[0];
+    const xfGrey = [];
+    xfBlock.replace(/<xf\b[^>]*?>/g, m => { const f = m.match(/fontId="(\d+)"/); xfGrey.push(f ? !!fontGrey[+f[1]] : false); return m; });
+    const sst = dec('xl/sharedStrings.xml');
+    const sis = [];
+    sst.replace(/<si>([\s\S]*?)<\/si>/g, (m, inner) => {
+      const runs = [];
+      inner.replace(/<r>([\s\S]*?)<\/r>/g, (mm, r) => {
+        const t = (r.match(/<t[^>]*>([\s\S]*?)<\/t>/) || [, ''])[1];
+        const c = colorOf(r);
+        runs.push({ text: t, grey: c ? isGreyTag(c) : null });
+        return mm;
+      });
+      sis.push(runs);
+      return m;
+    });
+    const idx = Math.max(0, (wb.SheetNames || []).indexOf(sheetName)) + 1;
+    let sheetXml = dec('xl/worksheets/sheet' + idx + '.xml');
+    if (!sheetXml) sheetXml = dec('xl/worksheets/sheet1.xml');
+    if (!sheetXml) return out;
+    out.available = true;
+    sheetXml.replace(/<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (m, ref, attrs, body) => {
+      const sm = attrs.match(/\ss="(\d+)"/);
+      const cellGrey = sm ? !!xfGrey[+sm[1]] : false;
+      let grey = cellGrey;
+      if (/\st="s"/.test(attrs) && body) {
+        const v = body.match(/<v>(\d+)<\/v>/);
+        const runs = v ? sis[+v[1]] : null;
+        if (runs && runs.length) {
+          const sig = runs.filter(r => String(r.text).trim());
+          if (sig.length) grey = sig.every(r => r.grey === null ? cellGrey : r.grey);
+        }
+      }
+      if (grey && body && /<v>|<is>/.test(body)) { out.grey[ref] = true; out.greyCount++; }
+      return m;
+    });
+  } catch (e) { console.warn('readSheetColors failed', e); }
+  return out;
+}
+
 function parseQuotationRequestExcel(wb) {
   const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error("シートが見つかりません");
+
+  // フォント色: グレー = テンプレートの参考記入例 / 黒 = 実際の入力値
+  const colors = readSheetColors(wb, sheetName);
+  const isGrey = (col, row) => !!colors.grey[col + row];
+  const refs = {};
+  const R = (key, col, row) => { (refs[key] = refs[key] || []).push([col, row]); };
+  // 選択肢末尾の「（例）…」注記を除去
+  const cleanOpt = s => String(s || '').replace(/[\u3000\s]*[（(]例[）)].*$/, '').replace(/[\u3000\s]+$/, '').trim();
+  const stripMark = s => String(s || '').replace(/^[■◾️☑✔●\s□]+/, '').trim();
 
   const getCell = (col, row) => {
     const c = ws[col + row];
@@ -2846,7 +3708,7 @@ function parseQuotationRequestExcel(wb) {
   };
 
   const data = {
-    version: "2.1",
+    version: "2.5",
     createdDate: "",
     author: "",
     customerName: "",
@@ -2862,6 +3724,7 @@ function parseQuotationRequestExcel(wb) {
     otherMembers: "",
     offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
     products: [],
+    serviceSummary: "",
     startDate: "",
     endDate: "",
     workLocation: "リモート",
@@ -2878,9 +3741,14 @@ function parseQuotationRequestExcel(wb) {
     contractType: "支援契約（Expert Labsの単独契約）",
     dealType: "直販（サブコン）",
     paymentPlan: "各月（標準）",
-    monthlyReport: "無"
+    monthlyReport: "無",
+    // 項目ごとの取得元: sheet=依頼シート(黒字の実入力) / reference=グレー(参考記入例) / default=システム補完 / empty=未入力
+    origin: {},
+    colorDetect: colors.available,
+    greyCellCount: colors.greyCount
   };
 
+  const CHECKED = "[■◾️☑✔●]";
   const CHECKED_SYMBOLS = ["■", "◾️", "☑", "✔", "●"];
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
 
@@ -2899,8 +3767,14 @@ function parseQuotationRequestExcel(wb) {
     { id: "yn12", key: "適切な運用支援サービス契約" }
   ];
 
-  for (let R = range.s.r; R <= range.e.r; ++R) {
-    const rowNum = R + 1;
+  // 選択肢行: 選択済み記号が付いている行だけを採用する (■/◾️ のみ。□ は未選択)
+  const pickChecked = (rowStr, cVal, bVal) => {
+    if (!CHECKED_SYMBOLS.some(s => rowStr.includes(s))) return "";
+    return stripMark(cVal || bVal);
+  };
+
+  for (let R0 = range.s.r; R0 <= range.e.r; ++R0) {
+    const rowNum = R0 + 1;
     const aVal = getCell('A', rowNum);
     const bVal = getCell('B', rowNum);
     const cVal = getCell('C', rowNum);
@@ -2909,58 +3783,53 @@ function parseQuotationRequestExcel(wb) {
     const fVal = getCell('F', rowNum);
     const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
 
-    // 1. Basic Info
+    // 1. 基本情報
     if (bVal.includes("記入日")) {
       const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
-      else data.createdDate = cVal.replace(/20xx\/xx\/xx/i, new Date().toISOString().slice(0, 10));
+      if (match) { data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`; R('createdDate', 'C', rowNum); }
     } else if (bVal.includes("記入者")) {
-      data.author = cVal;
+      data.author = cVal; R('author', 'C', rowNum);
     } else if (bVal.includes("お客様名")) {
-      data.customerName = cVal;
+      data.customerName = cVal; R('customerName', 'C', rowNum);
     } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
-      data.projectName = cVal;
+      data.projectName = cVal; R('projectName', 'C', rowNum);
     } else if (bVal.includes("お客様番号")) {
-      if (!data.customerNo) data.customerNo = cVal;
-      else data.bpCustomerNo = cVal;
+      if (!data.customerNo && rowNum < 15) { data.customerNo = cVal; R('customerNo', 'C', rowNum); }
+      else { data.bpCustomerNo = cVal; R('bpCustomerNo', 'C', rowNum); }
     } else if (bVal.includes("DNSO")) {
-      data.dnsoNo = cVal;
+      data.dnsoNo = cVal; R('dnsoNo', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
-      data.oppNoProduct = cVal;
+      data.oppNoProduct = cVal; R('oppNoProduct', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
-      data.oppNoService = cVal;
+      data.oppNoService = cVal; R('oppNoService', 'C', rowNum);
     } else if (bVal.includes("ビジネス・パートナー")) {
-      data.bpName = cVal;
+      data.bpName = cVal; R('bpName', 'C', rowNum);
     } else if (bVal.includes("担当営業名")) {
-      data.salesName = cVal;
+      data.salesName = cVal; R('salesName', 'C', rowNum);
     } else if (bVal.includes("担当テクニカル")) {
-      data.tsName = cVal;
+      data.tsName = cVal; R('tsName', 'C', rowNum);
     } else if (bVal.includes("その他案件関係者")) {
-      data.otherMembers = cVal;
+      data.otherMembers = cVal; R('otherMembers', 'C', rowNum);
     }
 
     // 2. Offering (rows 20 - 26)
     if (rowNum >= 20 && rowNum <= 26) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象Offering")) data.offering = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象Offering")) { data.offering = clean; R('offering', 'C', rowNum); }
     }
 
-    // 3. Product Selection (rows 27 - 41)
+    // 3. サービス対象製品 (rows 27 - 41)
     if (rowNum >= 27 && rowNum <= 41) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象製品を選択")) {
-          if (!data.products.includes(clean)) data.products.push(clean);
-        }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象製品を選択")) {
+        if (!data.products.includes(clean)) data.products.push(clean);
+        R('products', 'C', rowNum);
       }
     }
 
-    // 4. Service Content (rows 42 - 52)
+    // 4. サービス内容 (rows 42 - 52)
     if (bVal.includes("サービス期間")) {
+      R('startDate', 'C', rowNum); R('endDate', 'C', rowNum);
       const parts = cVal.split(/～|~/);
       if (parts.length >= 1) {
         const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
@@ -2972,150 +3841,103 @@ function parseQuotationRequestExcel(wb) {
       }
     } else if (bVal.includes("サービス提供場所")) {
       data.workLocationDetail = cVal;
-      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
-      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
-      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      if (cVal) { R('workLocation', 'C', rowNum); R('workLocationDetail', 'C', rowNum); }
+      const hasRemote = /リモート/.test(cVal);
+      const rest = cVal.replace(/リモート/g, '');
+      const hasOnsite = /オンサイト|お客様先|現地|[都道府県市区町村]|駅|最寄/.test(rest);
+      if (hasRemote && hasOnsite) data.workLocation = "リモート＋オンサイト";
+      else if (hasOnsite && /IBM/.test(rest) && !/お客様先|オンサイト/.test(rest)) data.workLocation = "IBM社内";
+      else if (hasOnsite) data.workLocation = "お客様先（オンサイト）";
       else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && !bVal.includes("詳細")) {
+      if (cVal && !/見積りに必要な項目/.test(cVal)) { data.serviceSummary = cVal; R('serviceSummary', 'C', rowNum); }
     } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
-      data.workDetail = cVal;
+      data.workDetail = cVal; R('workDetail', 'C', rowNum);
     } else if (bVal.includes("提出ドキュメント")) {
-      const lines = cVal.split(/\n|・|,|、/);
-      lines.forEach(l => {
+      R('docs', 'C', rowNum);
+      cVal.split(/\n|・|,|、/).forEach(l => {
         const t = l.trim();
         if (t && !data.docs.includes(t)) data.docs.push(t);
       });
     } else if (bVal.includes("打合せ回数")) {
-      data.meetingFrequency = cVal;
+      data.meetingFrequency = cVal; R('meetingFrequency', 'C', rowNum);
     } else if (bVal.includes("サービス除外事項")) {
-      data.serviceExclusions = cVal;
+      data.serviceExclusions = cVal; R('serviceExclusions', 'C', rowNum);
     } else if (bVal.includes("機密情報取扱い")) {
-      if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "有り") || cVal.includes(s + " 有り")) || cVal.includes("■有り") || cVal.includes("◾️有り")) {
-        data.confidential = "有り";
-      } else if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "無し") || cVal.includes(s + " 無し")) || cVal.includes("■無し") || cVal.includes("◾️無し")) {
-        data.confidential = "無し";
-      } else if (cVal.includes("有り")) {
-        data.confidential = "有り";
-      } else {
-        data.confidential = "無し";
-      }
-      if (dVal && !dVal.includes("機密保持契約締結情報")) data.confidentialNote = dVal;
+      if (new RegExp(CHECKED + "\\s*有り").test(cVal)) { data.confidential = "有り"; R('confidential', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無し").test(cVal)) { data.confidential = "無し"; R('confidential', 'C', rowNum); }
+      if (dVal && !dVal.includes("機密保持契約締結情報")) { data.confidentialNote = dVal; R('confidentialNote', 'D', rowNum); }
     } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingInternal = "不要";
-      } else {
-        data.meetingInternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingInternal = "不要"; R('meetingInternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingInternal = "調整します"; R('meetingInternal', 'C', rowNum); }
     } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingExternal = "不要";
-      } else {
-        data.meetingExternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingExternal = "不要"; R('meetingExternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingExternal = "調整します"; R('meetingExternal', 'C', rowNum); }
     }
 
-    // 5. Pre-Checks (rows 53 - 71)
+    // 5. 事前確認事項 (rows 54 - 71)
     if (rowNum >= 54 && rowNum <= 71) {
       ynMatchRules.forEach(rule => {
         if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
-          let ynVal = "";
-          const candidates = [dVal, eVal, fVal, cVal];
-          for (let cand of candidates) {
-            const up = cand.toUpperCase().trim();
-            if (up === "Y" || up === "N" || up === "N/A") {
-              ynVal = up;
-              break;
-            }
-          }
+          let ynVal = "", ynCol = "D";
+          [["D", dVal], ["E", eVal], ["F", fVal], ["C", cVal]].some(c => {
+            const up = c[1].toUpperCase().trim();
+            if (up === "Y" || up === "N" || up === "N/A") { ynVal = up; ynCol = c[0]; return true; }
+            return false;
+          });
           const noteVal = rule.isText ? (cVal || dVal || eVal) : (eVal || fVal || "");
           const existing = data.preChecks.find(p => p.id === rule.id);
+          const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org });
           } else {
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
+            if (org !== 'empty') existing.origin = org;
           }
         }
       });
     }
 
-    // 6. Contract Info (rows 72 - 91)
+    // 6. 契約情報 (rows 72 - 91)
     if (rowNum >= 74 && rowNum <= 78) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援のご提供形態")) data.contractType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援のご提供形態")) { data.contractType = cleanOpt(clean); R('contractType', 'C', rowNum); }
     }
     if (rowNum >= 79 && rowNum <= 83) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("契約形態を選択")) data.dealType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("契約形態を選択")) { data.dealType = cleanOpt(clean); R('dealType', 'C', rowNum); }
     }
     if (rowNum >= 84 && rowNum <= 87) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支払い計画を選択")) data.paymentPlan = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支払い計画を選択")) { data.paymentPlan = cleanOpt(clean); R('paymentPlan', 'C', rowNum); }
     }
     if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s + "有") || rowStr.includes(s + " 有")) || rowStr.includes("■有") || rowStr.includes("◾️有")) {
-        data.monthlyReport = "有";
-      } else {
-        data.monthlyReport = "無";
-      }
+      if (new RegExp(CHECKED + "\\s*有").test(rowStr)) { data.monthlyReport = "有"; R('monthlyReport', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無").test(rowStr)) { data.monthlyReport = "無"; R('monthlyReport', 'C', rowNum); }
     }
   }
 
-  if (data.workDetail) {
-    let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
-    const text = data.workDetail;
-    const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+  // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
+  let oppDerived = false;
+  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; }
 
-    const totalH = (sumDesign || 40) + (sumBuild || 40) + (sumTest || 24) + (sumDoc || 16) + (sumQa || 16) + (sumPm || 12);
-    data.workload = {
-      design: sumDesign || 40,
-      build: sumBuild || 40,
-      test: sumTest || 24,
-      doc: sumDoc || 16,
-      qa: sumQa || 16,
-      pm: sumPm || 12,
-      totalHours: totalH
-    };
-
-    const isOnsite = (data.workLocation && (data.workLocation.includes("オンサイト") || data.workLocation.includes("お客様先"))) ||
-                    (data.workLocationDetail && (data.workLocationDetail.includes("県") || data.workLocationDetail.includes("市") || data.workLocationDetail.includes("駅")));
-    if (isOnsite) {
-      const onsiteWorkHours = (sumBuild || 40) + (sumTest || 24);
-      const onsiteDays = Math.max(1, Math.round(onsiteWorkHours / 8));
-      const trips = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
-      const stays = Math.max(0, onsiteDays - 1);
-      const tripUnit = 28000;
-      const stayUnit = 10000;
-      const allowanceUnit = 4000;
-      const totalTrip = trips * tripUnit;
-      const totalStay = stays * stayUnit;
-      const totalAllowance = stays * allowanceUnit;
-      data.otherCost = {
-        onsiteDays, trips, stays, tripUnit, stayUnit, allowanceUnit,
-        totalTrip, totalStay, totalAllowance,
-        totalOtherCost: totalTrip + totalStay + totalAllowance
-      };
+  // 項目ごとの取得元を決定
+  const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
+  const SKIP = ['origin', 'preChecks', 'version', 'colorDetect', 'greyCellCount'];
+  Object.keys(data).forEach(k => {
+    if (SKIP.includes(k)) return;
+    const list = refs[k];
+    if (k === 'oppNoService' && oppDerived) { data.origin[k] = 'default'; return; }
+    if (list && list.length && !isEmptyVal(data[k])) {
+      data.origin[k] = list.some(r => !isGrey(r[0], r[1])) ? 'sheet' : 'reference';
+    } else if (!isEmptyVal(data[k])) {
+      data.origin[k] = 'default';   // 依頼シートに記載が無く、システムの既定値が入っている
+    } else {
+      data.origin[k] = 'empty';
     }
-  }
+  });
+  data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
 
   return data;
 }
@@ -3128,7 +3950,7 @@ function handleToolExcelUpload(input) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, bookFiles: true });
       const parsedData = parseQuotationRequestExcel(workbook);
 
       // Save to sessionStorage and trigger import
@@ -3147,11 +3969,13 @@ function handleToolExcelUpload(input) {
 
 // ===================== INIT =====================
 window.addEventListener('DOMContentLoaded', () => {
+  buildLaborPresetOptions();
   initKosuData();
   buildChecklist();
   buildKosuTable();
   buildTravelTable();
   recalcAll();
+  syncSvcDatesFromPeriod();
 
   checkIncomingRequestHandoff();
 

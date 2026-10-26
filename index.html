@@ -72,7 +72,7 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
 <div id="app">
   <header>
     <div class="top-row">
-      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.1.0</span></h1>
+      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.5.1</span></h1>
       <div><span style="font-size:12px;color:#94a3b8">Expert Labs Storage Division</span></div>
     </div>
     <p>Quotation Request 提出から Estimated Cost 試算、S-LINK / 仕様書・別紙の自動生成までを一気通貫で自動化する独立システム</p>
@@ -136,6 +136,15 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
           <p>試算された見積もりデータから、S-LINK 登録用メタデータ（契約金額・GP・Contingency・OO・PPTL/PJTL等）および「仕様書」「別紙」を自動整理し、登録用 HTML / コピー用テキストを一括出力します。</p>
           <a href="slink-spec-generator.html" class="btn-link">S-LINK・仕様書生成 →</a>
         </div>
+
+        <!-- Step 4 (別メニュー: CPS) -->
+        <div class="flow-card">
+          <div class="step-num">4</div>
+          <h3>CPS入力（見積詳細）</h3>
+          <span class="role-tag role-el">Expert Labs Storage / 営業確認</span>
+          <p>概算見積の出力（期間・GP・Risk Level・月別工数・Other Cost・概算見積り価格）を入力として引き継ぎ、Cost Plan Sheet（CostPlanSheetTPS2026v1）作成用の JSON を出力します。支払計画は提示額と期間から既定値を算出し、営業確認のうえ編集します。S-LINK・仕様書生成とは独立した別メニューです。</p>
+          <a href="cps-input.html" class="btn-link">CPS入力を開く →</a>
+        </div>
       </div>
     </div>
 
@@ -197,9 +206,9 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
         </thead>
         <tbody>
           <tr>
-            <td><strong>基本情報</strong> (お客様名、案件名、DNSO #、Opportunity No、担当営業、TS、関係者)</td>
-            <td><strong>基本情報タブ</strong> (お客様名、案件名、開始時期、期間、Labor単価、GP、Contingency)</td>
-            <td><strong>S-LINK 登録メタデータ</strong> (お客様番号、契約名、Opportunity No、PJTL/PPTL)</td>
+            <td><strong>基本情報</strong> (お客様名・お客様番号、サービス名、DNSO #、Opportunity No、BP名・番号、担当営業、TS、その他案件関係者)</td>
+            <td><strong>基本情報タブ</strong> (お客様名、サービス名、サービス開始/終了年月日、Labor単価、GP、Contingency)</td>
+            <td><strong>S-LINK 登録メタデータ</strong> (お客様番号、契約名、Opportunity No、OO/PPTL/PJTL、チームメンバー)</td>
           </tr>
           <tr>
             <td><strong>支援対象製品 & 支援内容</strong> (製品種別、台数・規模、詳細タスク)</td>
@@ -221,6 +230,11 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
             <td><strong>作成・出力タブ</strong> (見積もりサマリー、前提条件、月次工数展開)</td>
             <td><strong>S-LINK & 別紙</strong> (契約タイプ、チャネルコード、契約期間、支払計画、報告書要否)</td>
           </tr>
+          <tr>
+            <td><strong>見積り金額・支払計画</strong> (営業が確認)</td>
+            <td><strong>概算見積り価格</strong> + 月別工数・Other Costs → <a href="cps-input.html">CPS入力</a> (別メニュー)</td>
+            <td><strong>別紙</strong> 支払年月日・支払金額・合計 (CPSの支払計画から取込)</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -232,10 +246,90 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
 </div>
 
 <script>
+// ---- 依頼シートのフォント色判定 (グレー=参考記入例 / 黒=実入力) ----
+// SheetJS は bookFiles:true で読み込むと wb.files に生XMLが残るため、styles / sharedStrings / sheet から文字色を判定する。
+function readSheetColors(wb, sheetName) {
+  const out = { grey: {}, greyCount: 0, available: false };
+  try {
+    const files = wb.files || {};
+    const dec = f => {
+      const o = files[f]; if (!o) return '';
+      const c = o.content;
+      if (typeof c === 'string') return c;
+      if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(c);
+      let s = '';
+      for (let i = 0; i < c.length; i += 8192) s += String.fromCharCode.apply(null, Array.prototype.slice.call(c, i, i + 8192));
+      try { return decodeURIComponent(escape(s)); } catch (e) { return s; }
+    };
+    const styles = dec('xl/styles.xml');
+    if (!styles) return out;
+    const isGreyTag = tag => {
+      if (!tag) return false;
+      const th = tag.match(/theme="(\d+)"/), ti = tag.match(/tint="(-?[\d.]+)"/), rg = tag.match(/rgb="([0-9A-Fa-f]{6,8})"/);
+      if (th && ti && parseFloat(ti[1]) <= -0.1 && (th[1] === '0' || th[1] === '2')) return true;
+      if (rg) {
+        const h = rg[1].slice(-6), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        return Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r >= 0x70 && r <= 0xDD;
+      }
+      return false;
+    };
+    const colorOf = xml => { const m = (xml || '').match(/<color\b[^>]*>/); return m ? m[0] : ''; };
+    const fontsBlock = (styles.match(/<fonts\b[\s\S]*?<\/fonts>/) || [''])[0];
+    const fontGrey = [];
+    fontsBlock.replace(/<font\s*\/>|<font(?:\s[^>]*)?>([\s\S]*?)<\/font>/g, (m, inner) => { fontGrey.push(isGreyTag(colorOf(inner))); return m; });
+    const xfBlock = (styles.match(/<cellXfs\b[\s\S]*?<\/cellXfs>/) || [''])[0];
+    const xfGrey = [];
+    xfBlock.replace(/<xf\b[^>]*?>/g, m => { const f = m.match(/fontId="(\d+)"/); xfGrey.push(f ? !!fontGrey[+f[1]] : false); return m; });
+    const sst = dec('xl/sharedStrings.xml');
+    const sis = [];
+    sst.replace(/<si>([\s\S]*?)<\/si>/g, (m, inner) => {
+      const runs = [];
+      inner.replace(/<r>([\s\S]*?)<\/r>/g, (mm, r) => {
+        const t = (r.match(/<t[^>]*>([\s\S]*?)<\/t>/) || [, ''])[1];
+        const c = colorOf(r);
+        runs.push({ text: t, grey: c ? isGreyTag(c) : null });
+        return mm;
+      });
+      sis.push(runs);
+      return m;
+    });
+    const idx = Math.max(0, (wb.SheetNames || []).indexOf(sheetName)) + 1;
+    let sheetXml = dec('xl/worksheets/sheet' + idx + '.xml');
+    if (!sheetXml) sheetXml = dec('xl/worksheets/sheet1.xml');
+    if (!sheetXml) return out;
+    out.available = true;
+    sheetXml.replace(/<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (m, ref, attrs, body) => {
+      const sm = attrs.match(/\ss="(\d+)"/);
+      const cellGrey = sm ? !!xfGrey[+sm[1]] : false;
+      let grey = cellGrey;
+      if (/\st="s"/.test(attrs) && body) {
+        const v = body.match(/<v>(\d+)<\/v>/);
+        const runs = v ? sis[+v[1]] : null;
+        if (runs && runs.length) {
+          const sig = runs.filter(r => String(r.text).trim());
+          if (sig.length) grey = sig.every(r => r.grey === null ? cellGrey : r.grey);
+        }
+      }
+      if (grey && body && /<v>|<is>/.test(body)) { out.grey[ref] = true; out.greyCount++; }
+      return m;
+    });
+  } catch (e) { console.warn('readSheetColors failed', e); }
+  return out;
+}
+
 function parseQuotationRequestExcel(wb) {
   const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error("シートが見つかりません");
+
+  // フォント色: グレー = テンプレートの参考記入例 / 黒 = 実際の入力値
+  const colors = readSheetColors(wb, sheetName);
+  const isGrey = (col, row) => !!colors.grey[col + row];
+  const refs = {};
+  const R = (key, col, row) => { (refs[key] = refs[key] || []).push([col, row]); };
+  // 選択肢末尾の「（例）…」注記を除去
+  const cleanOpt = s => String(s || '').replace(/[\u3000\s]*[（(]例[）)].*$/, '').replace(/[\u3000\s]+$/, '').trim();
+  const stripMark = s => String(s || '').replace(/^[■◾️☑✔●\s□]+/, '').trim();
 
   const getCell = (col, row) => {
     const c = ws[col + row];
@@ -243,7 +337,7 @@ function parseQuotationRequestExcel(wb) {
   };
 
   const data = {
-    version: "2.1",
+    version: "2.5",
     createdDate: "",
     author: "",
     customerName: "",
@@ -259,6 +353,7 @@ function parseQuotationRequestExcel(wb) {
     otherMembers: "",
     offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
     products: [],
+    serviceSummary: "",
     startDate: "",
     endDate: "",
     workLocation: "リモート",
@@ -275,9 +370,14 @@ function parseQuotationRequestExcel(wb) {
     contractType: "支援契約（Expert Labsの単独契約）",
     dealType: "直販（サブコン）",
     paymentPlan: "各月（標準）",
-    monthlyReport: "無"
+    monthlyReport: "無",
+    // 項目ごとの取得元: sheet=依頼シート(黒字の実入力) / reference=グレー(参考記入例) / default=システム補完 / empty=未入力
+    origin: {},
+    colorDetect: colors.available,
+    greyCellCount: colors.greyCount
   };
 
+  const CHECKED = "[■◾️☑✔●]";
   const CHECKED_SYMBOLS = ["■", "◾️", "☑", "✔", "●"];
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
 
@@ -296,8 +396,14 @@ function parseQuotationRequestExcel(wb) {
     { id: "yn12", key: "適切な運用支援サービス契約" }
   ];
 
-  for (let R = range.s.r; R <= range.e.r; ++R) {
-    const rowNum = R + 1;
+  // 選択肢行: 選択済み記号が付いている行だけを採用する (■/◾️ のみ。□ は未選択)
+  const pickChecked = (rowStr, cVal, bVal) => {
+    if (!CHECKED_SYMBOLS.some(s => rowStr.includes(s))) return "";
+    return stripMark(cVal || bVal);
+  };
+
+  for (let R0 = range.s.r; R0 <= range.e.r; ++R0) {
+    const rowNum = R0 + 1;
     const aVal = getCell('A', rowNum);
     const bVal = getCell('B', rowNum);
     const cVal = getCell('C', rowNum);
@@ -306,58 +412,53 @@ function parseQuotationRequestExcel(wb) {
     const fVal = getCell('F', rowNum);
     const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
 
-    // 1. Basic Info
+    // 1. 基本情報
     if (bVal.includes("記入日")) {
       const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
-      else data.createdDate = cVal.replace(/20xx\/xx\/xx/i, new Date().toISOString().slice(0, 10));
+      if (match) { data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`; R('createdDate', 'C', rowNum); }
     } else if (bVal.includes("記入者")) {
-      data.author = cVal;
+      data.author = cVal; R('author', 'C', rowNum);
     } else if (bVal.includes("お客様名")) {
-      data.customerName = cVal;
+      data.customerName = cVal; R('customerName', 'C', rowNum);
     } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
-      data.projectName = cVal;
+      data.projectName = cVal; R('projectName', 'C', rowNum);
     } else if (bVal.includes("お客様番号")) {
-      if (!data.customerNo) data.customerNo = cVal;
-      else data.bpCustomerNo = cVal;
+      if (!data.customerNo && rowNum < 15) { data.customerNo = cVal; R('customerNo', 'C', rowNum); }
+      else { data.bpCustomerNo = cVal; R('bpCustomerNo', 'C', rowNum); }
     } else if (bVal.includes("DNSO")) {
-      data.dnsoNo = cVal;
+      data.dnsoNo = cVal; R('dnsoNo', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
-      data.oppNoProduct = cVal;
+      data.oppNoProduct = cVal; R('oppNoProduct', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
-      data.oppNoService = cVal;
+      data.oppNoService = cVal; R('oppNoService', 'C', rowNum);
     } else if (bVal.includes("ビジネス・パートナー")) {
-      data.bpName = cVal;
+      data.bpName = cVal; R('bpName', 'C', rowNum);
     } else if (bVal.includes("担当営業名")) {
-      data.salesName = cVal;
+      data.salesName = cVal; R('salesName', 'C', rowNum);
     } else if (bVal.includes("担当テクニカル")) {
-      data.tsName = cVal;
+      data.tsName = cVal; R('tsName', 'C', rowNum);
     } else if (bVal.includes("その他案件関係者")) {
-      data.otherMembers = cVal;
+      data.otherMembers = cVal; R('otherMembers', 'C', rowNum);
     }
 
     // 2. Offering (rows 20 - 26)
     if (rowNum >= 20 && rowNum <= 26) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象Offering")) data.offering = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象Offering")) { data.offering = clean; R('offering', 'C', rowNum); }
     }
 
-    // 3. Product Selection (rows 27 - 41)
+    // 3. サービス対象製品 (rows 27 - 41)
     if (rowNum >= 27 && rowNum <= 41) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象製品を選択")) {
-          if (!data.products.includes(clean)) data.products.push(clean);
-        }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象製品を選択")) {
+        if (!data.products.includes(clean)) data.products.push(clean);
+        R('products', 'C', rowNum);
       }
     }
 
-    // 4. Service Content (rows 42 - 52)
+    // 4. サービス内容 (rows 42 - 52)
     if (bVal.includes("サービス期間")) {
+      R('startDate', 'C', rowNum); R('endDate', 'C', rowNum);
       const parts = cVal.split(/～|~/);
       if (parts.length >= 1) {
         const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
@@ -369,150 +470,103 @@ function parseQuotationRequestExcel(wb) {
       }
     } else if (bVal.includes("サービス提供場所")) {
       data.workLocationDetail = cVal;
-      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
-      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
-      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      if (cVal) { R('workLocation', 'C', rowNum); R('workLocationDetail', 'C', rowNum); }
+      const hasRemote = /リモート/.test(cVal);
+      const rest = cVal.replace(/リモート/g, '');
+      const hasOnsite = /オンサイト|お客様先|現地|[都道府県市区町村]|駅|最寄/.test(rest);
+      if (hasRemote && hasOnsite) data.workLocation = "リモート＋オンサイト";
+      else if (hasOnsite && /IBM/.test(rest) && !/お客様先|オンサイト/.test(rest)) data.workLocation = "IBM社内";
+      else if (hasOnsite) data.workLocation = "お客様先（オンサイト）";
       else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && !bVal.includes("詳細")) {
+      if (cVal && !/見積りに必要な項目/.test(cVal)) { data.serviceSummary = cVal; R('serviceSummary', 'C', rowNum); }
     } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
-      data.workDetail = cVal;
+      data.workDetail = cVal; R('workDetail', 'C', rowNum);
     } else if (bVal.includes("提出ドキュメント")) {
-      const lines = cVal.split(/\n|・|,|、/);
-      lines.forEach(l => {
+      R('docs', 'C', rowNum);
+      cVal.split(/\n|・|,|、/).forEach(l => {
         const t = l.trim();
         if (t && !data.docs.includes(t)) data.docs.push(t);
       });
     } else if (bVal.includes("打合せ回数")) {
-      data.meetingFrequency = cVal;
+      data.meetingFrequency = cVal; R('meetingFrequency', 'C', rowNum);
     } else if (bVal.includes("サービス除外事項")) {
-      data.serviceExclusions = cVal;
+      data.serviceExclusions = cVal; R('serviceExclusions', 'C', rowNum);
     } else if (bVal.includes("機密情報取扱い")) {
-      if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "有り") || cVal.includes(s + " 有り")) || cVal.includes("■有り") || cVal.includes("◾️有り")) {
-        data.confidential = "有り";
-      } else if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "無し") || cVal.includes(s + " 無し")) || cVal.includes("■無し") || cVal.includes("◾️無し")) {
-        data.confidential = "無し";
-      } else if (cVal.includes("有り")) {
-        data.confidential = "有り";
-      } else {
-        data.confidential = "無し";
-      }
-      if (dVal && !dVal.includes("機密保持契約締結情報")) data.confidentialNote = dVal;
+      if (new RegExp(CHECKED + "\\s*有り").test(cVal)) { data.confidential = "有り"; R('confidential', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無し").test(cVal)) { data.confidential = "無し"; R('confidential', 'C', rowNum); }
+      if (dVal && !dVal.includes("機密保持契約締結情報")) { data.confidentialNote = dVal; R('confidentialNote', 'D', rowNum); }
     } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingInternal = "不要";
-      } else {
-        data.meetingInternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingInternal = "不要"; R('meetingInternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingInternal = "調整します"; R('meetingInternal', 'C', rowNum); }
     } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingExternal = "不要";
-      } else {
-        data.meetingExternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingExternal = "不要"; R('meetingExternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingExternal = "調整します"; R('meetingExternal', 'C', rowNum); }
     }
 
-    // 5. Pre-Checks (rows 53 - 71)
+    // 5. 事前確認事項 (rows 54 - 71)
     if (rowNum >= 54 && rowNum <= 71) {
       ynMatchRules.forEach(rule => {
         if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
-          let ynVal = "";
-          const candidates = [dVal, eVal, fVal, cVal];
-          for (let cand of candidates) {
-            const up = cand.toUpperCase().trim();
-            if (up === "Y" || up === "N" || up === "N/A") {
-              ynVal = up;
-              break;
-            }
-          }
+          let ynVal = "", ynCol = "D";
+          [["D", dVal], ["E", eVal], ["F", fVal], ["C", cVal]].some(c => {
+            const up = c[1].toUpperCase().trim();
+            if (up === "Y" || up === "N" || up === "N/A") { ynVal = up; ynCol = c[0]; return true; }
+            return false;
+          });
           const noteVal = rule.isText ? (cVal || dVal || eVal) : (eVal || fVal || "");
           const existing = data.preChecks.find(p => p.id === rule.id);
+          const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org });
           } else {
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
+            if (org !== 'empty') existing.origin = org;
           }
         }
       });
     }
 
-    // 6. Contract Info (rows 72 - 91)
+    // 6. 契約情報 (rows 72 - 91)
     if (rowNum >= 74 && rowNum <= 78) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援のご提供形態")) data.contractType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援のご提供形態")) { data.contractType = cleanOpt(clean); R('contractType', 'C', rowNum); }
     }
     if (rowNum >= 79 && rowNum <= 83) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("契約形態を選択")) data.dealType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("契約形態を選択")) { data.dealType = cleanOpt(clean); R('dealType', 'C', rowNum); }
     }
     if (rowNum >= 84 && rowNum <= 87) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支払い計画を選択")) data.paymentPlan = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支払い計画を選択")) { data.paymentPlan = cleanOpt(clean); R('paymentPlan', 'C', rowNum); }
     }
     if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s + "有") || rowStr.includes(s + " 有")) || rowStr.includes("■有") || rowStr.includes("◾️有")) {
-        data.monthlyReport = "有";
-      } else {
-        data.monthlyReport = "無";
-      }
+      if (new RegExp(CHECKED + "\\s*有").test(rowStr)) { data.monthlyReport = "有"; R('monthlyReport', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無").test(rowStr)) { data.monthlyReport = "無"; R('monthlyReport', 'C', rowNum); }
     }
   }
 
-  if (data.workDetail) {
-    let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
-    const text = data.workDetail;
-    const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+  // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
+  let oppDerived = false;
+  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; }
 
-    const totalH = (sumDesign || 40) + (sumBuild || 40) + (sumTest || 24) + (sumDoc || 16) + (sumQa || 16) + (sumPm || 12);
-    data.workload = {
-      design: sumDesign || 40,
-      build: sumBuild || 40,
-      test: sumTest || 24,
-      doc: sumDoc || 16,
-      qa: sumQa || 16,
-      pm: sumPm || 12,
-      totalHours: totalH
-    };
-
-    const isOnsite = (data.workLocation && (data.workLocation.includes("オンサイト") || data.workLocation.includes("お客様先"))) ||
-                    (data.workLocationDetail && (data.workLocationDetail.includes("県") || data.workLocationDetail.includes("市") || data.workLocationDetail.includes("駅")));
-    if (isOnsite) {
-      const onsiteWorkHours = (sumBuild || 40) + (sumTest || 24);
-      const onsiteDays = Math.max(1, Math.round(onsiteWorkHours / 8));
-      const trips = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
-      const stays = Math.max(0, onsiteDays - 1);
-      const tripUnit = 28000;
-      const stayUnit = 10000;
-      const allowanceUnit = 4000;
-      const totalTrip = trips * tripUnit;
-      const totalStay = stays * stayUnit;
-      const totalAllowance = stays * allowanceUnit;
-      data.otherCost = {
-        onsiteDays, trips, stays, tripUnit, stayUnit, allowanceUnit,
-        totalTrip, totalStay, totalAllowance,
-        totalOtherCost: totalTrip + totalStay + totalAllowance
-      };
+  // 項目ごとの取得元を決定
+  const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
+  const SKIP = ['origin', 'preChecks', 'version', 'colorDetect', 'greyCellCount'];
+  Object.keys(data).forEach(k => {
+    if (SKIP.includes(k)) return;
+    const list = refs[k];
+    if (k === 'oppNoService' && oppDerived) { data.origin[k] = 'default'; return; }
+    if (list && list.length && !isEmptyVal(data[k])) {
+      data.origin[k] = list.some(r => !isGrey(r[0], r[1])) ? 'sheet' : 'reference';
+    } else if (!isEmptyVal(data[k])) {
+      data.origin[k] = 'default';   // 依頼シートに記載が無く、システムの既定値が入っている
+    } else {
+      data.origin[k] = 'empty';
     }
-  }
+  });
+  data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
 
   return data;
 }
@@ -525,12 +579,12 @@ function handlePortalExcelUpload(input) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, bookFiles: true });
       const parsedData = parseQuotationRequestExcel(workbook);
 
       sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
 
-      if (confirm(`📊 Excel「${file.name}」を正常に解析しました！\n\nお客様名: ${parsedData.customerName || '未記入'}\n案件名: ${parsedData.projectName || '未記入'}\n製品: ${(parsedData.products || []).join(', ')}\n\n続いて「概算見積シート」を開きますか？\n（[キャンセル]を押すと「見積もり依頼記入シート」を開きます）`)) {
+      if (confirm(`📊 Excel「${file.name}」を正常に解析しました！\n\nお客様名: ${parsedData.customerName || '未記入'}\nサービス名: ${parsedData.projectName || '未記入'}\n製品: ${(parsedData.products || []).join(', ')}\n${(parsedData.greyKeys || []).length ? '\n⚠ グレー文字（テンプレートの参考記入例）が ' + parsedData.greyKeys.length + ' 項目あります。実入力ではなく「参考例」として扱います。\n' : ''}\n続いて「概算見積シート」を開きますか？\n（[キャンセル]を押すと「見積もり依頼記入シート」を開きます）`)) {
         window.location.href = "quotation-generator.html?src=excel_upload";
       } else {
         window.location.href = "request-form.html?src=excel_upload";

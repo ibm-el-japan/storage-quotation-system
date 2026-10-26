@@ -96,6 +96,17 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
   .tab-panel{display:none!important}
   .tab-panel.active{display:block!important}
 }
+  /* 値の取得元の文字色 (v2.5.0): 赤=依頼シート(黒字) / グレー斜体=依頼シート(グレー参考例) / 青=システム決定・補完 / 黒=手入力 */
+  .slink-item input.src-auto, .src-auto-txt { color:#c00000 !important; font-weight:600; }
+  .slink-item input.src-ref { color:#8b8f98 !important; font-style:italic; }
+  .slink-item input.src-sys { color:#1d4ed8 !important; }
+  .slink-item input.src-man { color:#111827 !important; }
+  .src-pill { display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; margin-left:6px; vertical-align:middle; line-height:1.4; }
+  .src-pill.p-auto { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+  .src-pill.p-ref { background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db; }
+  .src-pill.p-sys { background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; }
+  .src-pill.p-man { background:#f1f5f9; color:#111827; border:1px solid #cbd5e1; }
+  .src-legend { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; margin:0 0 10px; padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -108,6 +119,7 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
       <label class="btn bg bsm" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="slink-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleSlinkExcelUpload(this)"></label>
       <label class="btn bs bsm" style="cursor:pointer">📂 保存ファイル読込 (HTML/JSON)<input type="file" accept=".html,.json" style="display:none" onchange="loadSavedSlinkFile(this)"></label>
       <a href="quotation-generator.html" class="nav-back">📊 概算見積シートへ戻る</a>
+      <a href="cps-input.html" class="nav-back">🧮 CPS入力（別メニュー）</a>
     </div>
   </div>
 
@@ -223,10 +235,90 @@ function switchSlinkTab(id){
   if(id === 'tab-export-all') updateFullPackagePreview();
 }
 
+// ---- 依頼シートのフォント色判定 (グレー=参考記入例 / 黒=実入力) ----
+// SheetJS は bookFiles:true で読み込むと wb.files に生XMLが残るため、styles / sharedStrings / sheet から文字色を判定する。
+function readSheetColors(wb, sheetName) {
+  const out = { grey: {}, greyCount: 0, available: false };
+  try {
+    const files = wb.files || {};
+    const dec = f => {
+      const o = files[f]; if (!o) return '';
+      const c = o.content;
+      if (typeof c === 'string') return c;
+      if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(c);
+      let s = '';
+      for (let i = 0; i < c.length; i += 8192) s += String.fromCharCode.apply(null, Array.prototype.slice.call(c, i, i + 8192));
+      try { return decodeURIComponent(escape(s)); } catch (e) { return s; }
+    };
+    const styles = dec('xl/styles.xml');
+    if (!styles) return out;
+    const isGreyTag = tag => {
+      if (!tag) return false;
+      const th = tag.match(/theme="(\d+)"/), ti = tag.match(/tint="(-?[\d.]+)"/), rg = tag.match(/rgb="([0-9A-Fa-f]{6,8})"/);
+      if (th && ti && parseFloat(ti[1]) <= -0.1 && (th[1] === '0' || th[1] === '2')) return true;
+      if (rg) {
+        const h = rg[1].slice(-6), r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        return Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r >= 0x70 && r <= 0xDD;
+      }
+      return false;
+    };
+    const colorOf = xml => { const m = (xml || '').match(/<color\b[^>]*>/); return m ? m[0] : ''; };
+    const fontsBlock = (styles.match(/<fonts\b[\s\S]*?<\/fonts>/) || [''])[0];
+    const fontGrey = [];
+    fontsBlock.replace(/<font\s*\/>|<font(?:\s[^>]*)?>([\s\S]*?)<\/font>/g, (m, inner) => { fontGrey.push(isGreyTag(colorOf(inner))); return m; });
+    const xfBlock = (styles.match(/<cellXfs\b[\s\S]*?<\/cellXfs>/) || [''])[0];
+    const xfGrey = [];
+    xfBlock.replace(/<xf\b[^>]*?>/g, m => { const f = m.match(/fontId="(\d+)"/); xfGrey.push(f ? !!fontGrey[+f[1]] : false); return m; });
+    const sst = dec('xl/sharedStrings.xml');
+    const sis = [];
+    sst.replace(/<si>([\s\S]*?)<\/si>/g, (m, inner) => {
+      const runs = [];
+      inner.replace(/<r>([\s\S]*?)<\/r>/g, (mm, r) => {
+        const t = (r.match(/<t[^>]*>([\s\S]*?)<\/t>/) || [, ''])[1];
+        const c = colorOf(r);
+        runs.push({ text: t, grey: c ? isGreyTag(c) : null });
+        return mm;
+      });
+      sis.push(runs);
+      return m;
+    });
+    const idx = Math.max(0, (wb.SheetNames || []).indexOf(sheetName)) + 1;
+    let sheetXml = dec('xl/worksheets/sheet' + idx + '.xml');
+    if (!sheetXml) sheetXml = dec('xl/worksheets/sheet1.xml');
+    if (!sheetXml) return out;
+    out.available = true;
+    sheetXml.replace(/<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (m, ref, attrs, body) => {
+      const sm = attrs.match(/\ss="(\d+)"/);
+      const cellGrey = sm ? !!xfGrey[+sm[1]] : false;
+      let grey = cellGrey;
+      if (/\st="s"/.test(attrs) && body) {
+        const v = body.match(/<v>(\d+)<\/v>/);
+        const runs = v ? sis[+v[1]] : null;
+        if (runs && runs.length) {
+          const sig = runs.filter(r => String(r.text).trim());
+          if (sig.length) grey = sig.every(r => r.grey === null ? cellGrey : r.grey);
+        }
+      }
+      if (grey && body && /<v>|<is>/.test(body)) { out.grey[ref] = true; out.greyCount++; }
+      return m;
+    });
+  } catch (e) { console.warn('readSheetColors failed', e); }
+  return out;
+}
+
 function parseQuotationRequestExcel(wb) {
   const sheetName = wb.SheetNames.find(n => n.includes("依頼") || n.includes("Quotation") || n.includes("Sheet1")) || wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error("シートが見つかりません");
+
+  // フォント色: グレー = テンプレートの参考記入例 / 黒 = 実際の入力値
+  const colors = readSheetColors(wb, sheetName);
+  const isGrey = (col, row) => !!colors.grey[col + row];
+  const refs = {};
+  const R = (key, col, row) => { (refs[key] = refs[key] || []).push([col, row]); };
+  // 選択肢末尾の「（例）…」注記を除去
+  const cleanOpt = s => String(s || '').replace(/[\u3000\s]*[（(]例[）)].*$/, '').replace(/[\u3000\s]+$/, '').trim();
+  const stripMark = s => String(s || '').replace(/^[■◾️☑✔●\s□]+/, '').trim();
 
   const getCell = (col, row) => {
     const c = ws[col + row];
@@ -234,7 +326,7 @@ function parseQuotationRequestExcel(wb) {
   };
 
   const data = {
-    version: "2.1",
+    version: "2.5",
     createdDate: "",
     author: "",
     customerName: "",
@@ -250,6 +342,7 @@ function parseQuotationRequestExcel(wb) {
     otherMembers: "",
     offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
     products: [],
+    serviceSummary: "",
     startDate: "",
     endDate: "",
     workLocation: "リモート",
@@ -266,9 +359,14 @@ function parseQuotationRequestExcel(wb) {
     contractType: "支援契約（Expert Labsの単独契約）",
     dealType: "直販（サブコン）",
     paymentPlan: "各月（標準）",
-    monthlyReport: "無"
+    monthlyReport: "無",
+    // 項目ごとの取得元: sheet=依頼シート(黒字の実入力) / reference=グレー(参考記入例) / default=システム補完 / empty=未入力
+    origin: {},
+    colorDetect: colors.available,
+    greyCellCount: colors.greyCount
   };
 
+  const CHECKED = "[■◾️☑✔●]";
   const CHECKED_SYMBOLS = ["■", "◾️", "☑", "✔", "●"];
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F100');
 
@@ -287,8 +385,14 @@ function parseQuotationRequestExcel(wb) {
     { id: "yn12", key: "適切な運用支援サービス契約" }
   ];
 
-  for (let R = range.s.r; R <= range.e.r; ++R) {
-    const rowNum = R + 1;
+  // 選択肢行: 選択済み記号が付いている行だけを採用する (■/◾️ のみ。□ は未選択)
+  const pickChecked = (rowStr, cVal, bVal) => {
+    if (!CHECKED_SYMBOLS.some(s => rowStr.includes(s))) return "";
+    return stripMark(cVal || bVal);
+  };
+
+  for (let R0 = range.s.r; R0 <= range.e.r; ++R0) {
+    const rowNum = R0 + 1;
     const aVal = getCell('A', rowNum);
     const bVal = getCell('B', rowNum);
     const cVal = getCell('C', rowNum);
@@ -297,58 +401,53 @@ function parseQuotationRequestExcel(wb) {
     const fVal = getCell('F', rowNum);
     const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
 
-    // 1. Basic Info
+    // 1. 基本情報
     if (bVal.includes("記入日")) {
       const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-      if (match) data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
-      else data.createdDate = cVal.replace(/20xx\/xx\/xx/i, new Date().toISOString().slice(0, 10));
+      if (match) { data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`; R('createdDate', 'C', rowNum); }
     } else if (bVal.includes("記入者")) {
-      data.author = cVal;
+      data.author = cVal; R('author', 'C', rowNum);
     } else if (bVal.includes("お客様名")) {
-      data.customerName = cVal;
+      data.customerName = cVal; R('customerName', 'C', rowNum);
     } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
-      data.projectName = cVal;
+      data.projectName = cVal; R('projectName', 'C', rowNum);
     } else if (bVal.includes("お客様番号")) {
-      if (!data.customerNo) data.customerNo = cVal;
-      else data.bpCustomerNo = cVal;
+      if (!data.customerNo && rowNum < 15) { data.customerNo = cVal; R('customerNo', 'C', rowNum); }
+      else { data.bpCustomerNo = cVal; R('bpCustomerNo', 'C', rowNum); }
     } else if (bVal.includes("DNSO")) {
-      data.dnsoNo = cVal;
+      data.dnsoNo = cVal; R('dnsoNo', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
-      data.oppNoProduct = cVal;
+      data.oppNoProduct = cVal; R('oppNoProduct', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
-      data.oppNoService = cVal;
+      data.oppNoService = cVal; R('oppNoService', 'C', rowNum);
     } else if (bVal.includes("ビジネス・パートナー")) {
-      data.bpName = cVal;
+      data.bpName = cVal; R('bpName', 'C', rowNum);
     } else if (bVal.includes("担当営業名")) {
-      data.salesName = cVal;
+      data.salesName = cVal; R('salesName', 'C', rowNum);
     } else if (bVal.includes("担当テクニカル")) {
-      data.tsName = cVal;
+      data.tsName = cVal; R('tsName', 'C', rowNum);
     } else if (bVal.includes("その他案件関係者")) {
-      data.otherMembers = cVal;
+      data.otherMembers = cVal; R('otherMembers', 'C', rowNum);
     }
 
     // 2. Offering (rows 20 - 26)
     if (rowNum >= 20 && rowNum <= 26) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象Offering")) data.offering = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象Offering")) { data.offering = clean; R('offering', 'C', rowNum); }
     }
 
-    // 3. Product Selection (rows 27 - 41)
+    // 3. サービス対象製品 (rows 27 - 41)
     if (rowNum >= 27 && rowNum <= 41) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援対象製品を選択")) {
-          if (!data.products.includes(clean)) data.products.push(clean);
-        }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援対象製品を選択")) {
+        if (!data.products.includes(clean)) data.products.push(clean);
+        R('products', 'C', rowNum);
       }
     }
 
-    // 4. Service Content (rows 42 - 52)
+    // 4. サービス内容 (rows 42 - 52)
     if (bVal.includes("サービス期間")) {
+      R('startDate', 'C', rowNum); R('endDate', 'C', rowNum);
       const parts = cVal.split(/～|~/);
       if (parts.length >= 1) {
         const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
@@ -360,150 +459,103 @@ function parseQuotationRequestExcel(wb) {
       }
     } else if (bVal.includes("サービス提供場所")) {
       data.workLocationDetail = cVal;
-      if (cVal.includes("リモート") && cVal.includes("オンサイト")) data.workLocation = "リモート＋オンサイト";
-      else if (cVal.includes("オンサイト") || cVal.includes("お客様先")) data.workLocation = "お客様先（オンサイト）";
-      else if (cVal.includes("IBM")) data.workLocation = "IBM社内";
+      if (cVal) { R('workLocation', 'C', rowNum); R('workLocationDetail', 'C', rowNum); }
+      const hasRemote = /リモート/.test(cVal);
+      const rest = cVal.replace(/リモート/g, '');
+      const hasOnsite = /オンサイト|お客様先|現地|[都道府県市区町村]|駅|最寄/.test(rest);
+      if (hasRemote && hasOnsite) data.workLocation = "リモート＋オンサイト";
+      else if (hasOnsite && /IBM/.test(rest) && !/お客様先|オンサイト/.test(rest)) data.workLocation = "IBM社内";
+      else if (hasOnsite) data.workLocation = "お客様先（オンサイト）";
       else data.workLocation = "リモート";
+    } else if (bVal.includes("サービス内容") && !bVal.includes("詳細")) {
+      if (cVal && !/見積りに必要な項目/.test(cVal)) { data.serviceSummary = cVal; R('serviceSummary', 'C', rowNum); }
     } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
-      data.workDetail = cVal;
+      data.workDetail = cVal; R('workDetail', 'C', rowNum);
     } else if (bVal.includes("提出ドキュメント")) {
-      const lines = cVal.split(/\n|・|,|、/);
-      lines.forEach(l => {
+      R('docs', 'C', rowNum);
+      cVal.split(/\n|・|,|、/).forEach(l => {
         const t = l.trim();
         if (t && !data.docs.includes(t)) data.docs.push(t);
       });
     } else if (bVal.includes("打合せ回数")) {
-      data.meetingFrequency = cVal;
+      data.meetingFrequency = cVal; R('meetingFrequency', 'C', rowNum);
     } else if (bVal.includes("サービス除外事項")) {
-      data.serviceExclusions = cVal;
+      data.serviceExclusions = cVal; R('serviceExclusions', 'C', rowNum);
     } else if (bVal.includes("機密情報取扱い")) {
-      if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "有り") || cVal.includes(s + " 有り")) || cVal.includes("■有り") || cVal.includes("◾️有り")) {
-        data.confidential = "有り";
-      } else if (CHECKED_SYMBOLS.some(s => cVal.includes(s + "無し") || cVal.includes(s + " 無し")) || cVal.includes("■無し") || cVal.includes("◾️無し")) {
-        data.confidential = "無し";
-      } else if (cVal.includes("有り")) {
-        data.confidential = "有り";
-      } else {
-        data.confidential = "無し";
-      }
-      if (dVal && !dVal.includes("機密保持契約締結情報")) data.confidentialNote = dVal;
+      if (new RegExp(CHECKED + "\\s*有り").test(cVal)) { data.confidential = "有り"; R('confidential', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無し").test(cVal)) { data.confidential = "無し"; R('confidential', 'C', rowNum); }
+      if (dVal && !dVal.includes("機密保持契約締結情報")) { data.confidentialNote = dVal; R('confidentialNote', 'D', rowNum); }
     } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingInternal = "不要";
-      } else {
-        data.meetingInternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingInternal = "不要"; R('meetingInternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingInternal = "調整します"; R('meetingInternal', 'C', rowNum); }
     } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
-      if (cVal.includes("不要") && CHECKED_SYMBOLS.some(s => cVal.includes(s))) {
-        data.meetingExternal = "不要";
-      } else {
-        data.meetingExternal = "調整します";
-      }
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingExternal = "不要"; R('meetingExternal', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingExternal = "調整します"; R('meetingExternal', 'C', rowNum); }
     }
 
-    // 5. Pre-Checks (rows 53 - 71)
+    // 5. 事前確認事項 (rows 54 - 71)
     if (rowNum >= 54 && rowNum <= 71) {
       ynMatchRules.forEach(rule => {
         if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
-          let ynVal = "";
-          const candidates = [dVal, eVal, fVal, cVal];
-          for (let cand of candidates) {
-            const up = cand.toUpperCase().trim();
-            if (up === "Y" || up === "N" || up === "N/A") {
-              ynVal = up;
-              break;
-            }
-          }
+          let ynVal = "", ynCol = "D";
+          [["D", dVal], ["E", eVal], ["F", fVal], ["C", cVal]].some(c => {
+            const up = c[1].toUpperCase().trim();
+            if (up === "Y" || up === "N" || up === "N/A") { ynVal = up; ynCol = c[0]; return true; }
+            return false;
+          });
           const noteVal = rule.isText ? (cVal || dVal || eVal) : (eVal || fVal || "");
           const existing = data.preChecks.find(p => p.id === rule.id);
+          const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org });
           } else {
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
+            if (org !== 'empty') existing.origin = org;
           }
         }
       });
     }
 
-    // 6. Contract Info (rows 72 - 91)
+    // 6. 契約情報 (rows 72 - 91)
     if (rowNum >= 74 && rowNum <= 78) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支援のご提供形態")) data.contractType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支援のご提供形態")) { data.contractType = cleanOpt(clean); R('contractType', 'C', rowNum); }
     }
     if (rowNum >= 79 && rowNum <= 83) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("契約形態を選択")) data.dealType = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("契約形態を選択")) { data.dealType = cleanOpt(clean); R('dealType', 'C', rowNum); }
     }
     if (rowNum >= 84 && rowNum <= 87) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s))) {
-        const cell = cVal || bVal;
-        const clean = cell.replace(/^[■◾️☑✔●\s□]+/, '').trim();
-        if (clean && !clean.includes("支払い計画を選択")) data.paymentPlan = clean;
-      }
+      const clean = pickChecked(rowStr, cVal, bVal);
+      if (clean && !clean.includes("支払い計画を選択")) { data.paymentPlan = cleanOpt(clean); R('paymentPlan', 'C', rowNum); }
     }
     if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
-      if (CHECKED_SYMBOLS.some(s => rowStr.includes(s + "有") || rowStr.includes(s + " 有")) || rowStr.includes("■有") || rowStr.includes("◾️有")) {
-        data.monthlyReport = "有";
-      } else {
-        data.monthlyReport = "無";
-      }
+      if (new RegExp(CHECKED + "\\s*有").test(rowStr)) { data.monthlyReport = "有"; R('monthlyReport', 'C', rowNum); }
+      else if (new RegExp(CHECKED + "\\s*無").test(rowStr)) { data.monthlyReport = "無"; R('monthlyReport', 'C', rowNum); }
     }
   }
 
-  if (data.workDetail) {
-    let sumDesign = 0, sumBuild = 0, sumTest = 0, sumDoc = 0, sumQa = 0, sumPm = 0;
-    const text = data.workDetail;
-    const desMatches = [...text.matchAll(/設計[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(desMatches.length > 0) sumDesign = desMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const bldMatches = [...text.matchAll(/構築[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(bldMatches.length > 0) sumBuild = bldMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const tstMatches = [...text.matchAll(/(?:テスト|稼動テスト|試験)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(tstMatches.length > 0) sumTest = tstMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const docMatches = [...text.matchAll(/(?:ドキュメント|提出物|報告書|設計書)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(docMatches.length > 0) sumDoc = docMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const qaMatches = [...text.matchAll(/(?:QA|Q&A|問合)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(qaMatches.length > 0) sumQa = qaMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
-    const pmMatches = [...text.matchAll(/(?:PM|プロジェクト管理|打合せ)[^\d\n]*?(\d+)\s*(?:h|時間)/gi)];
-    if(pmMatches.length > 0) sumPm = pmMatches.reduce((acc, m) => acc + parseInt(m[1], 10), 0);
+  // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
+  let oppDerived = false;
+  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; }
 
-    const totalH = (sumDesign || 40) + (sumBuild || 40) + (sumTest || 24) + (sumDoc || 16) + (sumQa || 16) + (sumPm || 12);
-    data.workload = {
-      design: sumDesign || 40,
-      build: sumBuild || 40,
-      test: sumTest || 24,
-      doc: sumDoc || 16,
-      qa: sumQa || 16,
-      pm: sumPm || 12,
-      totalHours: totalH
-    };
-
-    const isOnsite = (data.workLocation && (data.workLocation.includes("オンサイト") || data.workLocation.includes("お客様先"))) ||
-                    (data.workLocationDetail && (data.workLocationDetail.includes("県") || data.workLocationDetail.includes("市") || data.workLocationDetail.includes("駅")));
-    if (isOnsite) {
-      const onsiteWorkHours = (sumBuild || 40) + (sumTest || 24);
-      const onsiteDays = Math.max(1, Math.round(onsiteWorkHours / 8));
-      const trips = Math.max(1, Math.round(onsiteDays * 0.5 * 1.2));
-      const stays = Math.max(0, onsiteDays - 1);
-      const tripUnit = 28000;
-      const stayUnit = 10000;
-      const allowanceUnit = 4000;
-      const totalTrip = trips * tripUnit;
-      const totalStay = stays * stayUnit;
-      const totalAllowance = stays * allowanceUnit;
-      data.otherCost = {
-        onsiteDays, trips, stays, tripUnit, stayUnit, allowanceUnit,
-        totalTrip, totalStay, totalAllowance,
-        totalOtherCost: totalTrip + totalStay + totalAllowance
-      };
+  // 項目ごとの取得元を決定
+  const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
+  const SKIP = ['origin', 'preChecks', 'version', 'colorDetect', 'greyCellCount'];
+  Object.keys(data).forEach(k => {
+    if (SKIP.includes(k)) return;
+    const list = refs[k];
+    if (k === 'oppNoService' && oppDerived) { data.origin[k] = 'default'; return; }
+    if (list && list.length && !isEmptyVal(data[k])) {
+      data.origin[k] = list.some(r => !isGrey(r[0], r[1])) ? 'sheet' : 'reference';
+    } else if (!isEmptyVal(data[k])) {
+      data.origin[k] = 'default';   // 依頼シートに記載が無く、システムの既定値が入っている
+    } else {
+      data.origin[k] = 'empty';
     }
-  }
+  });
+  data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
 
   return data;
 }
@@ -516,7 +568,7 @@ function handleSlinkExcelUpload(input) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, bookFiles: true });
       const parsedData = parseQuotationRequestExcel(workbook);
 
       sessionStorage.setItem("STORAGE_QUOTATION_REQUEST_DATA", JSON.stringify(parsedData));
@@ -597,7 +649,7 @@ function loadContextState(){
         basic: {
           customerName: req.customerName || "お客様名",
           projectName: req.projectName || "Storage支援案件",
-          laborRate: 17600,
+          laborRate: laborB8ForYear(sYear),
           contingency: 0.10,
           gp: 0.36,
           startYear: sYear,
@@ -640,6 +692,12 @@ function loadContextState(){
   initDocsFromState();
 }
 
+// Labor単価 B8 (円/時間) 年度別。概算見積シート (quotation-generator.html) の LABOR_RATES と同一値
+const LABOR_B8 = { 2026: 17600, 2027: 17900, 2028: 18200, 2029: 18500 };
+function laborB8ForYear(y){
+  const ys = Object.keys(LABOR_B8).map(Number), yr = parseInt(y, 10);
+  return LABOR_B8[isNaN(yr) ? ys[0] : Math.min(Math.max(yr, ys[0]), ys[ys.length - 1])];
+}
 function computeFinancials(){
   const b = stateData.basic || {};
   const rate = Number(b.laborRate) || 17600;
@@ -701,6 +759,11 @@ function initDocsFromState(){
   const startY = b.startYear || 2026;
   const startM = b.startMonth || 4;
   const dur = b.periodMonths || 12;
+  // サービス開始/終了年月日 (スライド4: サービス期間は開始・終了の年月日)
+  const _jp = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日' : ''; };
+  const _lastM = (() => { const t = startM - 1 + dur - 1; return {y: startY + Math.floor(t / 12), m: (t % 12) + 1}; })();
+  const startJp = _jp(b.startDate) || (startY + '年' + startM + '月1日');
+  const endJp = _jp(b.endDate) || (_lastM.y + '年' + _lastM.m + '月' + new Date(_lastM.y, _lastM.m, 0).getDate() + '日');
 
   const custNo = b.customerNo || req.customerNo || "";
   const bp = b.bpName || req.bpName || "";
@@ -719,7 +782,7 @@ function initDocsFromState(){
     { id: "sm6", label: "GP (%)", val: `${f.gpPct} %` },
     { id: "sm7", label: "Contingency (%)", val: `${f.contPct} %` },
     { id: "sm8", label: "総支援工数", val: `${f.totalHours} h` },
-    { id: "sm9", label: "契約期間", val: `${startY}年${startM}月1日 ～ (${dur}ヶ月間)` },
+    { id: "sm9", label: "契約期間", val: `${startJp} ～ ${endJp} (${dur}ヶ月間)` },
     { id: "sm10", label: "契約捺印予定日", val: `${startY}年${startM > 1 ? startM - 1 : 12}月25日` },
     { id: "sm11", label: "契約タイプ（支援）", val: req.contractType || "支援契約（Expert Labsの単独契約）" },
     { id: "sm12", label: "チャネルコード（直販/BP）", val: req.dealType || "直販（エンドユーザ様-IBM）" },
@@ -730,9 +793,35 @@ function initDocsFromState(){
     { id: "sm17", label: "個人情報・機密保持", val: req.confidential === "有り" ? `機密保持契約締結 (${req.confidentialNote||'済'})` : "機密保持対象外 (標準条件)" },
     { id: "sm18", label: "PPTL (Project Partner Tech Lead)", val: b.tsName || stateData.tsName || "TBD" },
     { id: "sm19", label: "PJTL (Project Tech Lead)", val: "Expert Labs Storage Specialist" },
-    { id: "sm20", label: "支払い計画", val: req.paymentPlan || "各月（標準）" },
-    { id: "sm21", label: "月次報告書提出要否", val: req.monthlyReport || "無" }
+    { id: "sm20", label: "支払い計画", val: (req.paymentPlan ? req.paymentPlan + "（依頼シート記載・要営業確認／CPS登録後に別紙へ反映）" : "要営業確認（CPSから取得）") },
+    { id: "sm21", label: "月次報告書提出要否", val: req.monthlyReport || "無" },
+    { id: "sm22", label: "OO (Opportunity Owner)", val: b.salesName || stateData.salesName || req.salesName || "TBD" },
+    { id: "sm23", label: "契約名", val: `${cust} ${proj}` },
+    { id: "sm24", label: "チームメンバー", val: [b.salesName || req.salesName, b.tsName || req.tsName, b.otherMembers || req.otherMembers].filter(Boolean).join('、 ') || "TBD" }
   ];
+
+  // 各項目の取得元を判定 (依頼シートの項目キー -> origin)。依頼シートに無い値・算出値はシステム補完(青)
+  const _og = req.origin || null;
+  const _srcOf = keys => {
+    if (!_og) return keys.length ? 'auto' : 'sys';     // origin 無し(旧データ)は従来どおり依頼シート扱い
+    const vals = keys.map(k => _og[k]).filter(Boolean);
+    if (!vals.length) return 'sys';
+    if (vals.includes('manual')) return 'man';
+    if (vals.includes('sheet')) return 'auto';
+    if (vals.every(v => v === 'reference')) return 'ref';
+    return 'sys';
+  };
+  const SM_KEYS = {
+    sm1: [], sm2: ['customerName', 'customerNo'], sm3: ['bpName', 'bpCustomerNo', 'customerName'], sm4: ['customerName', 'customerNo'],
+    sm5: [], sm6: [], sm7: [], sm8: [], sm9: ['startDate', 'endDate'], sm10: [],
+    sm11: ['contractType'], sm12: ['dealType'], sm13: ['oppNoProduct'], sm14: ['oppNoService'], sm15: [], sm16: [],
+    sm17: ['confidential'], sm18: ['tsName'], sm19: [], sm20: ['paymentPlan'], sm21: ['monthlyReport'],
+    sm22: ['salesName'], sm23: ['customerName', 'projectName'], sm24: ['salesName', 'tsName', 'otherMembers']
+  };
+  slinkMetaList.forEach(m => { if (SM_KEYS[m.id] !== undefined) m.src = _srcOf(SM_KEYS[m.id]); });
+  // 依頼シートの値を持たない/空欄の項目は、システムが既定値を補った値として扱う
+  const _emptyKeys = { sm13: b.oppNoProduct || stateData.oppNoProduct || req.oppNoProduct, sm14: b.oppNoService || stateData.oppNoService || req.oppNoService };
+  Object.keys(_emptyKeys).forEach(id => { if (!_emptyKeys[id]) { const m = slinkMetaList.find(x => x.id === id); if (m) m.src = 'sys'; } });
 
   // Specification Defaults (PPTX & Request Form 完全準拠)
   const prods = (req.products || ["IBM Storage 製品群"]).join("、 ");
@@ -766,6 +855,41 @@ ${excl.split('\n').filter(l => l.trim()).map(l => l.startsWith('・') ? l : '・
 ※ ハードウェア機器やソフトウェアの障害時には、お客様に弊社テクニカルサポート窓口のコールをお願いします。`
   };
 
+  // R3: チェックリストがある場合は「チェック済み項目のみ」から仕様書本文を組み立てる（未チェックは出力しない）
+  const cl = Array.isArray(stateData.checklist) ? stateData.checklist : null;
+  if (cl) {
+    const pick = title => ((cl.find(s => s.title === title) || {items: []}).items || [])
+      .filter(i => i.checked && String(i.text || '').trim()).map(i => i.text.trim());
+    // スライド4: サービスの内容 = 設計作業 / 構築作業 / 提出ドキュメント / QA作業 / その他
+    const catOf = tag => /設計/.test(tag) ? '設計作業' : /構築|テスト/.test(tag) ? '構築作業' : /QA/i.test(tag) ? 'QA作業' : /成果物|ドキュメント/.test(tag) ? '提出ドキュメント' : 'その他';
+    const svcItems = ((cl.find(s => s.title === 'サービス内容') || {items: []}).items || [])
+      .filter(i => i.checked && String(i.text || '').trim());
+    const svcByCat = {'設計作業': [], '構築作業': [], 'QA作業': [], 'その他': []}, svcCats = {};
+    svcItems.forEach(i => {
+      const c = catOf(i.tag || '');
+      const tx = i.text.trim().replace(/^\d+[.．]\s*/, '').replace(/^[・\s]+/, '');
+      if (c !== '提出ドキュメント') svcCats[c] = true;
+      if (c !== '提出ドキュメント' && tx !== c) svcByCat[c].push(tx);   // 見出しと同名の行は重複するため出さない
+    });
+    const docs = pick('提出ドキュメント');
+    const prem = pick('前提');
+    const excl2 = [];
+    cl.filter(s => (s.title || '').indexOf('適用除外') === 0).forEach(s => {
+      (s.items || []).forEach(i => { if (i.checked && String(i.text || '').trim()) excl2.push(i.text.trim()); });
+    });
+    let scope = '別紙記載のサービス対象機械、サービス対象ソフトウェアを対象に、以下の作業を支援いたします。';
+    Object.keys(svcByCat).forEach(c => {
+      if (svcCats[c]) scope += '\n\n【' + c + '】' + svcByCat[c].map(t => '\n・' + t).join('');
+    });
+    if (docs.length) scope += '\n\n【提出ドキュメント】\n' + docs.map(t => '・' + t).join('\n');
+    specDocData.scope = scope;
+    if (prem.length) specDocData.prerequisites = prem.join('\n');
+    if (excl2.length) {
+      specDocData.outOfScope = '本サービスは次のサービスおよび作業等を含みません。\n' +
+        excl2.map(t => '・' + t.replace(/^[・\s]+/, '')).join('\n');
+    }
+  }
+
   // Appendix Defaults (XXXX支援_別紙年月日.doc & PPTX 完全準拠)
   appxDocData = {
     title: `別紙(確定料金方式用) — ${cust} ${proj}`,
@@ -773,13 +897,15 @@ ${excl.split('\n').filter(l => l.trim()).map(l => l.startsWith('・') ? l : '・
     serviceName: `${cust} ${proj}`,
     targetProducts: prods,
     quantity: "1式",
+    productRows: (req.products && req.products.length ? req.products : []).map(n => ({name: n, qty: '1式'})),
     location: `${loc}のお客様指定施設およびIBM事業所内で支援作業を提供いたします。`,
     price: `¥${fmt(f.price)}`,
     travelCost: f.travelCost > 0 ? `¥${fmt(f.travelCost)}` : '¥0',
-    period: `${startY}年${startM}月1日 より ${startY}年${Math.min(12, startM + dur - 1)}月末日 まで`,
+    period: `${startJp} より ${endJp} まで`,
+    startDate: b.startDate || '', endDate: b.endDate || '',
     completion: `IBMからお客様への「支援サービス終了通知書」の提出または「サービス期間」の終了日のいずれか早い日にサービスの提供は終了します。`,
-    paymentDate: `${startY}年${Math.min(12, startM + dur - 1)}月末日`,
-    paymentAmount: `¥${fmt(f.price)}`,
+    paymentPlan: [],          // 営業確認→CPS登録後にCPSから取り込む (R10)。ツールでは決めない
+    paymentSource: '',        // 取込元CPSファイル名
     notes: `お客様は、お客様個人データをこの契約範囲においてIBMに処理、取り扱わせる目的で、提供しないものとします。変更が生じた場合、お客様は、IBMに書面による通知を行うものとし、お客様のために行う個人データの処理には、別途締結するデータ処理補足契約書（http://ibm.com/dpa）と別表が適用され、これらは本契約の一部となるものとします。
 前項にもかかわらず、いずれかの当事者が、データ処理補足契約書の締結なく、お客様からIBMまたはその従契約者へ個人データの提供がなされていることに気がついた場合、当該当事者はすみやかに相手方へ通知し、個人データの返還またはその取り扱いについて合意するものとします。
 
@@ -794,25 +920,40 @@ IBMは、「サービス」の提供にあたり、生成AIツールおよびIBM
   };
 }
 
+const SRC_PILL = { auto:['p-auto','依頼シート'], ref:['p-ref','参考例（グレー）'], sys:['p-sys','システム補完'], man:['p-man','手入力'] };
 function renderSlinkMetadata(){
   const grid = document.getElementById("slink-meta-grid");
-  let h = '';
+  let h = '<div class="src-legend" style="grid-column:1/-1"><span>値の取得元（文字色）:</span>' +
+    '<span class="src-pill p-auto">赤文字: 依頼シート（黒字＝実入力）</span>' +
+    '<span class="src-pill p-ref">グレー斜体: 依頼シート（グレー＝参考記入例）</span>' +
+    '<span class="src-pill p-sys">青文字: システムが決定・補完</span>' +
+    '<span class="src-pill p-man">黒文字: 手入力</span></div>';
   slinkMetaList.forEach((m, idx) => {
+    const sc = m.src || 'man';
+    const pill = SRC_PILL[sc] || SRC_PILL.man;
     h += `
       <div class="slink-item">
-        <label>${escHtml(m.label)}</label>
-        <input type="text" value="${escHtml(m.val)}" oninput="slinkMetaList[${idx}].val=this.value">
+        <label>${escHtml(m.label)}<span class="src-pill ${pill[0]}" id="pill-${idx}">${pill[1]}</span></label>
+        <input type="text" class="src-${sc === 'sys' ? 'sys' : sc}" value="${escHtml(m.val)}" oninput="slinkMetaList[${idx}].val=this.value;markSlinkManual(${idx},this)">
         <button class="copy-sub-btn" onclick="copySingleText(slinkMetaList[${idx}].val)">コピー</button>
       </div>
     `;
   });
   grid.innerHTML = h;
 }
+// 取込後に値を編集したら手入力(黒)へ切り替える
+function markSlinkManual(idx, el){
+  const m = slinkMetaList[idx]; if(!m || m.src === 'man') return;
+  m.src = 'man';
+  el.className = 'src-man';
+  const pill = document.getElementById('pill-' + idx);
+  if(pill){ pill.className = 'src-pill p-man'; pill.textContent = '手入力'; }
+}
 
 function addCustomSlinkItem(){
   const label = prompt("追加する項目名を入力してください:", "カスタム項目名");
   if(!label) return;
-  slinkMetaList.push({ id: "sm_" + Date.now(), label: label, val: "" });
+  slinkMetaList.push({ id: "sm_" + Date.now(), label: label, val: "", src: "man" });
   renderSlinkMetadata();
   showToast("項目を追加しました: " + label);
 }
@@ -846,7 +987,7 @@ function renderSpecificationEditor(){
       </div>
 
       <div class="edit-clause">
-        <label>２．サービスの前提条件 (業務支援・勤務時間・場所・保守・バックアップ・ライセンス等)</label>
+        <label>２．サービスの前提条件 (業務支援・勤務時間・場所・保守・バックアップ・ライセンス等) — 1行1項目。出力時に（1）（2）…を自動で付番します</label>
         <textarea rows="8" oninput="specDocData.prerequisites=this.value">${escHtml(specDocData.prerequisites)}</textarea>
       </div>
 
@@ -856,6 +997,119 @@ function renderSpecificationEditor(){
       </div>
     </div>
   `;
+}
+
+// ============================================================
+// 支払計画 (R10): CPSから取り込み。ツール側では金額・時期を決めない
+// ============================================================
+function renderPaymentRowsHtml(){
+  const rows = Array.isArray(appxDocData.paymentPlan) ? appxDocData.paymentPlan : [];
+  if (!rows.length) return '<p style="font-size:12px;color:#7c3aed;margin:4px 0">支払計画は未設定です。営業に確認のうえ、CPSの「支払計画」シートを取り込んでください。別紙には「＊」の空欄が出力されます。</p>';
+  const total = rows.reduce((t, r) => t + toYenNum(r.amount), 0);
+  const priceNum = toYenNum(appxDocData.price);
+  const mismatch = priceNum && total !== priceNum;
+  let h = '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="border:1px solid #cbd5e1;padding:3px 6px;text-align:left">支払期日</th><th style="border:1px solid #cbd5e1;padding:3px 6px;text-align:right">支払金額(円)</th><th></th></tr></thead><tbody>';
+  rows.forEach((r, i) => {
+    h += '<tr><td style="border:1px solid #cbd5e1;padding:2px"><input type="text" class="edit-box" value="' + escHtml(r.date) + '" oninput="appxDocData.paymentPlan[' + i + '].date=this.value"></td>' +
+         '<td style="border:1px solid #cbd5e1;padding:2px"><input type="text" class="edit-box" style="text-align:right" value="' + escHtml(r.amount) + '" onchange="appxDocData.paymentPlan[' + i + '].amount=this.value;refreshPaymentTable()"></td>' +
+         '<td style="padding:2px"><button class="btn bd bsm" onclick="removePaymentRow(' + i + ')">✕</button></td></tr>';
+  });
+  h += '<tr><td style="border:1px solid #cbd5e1;padding:3px 6px;font-weight:700">合 計</td><td style="border:1px solid #cbd5e1;padding:3px 6px;text-align:right;font-weight:700">¥' + fmt(total) + '</td><td></td></tr></tbody></table>';
+  if (mismatch) h += '<p style="font-size:12px;color:#b45309;margin:4px 0">⚠ 支払合計 ¥' + fmt(total) + ' が別紙のサービス料金 ' + escHtml(appxDocData.price) + ' と一致しません。CPSの提示額と別紙金額を確認してください。</p>';
+  return h;
+}
+function refreshPaymentTable(){ const el = document.getElementById('pay-table'); if (el) el.innerHTML = renderPaymentRowsHtml(); }
+function addPaymentRow(){
+  if (!Array.isArray(appxDocData.paymentPlan)) appxDocData.paymentPlan = [];
+  appxDocData.paymentPlan.push({date: '', amount: ''});
+  refreshPaymentTable();
+}
+function removePaymentRow(i){ appxDocData.paymentPlan.splice(i, 1); refreshPaymentTable(); }
+
+// セル値(Date / Excelシリアル値 / "YYYY/MM/DD"文字列)を「暦日」としての UTC Date に正規化。
+// SheetJS は JST 0:00 を前日15:00(UTC) で返す場合があるため、+12h して UTC の暦日を採用する（実行環境のTZに依存しない）
+function cellToDate(c){
+  if (!c) return null;
+  const v = c.v;
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) return new Date(v.getTime() + 12 * 3600 * 1000);
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    const p = XLSX.SSF.parse_date_code(v);
+    return p ? new Date(Date.UTC(p.y, p.m - 1, p.d)) : null;
+  }
+  const m = String(c.w || v || '').match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+  return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+}
+function fmtJpDate(d){
+  if (!(d instanceof Date) || isNaN(d)) return '';
+  return d.getUTCFullYear() + '年' + (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+}
+// CPS(.xlsm/.xlsx)の「支払計画」シートを読み込む。#, 請求日(C), 支払期日(D), 金額(E)
+function parseCpsPaymentPlan(wb){
+  const name = wb.SheetNames.find(n => n.indexOf('支払計画') >= 0);
+  if (!name) throw new Error('「支払計画」シートが見つかりません（CPSファイルを選択してください）');
+  const ws = wb.Sheets[name];
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:F10');
+  let headerRow = -1;
+  for (let r = range.s.r; r <= Math.min(range.e.r, 15); r++) {
+    const c = ws['D' + (r + 1)];
+    if (c && String(c.v).indexOf('支払期日') >= 0) { headerRow = r + 1; break; }
+  }
+  if (headerRow < 0) throw new Error('支払計画シートの見出し（支払期日）が見つかりません');
+  const rows = [];
+  for (let r = headerRow + 1; r <= range.e.r + 1; r++) {
+    const dc = ws['D' + r], ec = ws['E' + r];
+    if (!dc || !ec || ec.v === '' || ec.v === undefined) continue;
+    const amt = Number(ec.v);
+    if (!amt) continue;
+    const d = cellToDate(dc);
+    rows.push({date: d ? fmtJpDate(d) : String(dc.w || dc.v), amount: String(Math.round(amt))});
+  }
+  // メインシート: サービス料金 (J列ラベル → O列)
+  let cpsPrice = 0, cpsFrom = '', cpsTo = '';
+  const mainName = wb.SheetNames.find(n => n === 'メイン') || wb.SheetNames[0];
+  const mws = wb.Sheets[mainName];
+  if (mws) {
+    const mr = XLSX.utils.decode_range(mws['!ref'] || 'A1:Q40');
+    for (let r = mr.s.r + 1; r <= Math.min(mr.e.r + 1, 40); r++) {
+      const j = mws['J' + r];
+      if (j && String(j.v).trim() === 'サービス料金' && mws['O' + r]) cpsPrice = Number(mws['O' + r].v) || 0;
+      const b = mws['B' + r];
+      if (b && String(b.v).trim() === 'サービス期間') {
+        const d1 = cellToDate(mws['C' + r]), d2 = cellToDate(mws['E' + r]);
+        if (d1) cpsFrom = fmtJpDate(d1);
+        if (d2) cpsTo = fmtJpDate(d2);
+      }
+    }
+  }
+  return {rows: rows, cpsPrice: cpsPrice, cpsFrom: cpsFrom, cpsTo: cpsTo};
+}
+
+function importPaymentFromCps(input){
+  const f = input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true});
+      const res = parseCpsPaymentPlan(wb);
+      if (!res.rows.length) throw new Error('支払計画に金額が入力された行がありません（CPSに登録済みか確認してください）');
+      appxDocData.paymentPlan = res.rows;
+      appxDocData.paymentSource = f.name;
+      const msgs = ['支払計画 ' + res.rows.length + ' 行を取り込みました'];
+      const total = res.rows.reduce((t, r) => t + toYenNum(r.amount), 0);
+      if (res.cpsPrice) {
+        appxDocData.price = '¥' + fmt(res.cpsPrice);
+        msgs.push('サービス料金をCPSの提示額 ¥' + fmt(res.cpsPrice) + ' に合わせました');
+        if (total !== res.cpsPrice) msgs.push('⚠支払合計とCPS提示額が不一致');
+      }
+      renderAppendixEditor();
+      showToast(msgs.join(' / '));
+    } catch (err) {
+      alert('CPSの読込エラー: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(f);
 }
 
 // ============================================================
@@ -878,15 +1132,9 @@ function renderAppendixEditor(){
 
       <div class="edit-clause">
         <label>２．サービス内容 (サービス対象範囲・提供場所)</label>
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:8px">
-          <div>
-            <span style="font-size:11px;color:#64748b">対象機器・ソフトウェア製品名:</span>
-            <input type="text" value="${escHtml(appxDocData.targetProducts || '')}" class="edit-box" oninput="appxDocData.targetProducts=this.value">
-          </div>
-          <div>
-            <span style="font-size:11px;color:#64748b">数量:</span>
-            <input type="text" value="${escHtml(appxDocData.quantity || '1式')}" class="edit-box" oninput="appxDocData.quantity=this.value">
-          </div>
+        <div style="margin-bottom:8px">
+          <span style="font-size:11px;color:#64748b">サービス対象製品 × 数量（製品ごとに1行）:</span>
+          <div id="prod-rows">${renderProductRowsHtml()}</div>
         </div>
         <div>
           <span style="font-size:11px;color:#64748b">(2) サービス提供場所:</span>
@@ -919,17 +1167,15 @@ function renderAppendixEditor(){
       </div>
 
       <div class="edit-clause">
-        <label>６．支払計画 (支払期日・支払金額)</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <span style="font-size:11px;color:#64748b">支払期日:</span>
-            <input type="text" value="${escHtml(appxDocData.paymentDate || '')}" class="edit-box" oninput="appxDocData.paymentDate=this.value">
-          </div>
-          <div>
-            <span style="font-size:11px;color:#64748b">支払金額 (円):</span>
-            <input type="text" value="${escHtml(appxDocData.paymentAmount || appxDocData.price)}" class="edit-box" style="font-weight:700" oninput="appxDocData.paymentAmount=this.value">
-          </div>
+        <label>６．支払計画 (支払期日・支払金額) — ツールでは決定しません。営業確認→CPS登録後、CPSから取り込みます</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <label class="btn bv bsm" style="margin:0;cursor:pointer;color:#fff">📥 CPS(.xlsm/.xlsx)から支払計画を取り込む
+            <input type="file" accept=".xlsm,.xlsx" style="display:none" onchange="importPaymentFromCps(this)">
+          </label>
+          <span style="font-size:11px;color:#64748b" id="pay-src">${appxDocData.paymentSource ? '取得元: CPS（' + escHtml(appxDocData.paymentSource) + '）' : '未取込（要営業確認）'}</span>
         </div>
+        <div id="pay-table">${renderPaymentRowsHtml()}</div>
+        <button class="btn bc bsm" style="margin-top:6px" onclick="addPaymentRow()">＋ 行を追加（手入力）</button>
       </div>
 
       <div class="edit-clause">
@@ -945,10 +1191,10 @@ function renderAppendixEditor(){
 // ============================================================
 function updateFullPackagePreview(){
   const cust = (stateData.basic && stateData.basic.customerName) || "お客様名";
-  const proj = (stateData.basic && stateData.basic.projectName) || "案件名";
+  const proj = (stateData.basic && stateData.basic.projectName) || "サービス名";
   document.getElementById('full-package-preview').innerHTML = `
     <p><strong>登録先お客様:</strong> ${escHtml(cust)}</p>
-    <p><strong>案件名:</strong> ${escHtml(proj)}</p>
+    <p><strong>サービス名:</strong> ${escHtml(proj)}</p>
     <p><strong>S-LINK 登録項目数:</strong> ${slinkMetaList.length} 項目</p>
     <p><strong>仕様書タイトル:</strong> ${escHtml(specDocData.title)}</p>
     <p><strong>別紙金額 / 工数:</strong> ${escHtml(appxDocData.price)} / ${escHtml(appxDocData.scopeHours)} h</p>
@@ -967,65 +1213,109 @@ function copyAllSlinkMeta(){
   navigator.clipboard.writeText(lines.join("\n")).then(() => showToast("全 S-LINK 登録項目をコピーしました"));
 }
 
-function generateCleanDocHtml(type){
-  if(type === 'spec'){
-    return `
-      <h2>${escHtml(specDocData.title)}</h2>
-      <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">文書番号: ${escHtml(specDocData.docNo)}</div>
-      <p>${escHtml(specDocData.intro || '').replace(/\n/g, '<br>')}</p>
-      
-      <h3>１．サービスの内容</h3>
-      <p>${escHtml(specDocData.scope || '').replace(/\n/g, '<br>')}</p>
-      
-      <h3>２．サービスの前提条件</h3>
-      <p>${escHtml(specDocData.prerequisites || '').replace(/\n/g, '<br>')}</p>
-      
-      <h3>３．サービスの適用除外</h3>
-      <p>${escHtml(specDocData.outOfScope || '').replace(/\n/g, '<br>')}</p>
-      <p style="text-align:right;margin-top:20px">以上</p>
-    `;
-  } else {
-    return `
-      <h2>${escHtml(appxDocData.title)}</h2>
-      <div style="text-align:right;font-size:12px;color:#64748b;margin-bottom:20px">別紙番号: ${escHtml(appxDocData.docNo)}</div>
-      
-      <h3>１．サービス名</h3>
-      <p><strong>${escHtml(appxDocData.serviceName || appxDocData.title)}</strong></p>
-      
-      <h3>２．サービス内容</h3>
-      <p>サービス仕様書記載のサービスが、下記サービス対象範囲に対して提供されます。</p>
-      <p><strong>(１) サービス対象範囲</strong><br>サービス対象機器・ソフトウェア</p>
-      <table>
-        <thead><tr><th>製品名</th><th style="text-align:right;width:120px">数量</th></tr></thead>
-        <tbody>
-          <tr><td>${escHtml(appxDocData.targetProducts || '対象ストレージ製品')}</td><td style="text-align:right">${escHtml(appxDocData.quantity || '1式')}</td></tr>
-        </tbody>
-      </table>
-      <p><strong>(２) サービス提供場所</strong><br>${escHtml(appxDocData.location)}</p>
-      
-      <h3>３．サービス料金</h3>
-      <p>確定料金合計 <strong>${escHtml(appxDocData.price)}</strong><br><span style="font-size:12px;color:#64748b">上記金額には、別途消費税が加算されます。</span></p>
-      
-      <h3>４．サービス期間（契約期間）</h3>
-      <p><strong>${escHtml(appxDocData.period)}</strong></p>
-      
-      <h3>５．サービスの終了</h3>
-      <p>${escHtml(appxDocData.completion).replace(/\n/g, '<br>')}</p>
-      
-      <h3>６．支払計画</h3>
-      <table>
-        <thead><tr><th>支 払 期 日</th><th style="text-align:right;width:180px">支 払 金 額（円）</th></tr></thead>
-        <tbody>
-          <tr><td>${escHtml(appxDocData.paymentDate || '')}</td><td style="text-align:right">${escHtml(appxDocData.paymentAmount || appxDocData.price)}</td></tr>
-          <tr style="background:#f8fafc;font-weight:700"><td>合 計</td><td style="text-align:right">${escHtml(appxDocData.paymentAmount || appxDocData.price)}</td></tr>
-        </tbody>
-      </table>
-      <p style="font-size:12px;color:#64748b">上記金額には、いずれも別途消費税が加算されます。</p>
-      
-      <h3>７．特記事項</h3>
-      <p>${escHtml(appxDocData.notes).replace(/\n/g, '<br>')}</p>
-    `;
+// ---- 書式ヘルパー (R9: 現行の仕様書・別紙(.doc)に合わせる) ----
+// （1）（2）… の番号付け。既に番号が付いている行はそのまま。
+function numberLines(text){
+  let n = 0;
+  return String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    if (/^[（(]\s*\d+\s*[）)]/.test(l)) return l;
+    n++;
+    return '（' + n + '）' + l;
+  }).join('\n');
+}
+function docP(text, ind, bold){
+  const t = escHtml(text);
+  return '<p style="margin:0 0 0 ' + (ind || 0) + 'pt">' + (bold ? '<b>' + t + '</b>' : (t || '&nbsp;')) + '</p>';
+}
+// text の各行を段落化（空行は空段落）
+function docLines(text, ind){
+  return String(text || '').split(/\r?\n/).map(l => docP(l.trim(), ind)).join('');
+}
+// 表を使わず、タブ位置で2列に揃える
+function docTabRow(left, right, ind, word, bold){
+  const l = escHtml(left), r = escHtml(right);
+  const lb = bold ? '<b>' + l + '</b>' : l, rb = bold ? '<b>' + r + '</b>' : r;
+  if (word) {
+    return '<p style="margin:0 0 0 ' + ind + 'pt;tab-stops:left ' + (ind + 300) + 'pt">' + lb +
+      '<span style="mso-tab-count:1">&nbsp;&nbsp;&nbsp;&nbsp;</span>' + rb + '</p>';
   }
+  return '<p style="margin:0 0 0 ' + ind + 'pt"><span style="display:inline-block;min-width:300pt">' + lb + '</span>' + rb + '</p>';
+}
+
+// サービス対象製品 × 数量 (スライド4 別紙: サービス対象製品 数量)。未設定なら従来の1行にフォールバック
+function getProductRows(){
+  const rows = (Array.isArray(appxDocData.productRows) ? appxDocData.productRows : []).filter(r => String(r.name || '').trim());
+  if (rows.length) return rows;
+  return [{name: appxDocData.targetProducts || '対象ストレージ製品', qty: appxDocData.quantity || '1式'}];
+}
+function refreshProductRows(){ const el = document.getElementById('prod-rows'); if (el) el.innerHTML = renderProductRowsHtml(); }
+function renderProductRowsHtml(){
+  if (!Array.isArray(appxDocData.productRows)) appxDocData.productRows = [];
+  let h = '';
+  appxDocData.productRows.forEach((r, i) => {
+    h += '<div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:4px">' +
+      '<input type="text" class="edit-box" value="' + escHtml(r.name) + '" placeholder="製品名" oninput="appxDocData.productRows[' + i + '].name=this.value">' +
+      '<input type="text" class="edit-box" value="' + escHtml(r.qty) + '" placeholder="数量（例: 3台 / 1式）" oninput="appxDocData.productRows[' + i + '].qty=this.value">' +
+      '<button class="btn bd bsm" onclick="appxDocData.productRows.splice(' + i + ',1);refreshProductRows()">✕</button></div>';
+  });
+  return h + '<button class="btn bp bsm" onclick="appxDocData.productRows.push({name:\'\',qty:\'1式\'});refreshProductRows()">＋ 製品行を追加</button>';
+}
+
+// 支払計画: CPS由来(paymentPlan)のみ出力。未取込なら置き場所だけを示す (R10)
+function getPaymentRows(){
+  if (Array.isArray(appxDocData.paymentPlan) && appxDocData.paymentPlan.length) return appxDocData.paymentPlan;
+  // 旧データ互換: paymentDate/paymentAmount が手入力されている場合のみ1行として扱う
+  if (appxDocData.paymentDate && appxDocData.paymentAmount) return [{date: appxDocData.paymentDate, amount: appxDocData.paymentAmount}];
+  return [];
+}
+function toYenNum(v){ return parseInt(String(v).replace(/[^\d]/g, ''), 10) || 0; }
+
+function generateCleanDocHtml(type, word){
+  if(type === 'spec'){
+    return '<p style="margin:0 0 12pt 0;text-align:center">' + escHtml(specDocData.title) + '</p>' +
+      docLines(specDocData.intro, 0) + docP('', 0) +
+      docP('１．サービスの内容', 0) + docLines(specDocData.scope, 12) + docP('', 0) +
+      docP('２．サービスの前提条件', 0) + docLines(numberLines(specDocData.prerequisites), 12) + docP('', 0) +
+      docP('３．サービスの適用除外', 0) + docLines(specDocData.outOfScope, 12) + docP('', 0) +
+      '<p style="margin:0;text-align:right">以上</p>';
+  }
+  const rows = getPaymentRows();
+  const total = rows.reduce((s, r) => s + toYenNum(r.amount), 0);
+  const ind1 = 12, ind2 = 24, ind3 = 36;
+  let h = '';
+  h += docP('別紙', 0);
+  h += '<p style="margin:0 0 0 0pt">１．サービス名　<b>' + escHtml(appxDocData.serviceName || appxDocData.title) + '</b></p>';
+  h += docP('２．サービス内容', 0);
+  h += docP('サービス仕様書記載のサービスが、下記サービス対象範囲に対して提供されます。', ind1);
+  h += docP('（１）サービス対象範囲', ind1);
+  h += docP('サービス対象機器・ソフトウェア', ind2);
+  h += docTabRow('製品名', '数量', ind2, word, false);
+  const prodRows = getProductRows();
+  prodRows.forEach(r => { h += docTabRow(r.name, r.qty || '1式', ind2, word, false); });
+  h += docP('（２）サービス提供場所', ind1);
+  h += docP(appxDocData.location, ind2);
+  h += docP('３．サービス料金', 0);
+  h += '<p style="margin:0 0 0 ' + ind1 + 'pt">確定料金合計　<b>' + escHtml(appxDocData.price) + '</b></p>';
+  h += docP('上記金額には、別途消費税が加算されます。', ind1);
+  h += docP('４．サービス期間（契約期間）', 0);
+  h += docP(appxDocData.period, ind1);
+  h += docP('５．サービスの終了', 0);
+  h += docLines(appxDocData.completion, ind1);
+  h += docP('６．支払計画', 0);
+  h += docTabRow('支 払 期 日', '支 払 金 額（円）', ind1, word, false);
+  if (rows.length) {
+    rows.forEach(r => { h += docTabRow(r.date, '¥' + fmt(toYenNum(r.amount)), ind1, word, false); });
+    h += docTabRow('合 計', '¥' + fmt(total), ind1, word, false);
+  } else {
+    h += docTabRow('＊（営業確認後、CPSの支払計画から反映）', '＊', ind1, word, false);
+  }
+  h += docP('上記金額には、いずれも別途消費税が加算されます。', ind1);
+  h += docP('７．特記事項', 0);
+  String(appxDocData.notes || '').split(/\r?\n/).forEach(l => {
+    const t = l.trim();
+    h += docP(t, ind1, /^【出力/.test(t));
+  });
+  return h;
 }
 
 function downloadSingleHtml(type){
@@ -1039,12 +1329,8 @@ function downloadSingleHtml(type){
 <meta charset="UTF-8">
 <title>${title} - ${cust}</title>
 <style>
-  body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.75;color:#1e293b;padding:40px;max-width:900px;margin:0 auto}
-  h2{font-size:20px;font-weight:700;color:#0f172a;border-bottom:2px solid #1e3a8a;padding-bottom:8px;margin-bottom:24px;text-align:center}
-  h3{font-size:14px;font-weight:700;color:#1e3a8a;background:#f1f5f9;border-left:4px solid #1e3a8a;padding:6px 12px;margin:22px 0 10px}
-  table{width:100%;border-collapse:collapse;margin:14px 0}
-  th,td{border:1px solid #cbd5e1;padding:8px 12px;text-align:left}
-  th{background:#f8fafc;font-weight:700}
+  body{font-family:"Times New Roman","ＭＳ 明朝","MS Mincho","Hiragino Mincho ProN",serif;font-size:10pt;line-height:1.5;color:#000;padding:40px;max-width:800px;margin:0 auto}
+  p{margin:0;font-size:10pt}
 </style>
 </head>
 <body>
@@ -1064,7 +1350,7 @@ ${bodyContent}
 function downloadSingleDoc(type){
   const cust = ((stateData.basic && stateData.basic.customerName) || 'Quotation').replace(/[\\/:*?"<>|]/g,'_');
   const title = type === 'spec' ? '仕様書' : '別紙';
-  const bodyContent = generateCleanDocHtml(type);
+  const bodyContent = generateCleanDocHtml(type, true);
 
   const docHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -1081,13 +1367,8 @@ function downloadSingleDoc(type){
 <![endif]-->
 <style>
   @page { size: A4 portrait; margin: 25mm 20mm; }
-  body { font-family: "MS Mincho", "Hiragino Mincho ProN", serif; font-size: 10.5pt; line-height: 1.6; color: #000000; }
-  h2 { font-size: 16pt; font-weight: bold; text-align: center; margin-bottom: 20pt; font-family: "MS Gothic", sans-serif; }
-  h3 { font-size: 11pt; font-weight: bold; margin-top: 14pt; margin-bottom: 4pt; font-family: "MS Gothic", sans-serif; }
-  p { margin: 4pt 0; text-indent: 0; }
-  table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
-  th, td { border: 1pt solid #000000; padding: 5pt 8pt; font-size: 10pt; }
-  th { background: #f0f0f0; font-weight: bold; }
+  body { font-family: "Times New Roman", "ＭＳ 明朝", "MS Mincho", "Hiragino Mincho ProN", serif; font-size: 10pt; line-height: 1.5; color: #000000; }
+  p { margin: 0; font-size: 10pt; }
 </style>
 </head>
 <body>
@@ -1127,9 +1408,7 @@ function downloadFullPackageHtml(){
   .slink-item{background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px}
   .slink-item label{font-size:11px;font-weight:700;color:#64748b;display:block}
   .slink-item .val{font-size:13px;font-weight:600;color:#0f172a}
-  table{width:100%;border-collapse:collapse;margin:14px 0}
-  th,td{border:1px solid #cbd5e1;padding:8px 12px;text-align:left}
-  th{background:#f8fafc;font-weight:700}
+  .sec p{margin:0;font-size:10pt;font-family:"Times New Roman","ＭＳ 明朝","MS Mincho",serif}
 </style>
 </head>
 <body>
