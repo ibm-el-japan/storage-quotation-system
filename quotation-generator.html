@@ -26,6 +26,14 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
 .src-manual{background:#f1f5f9;color:#111827;border:1px solid #cbd5e1}
 .src-tool{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
 .txt-auto{color:#c00000;font-weight:600}
+/* 反映元セル(依頼シートのセル番地)。赤=黒字の実入力 / グレー=参考例。お客様向け出力には含めない (v2.5.2) */
+.cell-ref{display:inline-block;font-size:10px;font-weight:700;color:#c00000;background:#fff5f5;border:1px solid #fca5a5;border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:middle;line-height:1.4;white-space:nowrap}
+.cell-ref.ref{color:#8b8f98;background:#f9fafb;border-color:#d1d5db;font-style:italic}
+.cell-ref.none{color:#6b7280;background:#f3f4f6;border-color:#d1d5db;font-weight:400}
+.map-box{background:#fff5f5;border:1px solid #fca5a5;color:#1f2328;font-size:12px;padding:6px 10px;border-radius:6px;margin:6px 0}
+.map-box .map-ttl{color:#c00000;font-weight:700}
+.map-box .map-val{color:#c00000;font-weight:600}
+.map-box .map-eff{color:#1d4ed8}
 .txt-ref{color:#8b8f98;font-style:italic}
 .txt-sys{color:#1d4ed8}
 .txt-man{color:#111827}
@@ -283,7 +291,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.5.1</span>
+    <span class="ver" id="ver-badge">v2.5.2</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -397,6 +405,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <input type="date" id="svc-end" onchange="applySvcDates()">
             </div>
           </div>
+          <div id="period-map-info" class="map-box" style="display:none"></div>
           <p class="hint">開始・終了年月日を入力すると、開始年/月・期間（月数）に反映されます。別紙・S-LINK契約期間・CPS入力ツールで使用します。</p>
         </div>
       </div>
@@ -483,6 +492,12 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
         <div class="si"><span class="sl2">総工数 (h)</span><span class="sv" id="kosu-total-h">0</span></div>
         <div class="si"><span class="sl2">参考 Labor コスト</span><span class="sv" id="kosu-total-cost">¥0</span></div>
       </div>
+      <div class="cov-legend np">
+        <span>値の取得元（文字色）:</span>
+        <span class="src-badge src-tool">青文字: システムが算出・補完（依頼シートに工数欄はありません）</span>
+        <span class="src-badge src-manual">黒文字: 手入力</span>
+      </div>
+      <div id="kosu-map-info" class="map-box" style="display:none"></div>
       <div id="kosu-table-wrap"></div>
     </div>
 
@@ -496,6 +511,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
         <div class="card-body">
           <p class="hint">事業所と距離区分（<a href="出張判定図.pdf" target="_blank">出張判定図.pdf</a>：赤=中距離／青=遠距離）を選ぶと、構築・テスト工数から訪問回数・宿泊数・出張手当を算定します。
             <span class="src-badge src-tool">システム</span>=自動算出、<span class="src-badge src-manual">手入力</span>=手入力。人数・単価は手入力です。</p>
+          <div id="travel-req-info" class="cov-note" style="display:none;background:#fff5f5;border-color:#fca5a5;color:#c00000"></div>
           <div class="info-grid">
             <div class="info-row"><label>基点事業所 <span class="src-badge src-manual">手入力</span></label>
               <select id="ta-office" onchange="taChanged()">
@@ -682,7 +698,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.1 (Request Sheet Coverage, Source Colour & Labor Rate B8 Edition)</strong></td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.2 (Request Sheet Cell Mapping Edition)</strong></td></tr>
               <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
@@ -709,6 +725,16 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.2</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:11px">反映元セルの赤字表示</span></td>
+                <td style="text-align:left;white-space:normal">
+                  依頼シート（テンプレート）の「どのセルの値が、どの項目へ反映されたか」を赤字の「依頼シート C44」形式で表示。基本情報（各項目ラベル）・期間設定・チェックシート（行ごと）・工数（反映元の記載一覧／定例打ち合わせ行）・交通費（提供場所・打合せ回数）・取込状況パネル（セル列・反映先列を追加、空欄項目はテンプレート上の記入セルを表示）に適用。
+                  グレー参考例は灰色、手入力に変更した値は表示を外す。お客様向け出力・S-LINKコピー値には含めない。工数・交通費はテンプレートに入力欄が無いため、期間・対象製品・打合せ回数・提供場所からの導出であることを明示。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v2.5.1</strong></td>
                 <td>2026-10</td>
@@ -951,7 +977,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.5.1';
+const APP_VERSION = 'v2.5.2';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
@@ -1395,12 +1421,13 @@ function renderKosuTable(months) {
       h += '<tr>';
       h += '<td style="position:sticky;left:0;z-index:1;background:#fff;text-align:left;padding:3px 5px">';
       h += '<input type="text" class="w" value="' + escHtml(d.label) + '" onchange="kosuData[\'' + row.id + '\'].label=this.value">';
+      h += kosuSrcBadge(d.src) + (d.cell ? cellChipHtml(d.cell, 'auto', '算出の根拠となった依頼シートのセル') : '');
       h += '</td>';
       h += '<td style="text-align:left;padding:3px 5px"><input type="text" class="w" style="min-width:150px" value="' + escHtml(d.hint) + '" onchange="kosuData[\'' + row.id + '\'].hint=this.value"></td>';
       for (let mi = 0; mi < n; mi++) {
         const v = d.values[mi] || 0;
         const mc = (mi % 2 === 0) ? 'kosu-month-odd' : 'kosu-month-even';
-        h += '<td class="' + mc + '" style="padding:2px 3px"><input type="number" step="0.5" min="0" value="' + v + '" style="min-width:44px" oninput="onKosuInput(\'' + row.id + '\',' + mi + ',this.value)"></td>';
+        h += '<td class="' + mc + '" style="padding:2px 3px"><input type="number" step="0.5" min="0"' + (d.src ? ' class="input-src-' + d.src + '"' : '') + ' data-krow="' + row.id + '" value="' + v + '" style="min-width:44px" oninput="onKosuInput(\'' + row.id + '\',' + mi + ',this.value)"></td>';
       }
       h += '<td class="st" id="row-total-' + row.id + '">0</td>';
       h += '<td class="np"><button class="btn bp bsm np" style="margin-right:2px" onclick="addKosuRowAfter(\'' + row.id + '\',\'' + sec.id + '\')">＋</button><button class="btn bd bsm np" onclick="deleteKosuRow(\'' + row.id + '\',\'' + sec.id + '\')">✕</button></td>';
@@ -1490,9 +1517,34 @@ function recalcKosu(n) {
 function onKosuInput(rid, idx, val) {
   if (!kosuData[rid]) kosuData[rid] = {label:'', hint:'', values: new Array(60).fill(0)};
   kosuData[rid].values[idx] = parseFloat(val) || 0;
+  if (kosuData[rid].src && kosuData[rid].src !== 'manual') { delete kosuData[rid].cell; setKosuSrc(rid, 'manual'); }
   const n = getMonthLabels().length;
   recalcKosu(n);
   recalcAll();
+}
+
+// ----- 工数の取得元 (auto=依頼シート由来 / tool=システム算出・既定 / manual=手入力) -----
+function kosuSrcBadge(src) {
+  const m = { auto: ['src-auto', '依頼シート', '依頼シート由来'], ref: ['src-ref', '参考例', '依頼シート（グレー＝参考例）由来'],
+              tool: ['src-tool', 'システム', 'システムが算出・補完'], manual: ['src-manual', '手入力', '手入力'] }[src];
+  return m ? ' <span class="src-badge ' + m[0] + ' kosu-badge" title="' + m[2] + '">' + m[1] + '</span>' : '';
+}
+function setKosuSrc(rid, src) {
+  if (!kosuData[rid]) return;
+  kosuData[rid].src = src;
+  document.querySelectorAll('#kosu-table-wrap input[data-krow="' + rid + '"]').forEach(i => { i.className = 'input-src-' + src; });
+  const inp = document.querySelector('#kosu-table-wrap input[data-krow="' + rid + '"]');
+  const td = inp && inp.closest('tr') && inp.closest('tr').querySelector('td');
+  if (td) { const b = td.querySelector('.kosu-badge'); if (b) b.outerHTML = kosuSrcBadge(src); else td.insertAdjacentHTML('beforeend', kosuSrcBadge(src)); const c = td.querySelector('.cell-ref'); if (c && src === 'manual') c.remove(); }
+}
+// 「打合せ回数」(例: 週２回（各1時間）２名 出席)から月あたりの定例打ち合わせ時間を算出（算出不能なら null）
+function meetingHoursPerMonth(text) {
+  const t = String(text || '').replace(/[０-９．]/g, c => c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  const wk = t.match(/週\s*(\d+(?:\.\d+)?)\s*回/), mo = t.match(/月\s*(\d+(?:\.\d+)?)\s*回/);
+  const hr = t.match(/(?:各|1回あたり|毎回)?\s*(\d+(?:\.\d+)?)\s*時間/), pp = t.match(/(\d+)\s*名/);
+  if ((!wk && !mo) || !hr) return null;
+  const perMonth = wk ? parseFloat(wk[1]) * 52 / 12 : parseFloat(mo[1]);
+  return Math.round(perMonth * parseFloat(hr[1]) * (pp ? parseInt(pp[1]) : 1) * 2) / 2;
 }
 
 function addKosuRow(secId) {
@@ -1583,11 +1635,12 @@ function checklistRowHtml(si, ii, item) {
   }
 
   const tagHtml = item.tag ? ' <span class="req" style="margin-left:4px">' + escHtml(item.tag) + '</span>' : '';
+  const cellHtml = (item.cell && (src === 'auto' || src === 'ref')) ? cellChipHtml(item.cell, src) : '';
   return '<tr>' +
     '<td style="text-align:center"><input type="checkbox" ' + chk + ' onchange="CHECKLIST_DATA[' + si + '].items[' + ii + '].checked=this.checked"></td>' +
     '<td style="display:flex;align-items:center;gap:4px">' +
       '<input type="text" class="' + inputClass + '" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value;CHECKLIST_DATA[' + si + '].items[' + ii + '].src=\'manual\';rebuildChecklistSection(' + si + ')">' +
-      srcBadge + tagHtml +
+      srcBadge + cellHtml + tagHtml +
     '</td>' +
     '<td><input type="text" value="' + escHtml(item.tag || '') + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].tag=this.value" placeholder="タグ"></td>' +
     '<td class="np"><button class="btn bd bsm np" onclick="deleteChecklistRow(' + si + ',' + ii + ')">✕</button></td>' +
@@ -1719,6 +1772,44 @@ function taModeChanged() {
   const b = document.getElementById('ta-mode-badge');
   if (b) { b.className = 'src-badge src-manual'; b.textContent = '手入力'; }
   taRefresh();
+}
+
+// 交通費タブ: 依頼シートの「サービス提供場所」「打合せ回数」を赤字(依頼シート由来)で表示。距離区分は出張判定図で判断するため自動決定しない
+function showTravelRequestInfo(req) {
+  const box = document.getElementById('travel-req-info');
+  if (!box) return;
+  const loc = [req.workLocation, req.workLocationDetail].filter(Boolean).join(' / ');
+  const mtg = req.meetingFrequency || '';
+  if (!loc && !mtg) { box.style.display = 'none'; return; }
+  const cls = k => 'input-src-' + (typeof reqSrc === 'function' ? reqSrc(req, k) : 'auto');
+  box.innerHTML = '<strong>依頼シートの記載（距離区分は出張判定図で判断してください）</strong><br>' +
+    (loc ? 'サービス提供場所: <span class="' + cls('workLocation') + '" style="padding:1px 6px;border-radius:4px">' + escHtml(loc) + '</span>' + cellChipHtml(cellText(req, 'workLocation'), reqSrc(req, 'workLocation')) + '<br>' : '') +
+    (mtg ? '打合せ回数: <span class="' + cls('meetingFrequency') + '" style="padding:1px 6px;border-radius:4px">' + escHtml(mtg) + '</span>' + cellChipHtml(cellText(req, 'meetingFrequency'), reqSrc(req, 'meetingFrequency')) : '');
+  box.style.display = 'block';
+}
+
+// 期間設定カード: 依頼シート「サービス期間」(C43)の反映を赤字で表示 (v2.5.2)
+function showPeriodMapInfo(req) {
+  const box = document.getElementById('period-map-info');
+  if (!box) return;
+  const txt = cellText(req, 'startDate');
+  if (!txt || (!req.startDate && !req.endDate)) { box.style.display = 'none'; return; }
+  box.innerHTML = '<span class="map-ttl">依頼シートの記載</span>' + cellChipHtml(txt, reqSrc(req, 'startDate')) + ' サービス期間: <span class="map-val">' +
+    escHtml((req.startDate || '') + ' ～ ' + (req.endDate || '')) + '</span> → 開始年/月・期間(月数)・工数の月ラベルへ反映';
+  box.style.display = 'block';
+}
+// 工数タブ: どの依頼シートの記載が工数へ反映されたかを表示。依頼シートに工数欄は無いため、期間・対象製品・打合せ回数から導出 (v2.5.2)
+function showKosuMapInfo(req) {
+  const box = document.getElementById('kosu-map-info');
+  if (!box) return;
+  const items = [];
+  if (cellText(req, 'startDate')) items.push(['サービス期間', cellText(req, 'startDate'), (req.startDate || '') + ' ～ ' + (req.endDate || ''), '月ラベル・月数', reqSrc(req, 'startDate')]);
+  if (cellText(req, 'products') && (req.products || []).length) items.push(['サービス対象製品', cellText(req, 'products'), req.products.join(' / '), '製品別の既定工数（システム補完・青）', reqSrc(req, 'products')]);
+  if (cellText(req, 'meetingFrequency')) items.push(['打合せ回数', cellText(req, 'meetingFrequency'), String(req.meetingFrequency).replace(/\s+/g, ' '), meetingHoursPerMonth(req.meetingFrequency) ? '定例打ち合わせ 月' + meetingHoursPerMonth(req.meetingFrequency) + 'h' : '算出不能のため工数へは未反映', reqSrc(req, 'meetingFrequency')]);
+  if (!items.length) { box.style.display = 'none'; return; }
+  box.innerHTML = '<div class="map-ttl">工数へ反映された依頼シートの記載（依頼シートに工数の入力欄はありません）</div>' +
+    items.map(i => escHtml(i[0]) + cellChipHtml(i[1], i[4]) + ' <span class="map-val">' + escHtml(i[2]) + '</span> → <span class="map-eff">' + escHtml(i[3]) + '</span>').join('<br>');
+  box.style.display = 'block';
 }
 
 // 算定結果を「その他費用」表へ反映（tr0:交通費 / tr1:宿泊費 / tr2:出張手当 / tr3:PC借用費）
@@ -2898,6 +2989,8 @@ function collectState() {
   const kosuSnapshot = {};
   Object.keys(kosuData).forEach(k => {
     kosuSnapshot[k] = {label: kosuData[k].label, hint: kosuData[k].hint, values: kosuData[k].values.slice()};
+    if (kosuData[k].src) kosuSnapshot[k].src = kosuData[k].src;
+    if (kosuData[k].cell) kosuSnapshot[k].cell = kosuData[k].cell;
   });
 
   return {
@@ -3058,10 +3151,16 @@ function restoreState(state) {
     Object.keys(state.kosuData).forEach(k => {
       const d = state.kosuData[k];
       kosuData[k] = {label: d.label, hint: d.hint, values: (d.values || []).concat(new Array(60).fill(0)).slice(0, 60)};
+      if (d.src) kosuData[k].src = d.src;
+      if (d.cell) kosuData[k].cell = d.cell;
     });
   }
   if (state.travelRows) travelRows = JSON.parse(JSON.stringify(state.travelRows));
-  if (state.incomingRequestData) { _incomingRequestData = state.incomingRequestData; renderImportCoverage(_incomingRequestData); }
+  if (state.incomingRequestData) {
+    _incomingRequestData = state.incomingRequestData; renderImportCoverage(_incomingRequestData);
+    Object.keys(_fieldSrc).forEach(updateCellChip);
+    showTravelRequestInfo(_incomingRequestData); showPeriodMapInfo(_incomingRequestData); showKosuMapInfo(_incomingRequestData);
+  }
 
   buildChecklist();
   buildKosuTable();
@@ -3139,6 +3238,20 @@ function setFieldSrc(id, src) {
   badge.className = 'src-badge ' + m[0];
   badge.textContent = m[1];
   badge.title = m[2];
+  updateCellChip(id);
+}
+// 入力欄ラベルに「依頼シート Cxx」の反映元セルを赤字で表示(依頼シート由来のときのみ)
+function updateCellChip(id) {
+  const el = document.getElementById(id);
+  const row = el && el.closest('.info-row');
+  const label = row ? row.querySelector('label') : null;
+  if (!label) return;
+  const old = label.querySelector('.cell-ref'); if (old) old.remove();
+  const src = _fieldSrc[id], key = EXT_ORIGIN_KEY[id];
+  if (!key || (src !== 'auto' && src !== 'ref')) return;
+  const txt = cellText(_incomingRequestData, id === 'ext-offering' ? ['offering', 'products'] : key);
+  if (!txt) return;
+  label.insertAdjacentHTML('beforeend', cellChipHtml(txt, src));
 }
 
 // 取込後に利用者が値を編集したら Manual に切り替える
@@ -3194,17 +3307,17 @@ function mergeRequestIntoPremise(req) {
   sec.items.forEach(it => {
     if (/^プロジェクトの打ち合わせ場所は/.test(it.text) && req.meetingFrequency) {
       it.text = 'プロジェクトの打ち合わせは ' + req.meetingFrequency.replace(/\s+/g, ' ') + ' を想定しています。';
-      it.checked = true; it.src = reqSrc(req, 'meetingFrequency');
+      it.checked = true; it.src = reqSrc(req, 'meetingFrequency'); it.cell = cellText(req, 'meetingFrequency');
     }
-    if (isOnsite && /^必要な場合はオンサイトでの作業を実施します/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); }
+    if (isOnsite && /^必要な場合はオンサイトでの作業を実施します/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation'); }
     if (isOnsite && /^作業場所はお客様指定施設/.test(it.text)) {
       it.text = '作業場所は ' + loc + ' のお客様指定施設を想定しています。';
-      it.checked = true; it.src = reqSrc(req, 'workLocation');
+      it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation');
     }
     if (isOnsite && /^サービスはリモートサポートとなります|^本サービスは、設計・構築のリモート支援/.test(it.text)) {
       it.checked = false; it.src = 'tool';
     }
-    if (isRemote && /^サービスはリモートサポートとなります/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); }
+    if (isRemote && /^サービスはリモートサポートとなります/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation'); }
   });
 }
 
@@ -3217,9 +3330,47 @@ const PRECHECK_LABELS = {
   yn8: '適切なサポート条件の確認', yn9: '制限/前提事項の確認', yn10: '正式サポート外構成の例外承認',
   yn11: '支援契約終了後の保守契約の検討', yn12: '支援契約終了後の運用支援サービス契約の検討'
 };
+// ----- 反映元セル表示 (v2.5.2): 依頼シートのどのセルの値が、どの項目へ反映されたかを示す -----
+// 依頼シートに値が無い項目も「ここに記入する欄」が分かるよう、テンプレート上のセル番地を保持
+const TEMPLATE_CELLS = {
+  createdDate: 'C4', author: 'C5', customerName: 'C9', projectName: 'C10', customerNo: 'C11', dnsoNo: 'C12',
+  oppNoProduct: 'C13', oppNoService: 'C14', bpName: 'C15', bpCustomerNo: 'C16', salesName: 'C17', tsName: 'C18',
+  otherMembers: 'C19', offering: 'C21〜C26', products: 'C28〜C41', serviceSummary: 'C42', startDate: 'C43', endDate: 'C43',
+  workLocation: 'C44', workDetail: 'C45', docs: 'C46', meetingFrequency: 'C47', serviceExclusions: 'C48',
+  confidential: 'C49', meetingInternal: 'C50', meetingExternal: 'C51',
+  contractType: 'C75〜C78', dealType: 'C80〜C83', paymentPlan: 'C85〜C87', monthlyReport: 'C88'
+};
+// 反映先(画面)。複数ある場合は「・」区切り
+const REFLECT_TO = {
+  createdDate: '基本情報', author: '基本情報', customerName: '基本情報', projectName: '基本情報', customerNo: '基本情報',
+  dnsoNo: '基本情報', oppNoProduct: '基本情報', oppNoService: '基本情報', bpName: '基本情報', bpCustomerNo: '基本情報',
+  salesName: '基本情報', tsName: '基本情報', otherMembers: '基本情報', offering: '基本情報',
+  products: '基本情報・チェックシート(サービス対象)・工数(既定工数の基準)',
+  serviceSummary: '基本情報', startDate: '基本情報(期間設定)・工数(月ラベル)', endDate: '基本情報(期間設定)・工数(月ラベル)',
+  workLocation: '基本情報・チェックシート(前提)・交通費', workDetail: 'チェックシート(サービス内容)',
+  docs: '基本情報・チェックシート(提出ドキュメント)', meetingFrequency: '基本情報・チェックシート(前提)・工数(定例打ち合わせ)・交通費',
+  serviceExclusions: '基本情報・チェックシート(適用除外)', confidential: '基本情報', meetingInternal: '基本情報', meetingExternal: '基本情報',
+  contractType: '基本情報', dealType: '基本情報', paymentPlan: '基本情報(要営業確認)', monthlyReport: '基本情報'
+};
+function cellsOf(req, key) {
+  const k = Array.isArray(key) ? key : [key];
+  const out = [];
+  k.forEach(x => ((req && req.cells && req.cells[x]) || []).forEach(c => { if (!out.includes(c)) out.push(c); }));
+  return out;
+}
+function cellText(req, key) {
+  const c = cellsOf(req, key);
+  return c.length > 4 ? c.slice(0, 3).join(', ') + ' … ' + c[c.length - 1] : c.join(', ');
+}
+function cellChipHtml(text, src, title) {
+  if (!text) return '';
+  const cls = src === 'ref' ? 'cell-ref ref' : 'cell-ref';
+  return ' <span class="' + cls + '" title="' + escHtml(title || ('見積もり依頼記入シート ' + text + ' から反映')) + '">依頼シート ' + escHtml(text) + '</span>';
+}
 function srcClassOf(src) {
   return src === 'auto' ? 'txt-auto' : src === 'ref' ? 'txt-ref' : src === 'manual' ? 'txt-man' : 'txt-sys';
 }
+const PRECHECK_CELLS = { yn1: 'D56', yn2: 'C58', yn3: 'D60', yn4: 'D61', yn5: 'D62', yn6: 'D63', yn7: 'D64', yn8: 'D65', yn9: 'D66', yn10: 'D67', yn11: 'D69', yn12: 'D70' };
 function srcBadgeHtml(src) {
   return src === 'auto' ? '<span class="src-badge src-auto">依頼シート</span>'
        : src === 'ref' ? '<span class="src-badge src-ref">参考例（グレー）</span>'
@@ -3238,15 +3389,17 @@ function renderImportCoverage(req) {
     const org = req.origin ? req.origin[key] : 'sheet';
     let src = !has ? '' : (cur(id) === 'manual' ? 'manual' : reqSrc(req, key));
     let state;
+    const cellTxt = cellText(req, key === 'workLocation' ? ['workLocation'] : key);
+    const cellHtml = has && cellTxt ? cellChipHtml(cellTxt, src).trim() : '<span class="cell-ref none" title="テンプレート上の該当セル">' + (TEMPLATE_CELLS[key] || '') + (has ? '' : ' 空欄') + '</span>';
     if (!has) state = '<span class="cov-empty">未入力</span>';
     else if (src === 'ref') state = '<span class="cov-ref">参考例のみ（要確認）</span>';
     else if (src === 'tool') state = '<span class="cov-sys">システム補完</span>';
     else state = '<span class="cov-ok">✔ 取込済</span>';
     const sh = shown.length > 110 ? shown.slice(0, 110) + '…' : shown;
-    rows.push('<tr><td>' + escHtml(label) + '</td><td>' + state + '</td><td class="' + srcClassOf(src) + '">' + escHtml(sh) + '</td><td>' +
-      (has ? srcBadgeHtml(src) : '') + (note ? ' <span style="color:#57606a">' + note + '</span>' : '') + '</td></tr>');
+    rows.push('<tr><td>' + escHtml(label) + '</td><td>' + cellHtml + '</td><td>' + state + '</td><td class="' + srcClassOf(src) + '">' + escHtml(sh) + '</td><td>' +
+      (has ? srcBadgeHtml(src) : '') + (note ? ' <span style="color:#57606a">' + note + '</span>' : '') + '</td><td style="color:#57606a">' + escHtml(REFLECT_TO[key] || '') + '</td></tr>');
   };
-  const sec = t => rows.push('<tr><td colspan="4" class="cov-sec">' + t + '</td></tr>');
+  const sec = t => rows.push('<tr><td colspan="6" class="cov-sec">' + t + '</td></tr>');
   const wd = cleanWorkDetail(req.workDetail);
 
   sec('案件情報');
@@ -3284,22 +3437,23 @@ function renderImportCoverage(req) {
     const pc = (req.preChecks || []).find(p => p.id === id) || { yn: '', note: '', origin: 'empty' };
     const v = [pc.yn, pc.note].filter(Boolean).join(' ');
     const src = !v ? '' : (pc.origin === 'reference' ? 'ref' : 'auto');
-    rows.push('<tr><td>' + escHtml(PRECHECK_LABELS[id]) + '</td><td>' + (!v ? '<span class="cov-empty">未入力</span>' : src === 'ref' ? '<span class="cov-ref">参考例のみ（要確認）</span>' : '<span class="cov-ok">✔ 取込済</span>') +
-      '</td><td class="' + srcClassOf(src) + '">' + escHtml(v) + '</td><td>' + (v ? srcBadgeHtml(src) : '') + '</td></tr>');
+    const pcCell = v && pc.cell ? cellChipHtml(pc.cell, src).trim() : '<span class="cell-ref none">' + (PRECHECK_CELLS[id] || '') + (v ? '' : ' 空欄') + '</span>';
+    rows.push('<tr><td>' + escHtml(PRECHECK_LABELS[id]) + '</td><td>' + pcCell + '</td><td>' + (!v ? '<span class="cov-empty">未入力</span>' : src === 'ref' ? '<span class="cov-ref">参考例のみ（要確認）</span>' : '<span class="cov-ok">✔ 取込済</span>') +
+      '</td><td class="' + srcClassOf(src) + '">' + escHtml(v) + '</td><td>' + (v ? srcBadgeHtml(src) : '') + '</td><td style="color:#57606a">取込状況パネルのみ(事前確認事項)</td></tr>');
   });
   sec('契約情報');
   add('ご提供形態', 'contractType', req.contractType, 'ext-contract');
   add('契約形態', 'dealType', req.dealType, 'ext-deal');
   add('月次作業報告書提出の必要性', 'monthlyReport', req.monthlyReport, 'ext-report');
-  rows.push('<tr><td>支払い計画</td><td><span class="cov-pend">営業確認</span></td><td class="' + srcClassOf(reqSrc(req, 'paymentPlan')) + '">' + escHtml(req.paymentPlan || '') +
-    '</td><td>' + srcBadgeHtml(cur('ext-pay') === 'manual' ? 'manual' : reqSrc(req, 'paymentPlan')) + ' <span style="color:#57606a">ツールでは確定しません（CPS登録後に別紙へ反映）</span></td></tr>');
+  rows.push('<tr><td>支払い計画</td><td>' + (cellText(req, 'paymentPlan') ? cellChipHtml(cellText(req, 'paymentPlan'), reqSrc(req, 'paymentPlan')).trim() : '<span class="cell-ref none">C85〜C87</span>') + '</td><td><span class="cov-pend">営業確認</span></td><td class="' + srcClassOf(reqSrc(req, 'paymentPlan')) + '">' + escHtml(req.paymentPlan || '') +
+    '</td><td>' + srcBadgeHtml(cur('ext-pay') === 'manual' ? 'manual' : reqSrc(req, 'paymentPlan')) + ' <span style="color:#57606a">ツールでは確定しません（CPS登録後に別紙へ反映）</span></td><td style="color:#57606a">' + REFLECT_TO.paymentPlan + '</td></tr>');
 
   const greyN = (req.greyKeys || []).length + (req.preChecks || []).filter(p => p.origin === 'reference').length;
   const banner = (req.colorDetect === false)
     ? '<div class="cov-note">文字色を判別できませんでした（ファイル形式による）。取込値はすべて「依頼シート」として扱っています。</div>'
     : (greyN > 0 ? '<div class="cov-note">グレー文字（テンプレートの参考記入例）が <b>' + greyN + '項目</b> あります。実案件では黒字で記入されるため、'
         + 'これらは実入力ではなく<b>参考例</b>として表示しています。内容を確認し、実際の値を入力してください。</div>' : '');
-  box.innerHTML = banner + '<table class="cov-tbl"><thead><tr><th style="width:26%">項目</th><th style="width:15%">状態</th><th>取込内容（文字色＝取得元）</th><th style="width:24%">取得元</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  box.innerHTML = banner + '<table class="cov-tbl"><thead><tr><th style="width:20%">項目</th><th style="width:11%">依頼シートのセル</th><th style="width:10%">状態</th><th>取込内容（文字色＝取得元）</th><th style="width:15%">取得元</th><th style="width:18%">反映先</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
   updateReviewWarning();
 }
 
@@ -3379,6 +3533,7 @@ function checkIncomingRequestHandoff() {
       if (kosuData["doc1"]) kosuData["doc1"].values[0] = req.workload.doc || 0;
       if (kosuData["qa1"])  kosuData["qa1"].values[0] = req.workload.qa || 0;
       if (kosuData["mtg1"]) kosuData["mtg1"].values[0] = req.workload.pm || 0;
+      ['des1','bld2','tst3','doc1','qa1','mtg1'].forEach(k => { if (kosuData[k]) kosuData[k].src = 'tool'; });
       buildKosuTable();
     } else if (req.products && req.products.length > 0) {
       const prods = req.products;
@@ -3409,8 +3564,23 @@ function checkIncomingRequestHandoff() {
         if (kosuData["des2"]) kosuData["des2"].values[0] = 24;
         if (kosuData["bld3"]) kosuData["bld3"].values[0] = 24;
       }
+      // 依頼シートに工数欄は無い: 製品別の既定値はシステム補完(青)として表示
+      Object.keys(kosuData).forEach(k => { if (kosuData[k].values[0] > 0 && kosuData[k].src !== 'manual') { kosuData[k].src = 'tool'; if (cellText(req, 'products')) kosuData[k].cell = '製品 ' + cellText(req, 'products'); } });
       buildKosuTable();
     }
+
+    // 打合せ回数(依頼シート)から定例打ち合わせ工数を算出。既に入力済みの場合は上書きしない。
+    const mtgH = meetingHoursPerMonth(req.meetingFrequency);
+    if (mtgH && kosuData['mtg1'] && !kosuData['mtg1'].values.some(v => v > 0)) {
+      for (let i = 0; i < n; i++) kosuData['mtg1'].values[i] = mtgH;
+      kosuData['mtg1'].src = 'tool';
+      kosuData['mtg1'].cell = cellText(req, 'meetingFrequency');
+      kosuData['mtg1'].hint = (kosuData['mtg1'].hint ? kosuData['mtg1'].hint + ' / ' : '') + '依頼シート「打合せ回数」(' + String(req.meetingFrequency).replace(/\s+/g, ' ') + ')から月' + mtgH + 'hを算出';
+      buildKosuTable();
+    }
+    showTravelRequestInfo(req);
+    showPeriodMapInfo(req);
+    showKosuMapInfo(req);
 
     // Auto-populate Other Cost (travel, hotel, allowance) if provided
     if (req.otherCost && travelRows && travelRows.length >= 3) {
@@ -3420,19 +3590,19 @@ function checkIncomingRequestHandoff() {
         travelRows[0].place = placeName;
         travelRows[0].unit = oc.tripUnit || 28000;
         travelRows[0].cnt = oc.trips;
-        travelRows[0].src = 'auto';
+        travelRows[0].src = 'tool';
       }
       if (oc.stays > 0) {
         travelRows[1].place = placeName;
         travelRows[1].unit = oc.stayUnit || 10000;
         travelRows[1].cnt = oc.stays;
-        travelRows[1].src = 'auto';
+        travelRows[1].src = 'tool';
       }
       if (oc.allowanceUnit > 0) {
         travelRows[2].place = placeName;
         travelRows[2].unit = oc.allowanceUnit;
         travelRows[2].cnt = oc.stays || oc.trips;
-        travelRows[2].src = 'auto';
+        travelRows[2].src = 'tool';
       }
       buildTravelTable();
     }
@@ -3453,7 +3623,7 @@ function checkIncomingRequestHandoff() {
         const filled = srvSec.items.filter(it => it.text.trim());
         const autoItems = kept
           .filter(l => !sectionHas({items: filled}, l))
-          .map(l => ({ checked: true, text: l, tag: "要件依頼", src: reqSrc(req, 'workDetail') }));
+          .map(l => ({ checked: true, text: l, tag: "要件依頼", src: reqSrc(req, 'workDetail'), cell: cellText(req, 'workDetail') }));
         srvSec.items = filled.concat(autoItems, blanks);
       }
     }
@@ -3465,7 +3635,8 @@ function checkIncomingRequestHandoff() {
           checked: true,
           text: "・" + p + " 支援一式",
           tag: "対象製品",
-          src: reqSrc(req, 'products')
+          src: reqSrc(req, 'products'),
+          cell: cellText(req, 'products')
         }));
         targetSec.items = prodItems;
       }
@@ -3478,9 +3649,9 @@ function checkIncomingRequestHandoff() {
         const cleanDocs = reqDocs.map(d => d.replace(/^[・\s]+/, '').trim()).filter(Boolean);
         cleanDocs.forEach(d => {
           const hit = docSec.items.find(it => it.text.trim() && (it.text.includes(d) || d.includes(it.text)));
-          if (hit) { hit.checked = true; hit.src = reqSrc(req, 'docs'); return; }
+          if (hit) { hit.checked = true; hit.src = reqSrc(req, 'docs'); hit.cell = cellText(req, 'docs'); return; }
           const blankIdx = docSec.items.findIndex(it => !it.text.trim());
-          const newItem = {checked: true, text: d, tag: "要件依頼", src: reqSrc(req, 'docs')};
+          const newItem = {checked: true, text: d, tag: "要件依頼", src: reqSrc(req, 'docs'), cell: cellText(req, 'docs')};
           if (blankIdx >= 0) docSec.items[blankIdx] = newItem; else docSec.items.push(newItem);
         });
       }
@@ -3493,7 +3664,7 @@ function checkIncomingRequestHandoff() {
         const excLines = splitBullets(req.serviceExclusions);
         const newItems = excLines
           .filter(el => !sectionHas(excSec, el))
-          .map(el => ({checked: true, text: el, tag: "個別除外", src: reqSrc(req, 'serviceExclusions')}));
+          .map(el => ({checked: true, text: el, tag: "個別除外", src: reqSrc(req, 'serviceExclusions'), cell: cellText(req, 'serviceExclusions')}));
         excSec.items = newItems.concat(excSec.items);
       }
     }
@@ -3889,7 +4060,7 @@ function parseQuotationRequestExcel(wb) {
           const existing = data.preChecks.find(p => p.id === rule.id);
           const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org, cell: (ynVal || noteVal) ? ((ynVal ? ynCol : (cVal ? 'C' : 'D')) + rowNum) : '' });
           } else {
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
@@ -3938,6 +4109,14 @@ function parseQuotationRequestExcel(wb) {
     }
   });
   data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
+  // 反映元セル: 値が入っている項目ごとに、依頼シート上のセル番地(例: C44)を保持する (v2.5.2)
+  data.cells = {};
+  Object.keys(refs).forEach(k => {
+    if (isEmptyVal(data[k])) return;
+    const seen = [];
+    refs[k].forEach(r => { const a = r[0] + r[1]; if (!seen.includes(a)) seen.push(a); });
+    if (seen.length) data.cells[k] = seen;
+  });
 
   return data;
 }

@@ -2014,7 +2014,7 @@ function parseQuotationRequestExcel(wb) {
           const existing = data.preChecks.find(p => p.id === rule.id);
           const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org, cell: (ynVal || noteVal) ? ((ynVal ? ynCol : (cVal ? 'C' : 'D')) + rowNum) : '' });
           } else {
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
@@ -2063,6 +2063,14 @@ function parseQuotationRequestExcel(wb) {
     }
   });
   data.greyKeys = Object.keys(data.origin).filter(k => data.origin[k] === 'reference');
+  // 反映元セル: 値が入っている項目ごとに、依頼シート上のセル番地(例: C44)を保持する (v2.5.2)
+  data.cells = {};
+  Object.keys(refs).forEach(k => {
+    if (isEmptyVal(data[k])) return;
+    const seen = [];
+    refs[k].forEach(r => { const a = r[0] + r[1]; if (!seen.includes(a)) seen.push(a); });
+    if (seen.length) data.cells[k] = seen;
+  });
 
   return data;
 }
