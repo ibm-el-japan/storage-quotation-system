@@ -316,13 +316,43 @@ function parseQuotationRequestExcel(wb) {
   const isGrey = (col, row) => !!colors.grey[col + row];
   const refs = {};
   const R = (key, col, row) => { (refs[key] = refs[key] || []).push([col, row]); };
+  // 値が空でも「この項目はこのセルに記入する欄」と分かるよう、見つけたラベル行のセル番地を保持 (v2.5.4)
+  const tpl = {}, trg = {};
+  const T = (key, col, row) => { if (!tpl[key]) tpl[key] = col + row; };
+  const Tr = (key, row) => { const r = trg[key] = trg[key] || [row, row]; r[0] = Math.min(r[0], row); r[1] = Math.max(r[1], row); };
+  const OPT_ROW = /^[\u2000-\u2BFF\uFE0F\s]*[□■◾☑✔●]/;
   // 選択肢末尾の「（例）…」注記を除去
   const cleanOpt = s => String(s || '').replace(/[\u3000\s]*[（(]例[）)].*$/, '').replace(/[\u3000\s]+$/, '').trim();
   const stripMark = s => String(s || '').replace(/^[■◾️☑✔●\s□]+/, '').trim();
+  // 行ラベルの正規化 (空白・全角空白・必須マーク * を除去)
+  const norm = s => String(s || '').replace(/[\s\u3000*＊]/g, '');
+  // 「Name（☑️A□B□C）」形式の行は、チェック済みの下位選択肢だけを残す (v2.5.4)
+  const resolveSub = s => {
+    const m = String(s || '').match(/^([^（(]*)[（(](.*)[）)]\s*$/);
+    if (!m || !/[□■◾☑✔●]/.test(m[2])) return s;
+    const on = [];
+    m[2].replace(/([□■◾☑✔●])\uFE0F?([^□■◾☑✔●]*)/g, (x, mk, t) => { if (mk !== '□' && t.trim()) on.push(t.trim()); return x; });
+    return on.length ? m[1].trim() + '（' + on.join('・') + '）' : m[1].trim();
+  };
 
   const getCell = (col, row) => {
     const c = ws[col + row];
     return c ? (c.w || String(c.v !== undefined ? c.v : "")).trim() : "";
+  };
+  const pad2 = n => String(n).padStart(2, '0');
+  // 記入日: Excel の日付セル(シリアル値/Date) と 文字列("2026/10/26", "2026年10月26日") の両方に対応 (v2.5.4)
+  const getDateCell = (col, row) => {
+    const c = ws[col + row];
+    if (!c) return "";
+    try {
+      if (c.t === 'd' && c.v instanceof Date) return `${c.v.getFullYear()}-${pad2(c.v.getMonth() + 1)}-${pad2(c.v.getDate())}`;
+      if (typeof c.v === 'number' && c.z && XLSX.SSF && XLSX.SSF.is_date && XLSX.SSF.is_date(c.z)) {
+        const d = XLSX.SSF.parse_date_code(c.v);
+        if (d && d.y) return `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+      }
+    } catch (e) { /* 文字列として処理 */ }
+    const m = getCell(col, row).match(/(\d{4})\s*[/年.-]\s*(\d{1,2})\s*[/月.-]\s*(\d{1,2})/);
+    return m ? `${m[1]}-${pad2(m[2])}-${pad2(m[3])}` : "";
   };
 
   const data = {
@@ -339,12 +369,14 @@ function parseQuotationRequestExcel(wb) {
     bpCustomerNo: "",
     salesName: "",
     tsName: "",
+    elSalesName: "",
     otherMembers: "",
     offering: "Storage Expert Labs（Product：6911-450/Product Family：Expert Labs）",
     products: [],
     serviceSummary: "",
     startDate: "",
     endDate: "",
+    periodNote: "",
     workLocation: "リモート",
     workLocationDetail: "",
     workDetail: "",
@@ -354,7 +386,9 @@ function parseQuotationRequestExcel(wb) {
     confidential: "無し",
     confidentialNote: "",
     meetingInternal: "調整します",
+    meetingInternalNote: "",
     meetingExternal: "調整します",
+    meetingExternalNote: "",
     preChecks: [],
     contractType: "支援契約（Expert Labsの単独契約）",
     dealType: "直販（サブコン）",
@@ -385,11 +419,31 @@ function parseQuotationRequestExcel(wb) {
     { id: "yn12", key: "適切な運用支援サービス契約" }
   ];
 
-  // 選択肢行: 選択済み記号が付いている行だけを採用する (■/◾️ のみ。□ は未選択)
+  // 選択肢行: 選択済み記号が付いている行だけを採用する (■/◾️/☑ のみ。□ は未選択)
   const pickChecked = (rowStr, cVal, bVal) => {
     if (!CHECKED_SYMBOLS.some(s => rowStr.includes(s))) return "";
     return stripMark(cVal || bVal);
   };
+  // 「☑️調整します（補足…）」の補足部分 (v2.5.4)
+  const choiceNote = (cVal, kw) => {
+    const i = cVal.indexOf(kw);
+    if (i < 0) return "";
+    let rest = cVal.slice(i + kw.length).split(/\r?\n/)[0].trim();
+    const m = rest.match(/^[（(]([\s\S]*)[）)]$/);
+    if (m) rest = m[1].trim();
+    return rest;
+  };
+  // 日付 (YYYY年M月[D日]) の解析。年省略時は fallbackYear を使う (v2.5.4)
+  const parseYMD = (s, fallbackYear) => {
+    const m = String(s || '').match(/(?:(\d{4})\s*[年/.-]\s*)?(\d{1,2})\s*(?:月|[/.-])\s*(?:(\d{1,2})\s*日?)?/);
+    if (!m) return null;
+    const y = m[1] || fallbackYear;
+    if (!y) return null;
+    return { y: +y, m: +m[2], d: m[3] ? +m[3] : 0 };
+  };
+
+  // 区画(セクション)はラベルで判定する: 行番号が変わっても追従できる (v2.5.4)
+  let sec = 'basic', sub = '', bpSeen = false;
 
   for (let R0 = range.s.r; R0 <= range.e.r; ++R0) {
     const rowNum = R0 + 1;
@@ -400,101 +454,157 @@ function parseQuotationRequestExcel(wb) {
     const eVal = getCell('E', rowNum);
     const fVal = getCell('F', rowNum);
     const rowStr = [aVal, bVal, cVal, dVal, eVal, fVal].join(" ");
+    const aN = norm(aVal), bN = norm(bVal);
+
+    if (aN.includes('事前確認事項')) sec = 'pre';
+    else if (aN.includes('契約情報')) { sec = 'contract'; sub = ''; }
+    else if (aN.includes('案件情報')) sec = 'basic';
+    else if (bN && sec !== 'pre' && sec !== 'contract') {
+      if (/^Offering/i.test(bN)) sec = 'offering';
+      else if (/対象製品/.test(bN)) sec = 'products';
+      else if (sec === 'offering' || sec === 'products') sec = 'service';
+    }
+    if (bN && sec !== 'pre' && /ご提供形態/.test(bN)) sec = 'contract';
+    if (sec === 'contract' && bN) {
+      if (/ご提供形態/.test(bN)) sub = 'provider';
+      else if (/契約形態/.test(bN)) sub = 'deal';
+      else if (/支払い?計画/.test(bN)) sub = 'pay';
+      else if (/月次/.test(bN)) sub = 'monthly';
+      else sub = '';
+    }
 
     // 1. 基本情報
     if (bVal.includes("記入日")) {
-      const match = cVal.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
-      if (match) { data.createdDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`; R('createdDate', 'C', rowNum); }
+      const d = getDateCell('C', rowNum);
+      T('createdDate', 'C', rowNum);
+      if (d) { data.createdDate = d; R('createdDate', 'C', rowNum); }
     } else if (bVal.includes("記入者")) {
-      data.author = cVal; R('author', 'C', rowNum);
+      data.author = cVal; R('author', 'C', rowNum); T('author', 'C', rowNum);
     } else if (bVal.includes("お客様名")) {
-      data.customerName = cVal; R('customerName', 'C', rowNum);
+      data.customerName = cVal; R('customerName', 'C', rowNum); T('customerName', 'C', rowNum);
     } else if (bVal.includes("サービス名") || bVal.includes("案件名")) {
-      data.projectName = cVal; R('projectName', 'C', rowNum);
+      data.projectName = cVal; R('projectName', 'C', rowNum); T('projectName', 'C', rowNum);
     } else if (bVal.includes("お客様番号")) {
-      if (!data.customerNo && rowNum < 15) { data.customerNo = cVal; R('customerNo', 'C', rowNum); }
-      else { data.bpCustomerNo = cVal; R('bpCustomerNo', 'C', rowNum); }
+      if (!bpSeen) { data.customerNo = cVal; R('customerNo', 'C', rowNum); T('customerNo', 'C', rowNum); }
+      else { data.bpCustomerNo = cVal; R('bpCustomerNo', 'C', rowNum); T('bpCustomerNo', 'C', rowNum); }
     } else if (bVal.includes("DNSO")) {
-      data.dnsoNo = cVal; R('dnsoNo', 'C', rowNum);
+      data.dnsoNo = cVal; R('dnsoNo', 'C', rowNum); T('dnsoNo', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && (bVal.includes("HW") || bVal.includes("製品"))) {
-      data.oppNoProduct = cVal; R('oppNoProduct', 'C', rowNum);
+      data.oppNoProduct = cVal; R('oppNoProduct', 'C', rowNum); T('oppNoProduct', 'C', rowNum);
     } else if (bVal.includes("Opportunity No") && bVal.includes("サービス")) {
-      data.oppNoService = cVal; R('oppNoService', 'C', rowNum);
+      data.oppNoService = cVal; R('oppNoService', 'C', rowNum); T('oppNoService', 'C', rowNum);
     } else if (bVal.includes("ビジネス・パートナー")) {
-      data.bpName = cVal; R('bpName', 'C', rowNum);
+      bpSeen = true;
+      data.bpName = cVal; R('bpName', 'C', rowNum); T('bpName', 'C', rowNum);
+    } else if (/ExpertLabs担当営業/.test(bN)) {
+      data.elSalesName = cVal; R('elSalesName', 'C', rowNum); T('elSalesName', 'C', rowNum);
     } else if (bVal.includes("担当営業名")) {
-      data.salesName = cVal; R('salesName', 'C', rowNum);
+      data.salesName = cVal; R('salesName', 'C', rowNum); T('salesName', 'C', rowNum);
     } else if (bVal.includes("担当テクニカル")) {
-      data.tsName = cVal; R('tsName', 'C', rowNum);
+      data.tsName = cVal; R('tsName', 'C', rowNum); T('tsName', 'C', rowNum);
     } else if (bVal.includes("その他案件関係者")) {
-      data.otherMembers = cVal; R('otherMembers', 'C', rowNum);
+      data.otherMembers = cVal; R('otherMembers', 'C', rowNum); T('otherMembers', 'C', rowNum);
     }
 
-    // 2. Offering (rows 20 - 26)
-    if (rowNum >= 20 && rowNum <= 26) {
+    // 2. Offering (「Offering」行 〜 「…対象製品」行の手前)
+    if (sec === 'offering') {
+      if (OPT_ROW.test(cVal)) Tr('offering', rowNum);
       const clean = pickChecked(rowStr, cVal, bVal);
       if (clean && !clean.includes("支援対象Offering")) { data.offering = clean; R('offering', 'C', rowNum); }
     }
 
-    // 3. サービス対象製品 (rows 27 - 41)
-    if (rowNum >= 27 && rowNum <= 41) {
+    // 3. 支援対象/サービス対象製品 (「…対象製品」行 〜 次のラベル行の手前)
+    if (sec === 'products') {
+      if (OPT_ROW.test(cVal)) Tr('products', rowNum);
       const clean = pickChecked(rowStr, cVal, bVal);
       if (clean && !clean.includes("支援対象製品を選択")) {
-        if (!data.products.includes(clean)) data.products.push(clean);
+        const prod = resolveSub(clean);
+        if (!data.products.includes(prod)) data.products.push(prod);
         R('products', 'C', rowNum);
       }
     }
 
-    // 4. サービス内容 (rows 42 - 52)
-    if (bVal.includes("サービス期間")) {
-      R('startDate', 'C', rowNum); R('endDate', 'C', rowNum);
-      const parts = cVal.split(/～|~/);
-      if (parts.length >= 1) {
-        const m1 = parts[0].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
-        if (m1) data.startDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+    // 4. サービス内容 (サービス期間/支援期間 など。旧様式・新様式のラベルに両対応)
+    if (/^(サービス|支援)期間/.test(bN)) {
+      R('startDate', 'C', rowNum); R('endDate', 'C', rowNum); T('startDate', 'C', rowNum); T('endDate', 'C', rowNum);
+      const parts = cVal.split(/～|~|〜/);
+      const p1 = parseYMD(parts[0], null);
+      const p2 = parts.length >= 2 ? parseYMD(parts[1], p1 ? p1.y : null) : null;
+      const notes = [];
+      if (p1) {
+        data.startDate = `${p1.y}-${pad2(p1.m)}-${pad2(p1.d || 1)}`;
+        if (!p1.d) notes.push('開始日は日の記載が無いため1日で補完');
       }
-      if (parts.length >= 2) {
-        const m2 = parts[1].match(/(\d{4})[年/-](\d{1,2})[月/-](\d{1,2})/);
-        if (m2) data.endDate = `${m2[1]}-${m2[2].padStart(2, '0')}-${m2[3].padStart(2, '0')}`;
+      if (p2) {
+        const last = p2.d || new Date(p2.y, p2.m, 0).getDate();
+        data.endDate = `${p2.y}-${pad2(p2.m)}-${pad2(last)}`;
+        if (!p2.d) notes.push('終了日は日の記載が無いため月末で補完');
       }
-    } else if (bVal.includes("サービス提供場所")) {
+      data.periodNote = notes.join(' / ');
+    } else if (/^(サービス|支援).*場所/.test(bN)) {
+      T('workLocation', 'C', rowNum);
       data.workLocationDetail = cVal;
       if (cVal) { R('workLocation', 'C', rowNum); R('workLocationDetail', 'C', rowNum); }
-      const hasRemote = /リモート/.test(cVal);
-      const rest = cVal.replace(/リモート/g, '');
-      const hasOnsite = /オンサイト|お客様先|現地|[都道府県市区町村]|駅|最寄/.test(rest);
+      const REMOTE_RE = /リモート|オンライン|在宅|Teams|Web会議/g;
+      const hasRemote = /リモート|オンライン|在宅|Teams|Web会議/.test(cVal);
+      const rest = cVal.replace(REMOTE_RE, '');
+      const restBody = rest.replace(/[\s\u3000、,，・＋+/／()（）]/g, '');
+      const hasOnsite = /オンサイト|お客様先|現地|[都道府県市区町村]|駅|最寄/.test(rest)
+        || (!hasRemote && restBody !== '' && !/^(未定|TBD|なし|無し|N\/?A)$/i.test(restBody));
       if (hasRemote && hasOnsite) data.workLocation = "リモート＋オンサイト";
       else if (hasOnsite && /IBM/.test(rest) && !/お客様先|オンサイト/.test(rest)) data.workLocation = "IBM社内";
       else if (hasOnsite) data.workLocation = "お客様先（オンサイト）";
       else data.workLocation = "リモート";
-    } else if (bVal.includes("サービス内容") && !bVal.includes("詳細")) {
-      if (cVal && !/見積りに必要な項目/.test(cVal)) { data.serviceSummary = cVal; R('serviceSummary', 'C', rowNum); }
-    } else if (bVal.includes("サービス内容") && (bVal.includes("詳細") || rowNum === 45)) {
-      data.workDetail = cVal; R('workDetail', 'C', rowNum);
+    } else if (/^(サービス|支援)内容/.test(bN) && !bN.includes("詳細")) {
+      if (cVal && !/見積りに必要な項目/.test(cVal)) { data.serviceSummary = cVal; R('serviceSummary', 'C', rowNum); T('serviceSummary', 'C', rowNum); }
+    } else if (/^(サービス|支援)内容/.test(bN)) {
+      T('workDetail', 'C', rowNum);
+      // 詳細欄に「提出ドキュメント」の箇条書きが同居する様式 (v2.5.4): ドキュメントと作業内容に分離する
+      const lines = ((ws['C' + rowNum] && String(ws['C' + rowNum].v != null ? ws['C' + rowNum].v : '')) || cVal).split(/\r?\n/);
+      const hi = lines.findIndex(l => /^[\s\u3000]*提出ドキュメント/.test(l));
+      if (hi < 0) {
+        data.workDetail = cVal;
+      } else {
+        const bullet = /^[\s\u3000]*[・･•\-－]/;
+        const docs = [];
+        const inline = lines[hi].replace(/^[\s\u3000]*提出ドキュメント[:：]?\s*/, '').trim();
+        if (inline) inline.split(/[、,]/).forEach(t => { if (t.trim()) docs.push(t.trim()); });
+        let j = hi + 1;
+        while (j < lines.length && bullet.test(lines[j])) { docs.push(lines[j].replace(bullet, '').trim()); j++; }
+        docs.forEach(t => { if (t && !data.docs.includes(t)) data.docs.push(t); });
+        if (docs.length) R('docs', 'C', rowNum);
+        data.workDetail = lines.filter((l, i) => i < hi || i >= j).map(l => l.replace(/[\s\u3000]+$/, '')).join('\n').trim();
+      }
+      R('workDetail', 'C', rowNum);
     } else if (bVal.includes("提出ドキュメント")) {
-      R('docs', 'C', rowNum);
+      R('docs', 'C', rowNum); T('docs', 'C', rowNum);
       cVal.split(/\n|・|,|、/).forEach(l => {
         const t = l.trim();
         if (t && !data.docs.includes(t)) data.docs.push(t);
       });
     } else if (bVal.includes("打合せ回数")) {
-      data.meetingFrequency = cVal; R('meetingFrequency', 'C', rowNum);
+      data.meetingFrequency = cVal; R('meetingFrequency', 'C', rowNum); T('meetingFrequency', 'C', rowNum);
     } else if (bVal.includes("サービス除外事項")) {
-      data.serviceExclusions = cVal; R('serviceExclusions', 'C', rowNum);
+      data.serviceExclusions = cVal; R('serviceExclusions', 'C', rowNum); T('serviceExclusions', 'C', rowNum);
     } else if (bVal.includes("機密情報取扱い")) {
+      T('confidential', 'C', rowNum);
       if (new RegExp(CHECKED + "\\s*有り").test(cVal)) { data.confidential = "有り"; R('confidential', 'C', rowNum); }
       else if (new RegExp(CHECKED + "\\s*無し").test(cVal)) { data.confidential = "無し"; R('confidential', 'C', rowNum); }
       if (dVal && !dVal.includes("機密保持契約締結情報")) { data.confidentialNote = dVal; R('confidentialNote', 'D', rowNum); }
     } else if (bVal.includes("社内関係者との打ち合わせ") || (bVal.includes("社内") && bVal.includes("調整"))) {
-      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingInternal = "不要"; R('meetingInternal', 'C', rowNum); }
-      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingInternal = "調整します"; R('meetingInternal', 'C', rowNum); }
+      T('meetingInternal', 'C', rowNum);
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingInternal = "不要"; R('meetingInternal', 'C', rowNum); data.meetingInternalNote = choiceNote(cVal, "不要"); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingInternal = "調整します"; R('meetingInternal', 'C', rowNum); data.meetingInternalNote = choiceNote(cVal, "調整します"); }
+      if (data.meetingInternalNote) R('meetingInternalNote', 'C', rowNum);
     } else if (bVal.includes("社外関係者との打ち合わせ") || (bVal.includes("社外") && bVal.includes("調整"))) {
-      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingExternal = "不要"; R('meetingExternal', 'C', rowNum); }
-      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingExternal = "調整します"; R('meetingExternal', 'C', rowNum); }
+      T('meetingExternal', 'C', rowNum);
+      if (new RegExp(CHECKED + "\\s*不要").test(cVal)) { data.meetingExternal = "不要"; R('meetingExternal', 'C', rowNum); data.meetingExternalNote = choiceNote(cVal, "不要"); }
+      else if (new RegExp(CHECKED + "\\s*調整").test(cVal)) { data.meetingExternal = "調整します"; R('meetingExternal', 'C', rowNum); data.meetingExternalNote = choiceNote(cVal, "調整します"); }
+      if (data.meetingExternalNote) R('meetingExternalNote', 'C', rowNum);
     }
 
-    // 5. 事前確認事項 (rows 54 - 71)
-    if (rowNum >= 54 && rowNum <= 71) {
+    // 5. 事前確認事項 (「事前確認事項」見出し 〜 「契約情報」見出し)
+    if (sec === 'pre') {
       ynMatchRules.forEach(rule => {
         if (bVal.includes(rule.key) || aVal.includes(rule.key)) {
           let ynVal = "", ynCol = "D";
@@ -507,8 +617,9 @@ function parseQuotationRequestExcel(wb) {
           const existing = data.preChecks.find(p => p.id === rule.id);
           const org = (ynVal || noteVal) ? (isGrey(ynCol, rowNum) ? 'reference' : 'sheet') : 'empty';
           if (!existing) {
-            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org, cell: (ynVal || noteVal) ? ((ynVal ? ynCol : (cVal ? 'C' : 'D')) + rowNum) : '' });
+            data.preChecks.push({ id: rule.id, yn: ynVal, note: noteVal, origin: org, cell: (ynVal || noteVal) ? ((ynVal ? ynCol : (cVal ? 'C' : 'D')) + rowNum) : '', tplCell: (rule.isText ? 'C' : 'D') + rowNum });
           } else {
+            if (rule.isText && norm(bVal).startsWith(rule.key)) existing.tplCell = 'C' + rowNum;
             if (ynVal) existing.yn = ynVal;
             if (noteVal) existing.note = noteVal;
             if (org !== 'empty') existing.origin = org;
@@ -517,20 +628,22 @@ function parseQuotationRequestExcel(wb) {
       });
     }
 
-    // 6. 契約情報 (rows 72 - 91)
-    if (rowNum >= 74 && rowNum <= 78) {
+    // 6. 契約情報 (ご提供形態 / 契約形態 / 支払い計画 の各ブロック内で選択済み行を採用)
+    if (sec === 'contract' && OPT_ROW.test(cVal)) Tr({ provider: 'contractType', deal: 'dealType', pay: 'paymentPlan' }[sub] || '_', rowNum);
+    if (sec === 'contract' && sub === 'provider') {
       const clean = pickChecked(rowStr, cVal, bVal);
       if (clean && !clean.includes("支援のご提供形態")) { data.contractType = cleanOpt(clean); R('contractType', 'C', rowNum); }
     }
-    if (rowNum >= 79 && rowNum <= 83) {
+    if (sec === 'contract' && sub === 'deal') {
       const clean = pickChecked(rowStr, cVal, bVal);
       if (clean && !clean.includes("契約形態を選択")) { data.dealType = cleanOpt(clean); R('dealType', 'C', rowNum); }
     }
-    if (rowNum >= 84 && rowNum <= 87) {
+    if (sec === 'contract' && sub === 'pay') {
       const clean = pickChecked(rowStr, cVal, bVal);
       if (clean && !clean.includes("支払い計画を選択")) { data.paymentPlan = cleanOpt(clean); R('paymentPlan', 'C', rowNum); }
     }
     if (bVal.includes("月次作業報告書") || bVal.includes("月次報告書")) {
+      T('monthlyReport', 'C', rowNum);
       if (new RegExp(CHECKED + "\\s*有").test(rowStr)) { data.monthlyReport = "有"; R('monthlyReport', 'C', rowNum); }
       else if (new RegExp(CHECKED + "\\s*無").test(rowStr)) { data.monthlyReport = "無"; R('monthlyReport', 'C', rowNum); }
     }
@@ -538,7 +651,7 @@ function parseQuotationRequestExcel(wb) {
 
   // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
   let oppDerived = false;
-  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; }
+  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; refs.oppNoService = (refs.oppNoProduct || []).slice(); }
 
   // 項目ごとの取得元を決定
   const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
@@ -564,6 +677,9 @@ function parseQuotationRequestExcel(wb) {
     refs[k].forEach(r => { const a = r[0] + r[1]; if (!seen.includes(a)) seen.push(a); });
     if (seen.length) data.cells[k] = seen;
   });
+
+  Object.keys(trg).forEach(k => { if (k !== '_') tpl[k] = 'C' + trg[k][0] + (trg[k][1] !== trg[k][0] ? '〜C' + trg[k][1] : ''); });
+  data.tplCells = tpl;
 
   return data;
 }
@@ -805,7 +921,7 @@ function initDocsFromState(){
     { id: "sm21", label: "月次報告書提出要否", val: req.monthlyReport || "無" },
     { id: "sm22", label: "OO (Opportunity Owner)", val: b.salesName || stateData.salesName || req.salesName || "TBD" },
     { id: "sm23", label: "契約名", val: `${cust} ${proj}` },
-    { id: "sm24", label: "チームメンバー", val: [b.salesName || req.salesName, b.tsName || req.tsName, b.otherMembers || req.otherMembers].filter(Boolean).join('、 ') || "TBD" }
+    { id: "sm24", label: "チームメンバー", val: [b.salesName || req.salesName, b.elSalesName || req.elSalesName, b.tsName || req.tsName, b.otherMembers || req.otherMembers].filter(Boolean).join('、 ') || "TBD" }
   ];
 
   // 各項目の取得元を判定 (依頼シートの項目キー -> origin)。依頼シートに無い値・算出値はシステム補完(青)
@@ -824,7 +940,7 @@ function initDocsFromState(){
     sm5: [], sm6: [], sm7: [], sm8: [], sm9: ['startDate', 'endDate'], sm10: [],
     sm11: ['contractType'], sm12: ['dealType'], sm13: ['oppNoProduct'], sm14: ['oppNoService'], sm15: [], sm16: [],
     sm17: ['confidential'], sm18: ['tsName'], sm19: [], sm20: ['paymentPlan'], sm21: ['monthlyReport'],
-    sm22: ['salesName'], sm23: ['customerName', 'projectName'], sm24: ['salesName', 'tsName', 'otherMembers']
+    sm22: ['salesName'], sm23: ['customerName', 'projectName'], sm24: ['salesName', 'elSalesName', 'tsName', 'otherMembers']
   };
   slinkMetaList.forEach(m => { if (SM_KEYS[m.id] !== undefined) m.src = _srcOf(SM_KEYS[m.id]); });
   // 依頼シートの値を持たない/空欄の項目は、システムが既定値を補った値として扱う

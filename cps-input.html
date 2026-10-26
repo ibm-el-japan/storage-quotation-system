@@ -51,7 +51,7 @@ td.sub,th.sub{background:#eef6ff;font-weight:700;text-align:right;padding:3px 8p
     <a href="slink-spec-generator.html">📑 S-LINK / 仕様書生成</a>
   </div>
   <div class="header">
-    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.3</span></h1>
+    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.4</span></h1>
     <p>Cost Plan Sheet（CostPlanSheetTPS2026v1）の入力ツール。概算見積シートの出力を入力として引き継ぎ、CPS作成用 JSON を出力します（スライド14〜18）。S-LINK・仕様書生成とは独立した別メニューです。</p>
   </div>
   <div class="layout">
@@ -344,7 +344,7 @@ function buildJson() {
     return o;
   });
   const j = {
-    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.3', generatedAt: new Date().toISOString(),
+    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.4', generatedAt: new Date().toISOString(),
     note: '項目構成は暫定仕様（既存の見積詳細入力ツールのJSON仕様とは要すり合わせ）',
     main: {
       customerName: b.customerName, projectName: b.projectName, oppNo: b.oppNo, oo: b.oo, pptl: b.pptl, pjtl: b.pjtl,
