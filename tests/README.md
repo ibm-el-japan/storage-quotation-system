@@ -19,6 +19,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do node t$i.js | tail -1; done
 | t13 | v2.5.2: 反映元セル（cells）・各タブの赤字表示・保存復元・顧客向け出力に非混入 | 52 |
 | t14 | v2.5.3: 案件ファイルの保存先（非公開リポジトリ）・管理者パスワードのハッシュ化（環境変数 `SQS_ADMIN_PW` で実パスワードも検証。未設定なら該当項目をスキップ） | 15 |
 | t15 | v2.5.4: 新様式の依頼シート（A1:F85）。匿名化フィクスチャ `make_duskin_like.py` で全項目の値・セル番地・基本情報/チェックシート/工数/交通費/取込状況/S-LINK/request-form への反映、顧客向け出力に非混入・営業2名の取り違え防止 | 73 |
+| t16 | v2.5.5: 概算見積Excelとの整合。価格式・丸め度・eDOUがExcelの式と一致、製品別プロファイル選択（Defender≠Protect、Ceph優先）、工数の既定値とPM比率、入力済み値の保護、年度跨ぎ単価差分の目安と行追加 | 24 |
 
 - 注意: t4 / t5 / t8 は CPS の xlsm（`CostPlanSheetTPS2026v1.xlsm`、`work/CostPlanSheetINF2026v1.1_*.xlsm`、`（2年/3年）CostPlanSheetINF2026v1.1.xlsm`）を読む。**単価表を含むためGitHubには置いていない**。ローカルの `storage-quotation-system/` 直下 / `work/` に置いて実行する。無い場合はその3本だけ失敗/スキップする。
 - ハーネス（`harness.js`）: `load(file, sessionObj)`。ページ先頭の `let` 変数は `window` に出ないので `w.eval('...')` で読む。ロード後 300ms 待つ。
