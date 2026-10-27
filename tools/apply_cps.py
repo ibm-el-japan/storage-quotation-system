@@ -16,9 +16,9 @@ m = d['main']
 # layout -> sheet xml paths (verified from workbook.xml.rels) and the price input cell
 L = {
     '2y': dict(main='xl/worksheets/sheet1.xml', detail='xl/worksheets/sheet4.xml',  # 見積詳細1年目
-               pay='xl/worksheets/sheet7.xml', price='O22', memo='B35'),  # B35 = placeholder hint text
+               pay='xl/worksheets/sheet7.xml', price='O22', memo=['C34', 'C35', 'C36'], wrap='329'),  # メモ入力欄 (C:G 結合の3行)
     '3y': dict(main='xl/worksheets/sheet1.xml', detail='xl/worksheets/sheet3.xml',  # 見積詳細
-               pay='xl/worksheets/sheet5.xml', price='O21', memo='B34')  # B34 = placeholder hint text,
+               pay='xl/worksheets/sheet5.xml', price='O21', memo=['C33', 'C34', 'C35'], wrap='331')  # メモ入力欄 (C:G 結合の3行)
 }[layout]
 
 BAND = {'Band 6': 'SLS-Bnd6', 'Band 7': 'SLS-Bnd7', 'Band 8': 'SLS-Bnd8', 'Band 9': 'SLS-Bnd9', 'Band 10': 'SLS-Bnd10'}
@@ -40,6 +40,18 @@ def put(xml, ref, kind, val):
     return xml[:mm.start()] + new + xml[mm.end():]
 
 
+def put_wrapped(xml, ref, text, wrap_style):
+    """Write a long text into a (C:G merged) memo cell using the template's own wrap-text style and size the row to fit."""
+    xml = put(xml, ref, 's', text)
+    xml = re.sub(r'(<c r="%s") s="\d+"' % ref, r'\1 s="%s"' % wrap_style, xml, count=1)
+    row = re.search(r'\d+', ref).group(0)
+    lines = max(1, sum(-(-sum(2 if ord(ch) > 255 else 1 for ch in seg) // 62) for seg in text.split('\n')))
+    ht = min(409, max(15, 15 * lines + 3))
+    def fix(mm):
+        a = re.sub(r'\s(?:ht|customHeight)="[^"]*"', '', mm.group(1))
+        return '<row r="%s"%s ht="%d" customHeight="1">' % (row, a, ht)
+    return re.sub(r'<row r="%s"([^>]*?)>' % row, fix, xml, count=1)
+
 zin = zipfile.ZipFile(tpl)
 files = {n: zin.read(n) for n in zin.namelist()}
 infos = {i.filename: i for i in zin.infolist()}
@@ -58,8 +70,12 @@ x = put(x, 'C12', 'n', repr(m['approvedGpPct'] / 100))
 x = put(x, 'C13', 'n', m['riskLevel'])
 x = put(x, L['price'], 'n', m['servicePrice'])
 pp = d.get('paymentPlan') or {}
-if pp.get('rows') and not pp.get('confirmedBySales'):
-    x = put(x, L['memo'], 's', '【要営業確認】支払計画はツール既定値（請求日=月末、支払期日=請求日+30日、均等配分）。営業確認未了のため確定値ではありません。')
+# メモ欄: 依頼シートの全項目 (main.memo, 3行)。無い旧JSONでも、営業未確認の支払計画だけは注記する (R10)
+memo = list(m.get('memo') or [])
+if not memo and pp.get('rows') and not pp.get('confirmedBySales'):
+    memo = ['【要営業確認】支払計画はツール既定値（請求日=月末、支払期日=請求日+30日、均等配分）。営業確認未了のため確定値ではありません。']
+for ref, line in zip(L['memo'], memo):
+    x = put_wrapped(x, ref, line, L['wrap'])
 files[L['main']] = x.encode('utf8')
 
 # ---- 見積詳細 (first/only year sheet): TEL内

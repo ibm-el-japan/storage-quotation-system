@@ -40,6 +40,7 @@ td.sub,th.sub{background:#eef6ff;font-weight:700;text-align:right;padding:3px 8p
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .badge{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 .b-tool{background:#ede9fe;color:#6d28d9}.b-auto{background:#dcfce7;color:#166534}.b-man{background:#e2e8f0;color:#475569}.b-tmpl{background:#fef3c7;color:#92400e}
+.s-auto{color:#c00000}.s-ref{color:#8b8f98;font-style:italic}.s-tool{color:#1d4ed8}.s-man{color:#000}
 .sum td{padding:4px 10px}.sum td.v{text-align:right;font-weight:700}
 </style>
 </head>
@@ -51,7 +52,7 @@ td.sub,th.sub{background:#eef6ff;font-weight:700;text-align:right;padding:3px 8p
     <a href="slink-spec-generator.html">📑 S-LINK / 仕様書生成</a>
   </div>
   <div class="header">
-    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.4</span></h1>
+    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.6</span></h1>
     <p>Cost Plan Sheet（CostPlanSheetTPS2026v1）の入力ツール。概算見積シートの出力を入力として引き継ぎ、CPS作成用 JSON を出力します（スライド14〜18）。S-LINK・仕様書生成とは独立した別メニューです。</p>
   </div>
   <div class="layout">
@@ -97,7 +98,7 @@ function emptyRow(key) {
 }
 function defaultState() {
   const s = {basic: {customerName:'', projectName:'', oppNo:'', oo:'', pptl:'', pjtl:'', start:'', end:'', gp:30, risk:2, fromEstimate:false},
-    price: 0, priceSrc: 'manual', payment: {mode:'monthly', unit:10000, confirmed:false, rows:[]}, src: {}};
+    price: 0, priceSrc: 'manual', payment: {mode:'monthly', unit:10000, confirmed:false, rows:[]}, src: {}, request: null};
   KEYS.forEach(k => s[k] = []);
   return s;
 }
@@ -161,6 +162,7 @@ function loadHandoff() {
   }
   (h.otherCosts || []).forEach(o => { const r = emptyRow('other'); r.name = o.name; r.amounts = fit(o.amounts); r.src = 'tool'; S.other.push(r); });
   if (h.paymentPlan && /一回|1回/.test(h.paymentPlan)) S.payment.mode = 'once';
+  S.request = h.request || null;           // 見積もり依頼記入シートの全項目 (v2.5.6)
   return true;
 }
 
@@ -181,6 +183,93 @@ function genPayment() {
   });
 }
 const payTotal = () => S.payment.rows.reduce((t, r) => t + (+r.amount || 0), 0);
+
+
+// ===== 見積もり依頼記入シート → CPS 反映 (v2.5.6) =====
+// 依頼シートの全項目を CPS 入力へ引き継ぐ。CPS に専用の入力セルがある項目はそのセルへ、無い項目は メイン「メモ」欄(3行)へ参考記入する。
+// [キー, 表示名, CPS反映先, 併せて扱うキー]
+const REQ_GROUPS = [
+  ['案件情報', [
+    ['createdDate', '記入日', 'メモ'], ['author', '記入者', 'メモ'],
+    ['customerName', 'お客様名', 'メイン C5'], ['projectName', 'サービス名（案件名）', 'メイン C6'],
+    ['customerNo', 'お客様番号', 'メモ'], ['dnsoNo', 'DNSO #', 'メモ'],
+    ['oppNoProduct', 'Opportunity No（HW/SW製品）', 'メイン C7（サービス側が空欄のとき）・メモ'], ['oppNoService', 'Opportunity No（サービス）', 'メイン C7'],
+    ['bpName', 'ビジネス・パートナー様名', 'メモ'], ['bpCustomerNo', 'BP お客様番号', 'メモ'],
+    ['salesName', '担当営業名', 'メモ'], ['tsName', '担当テクニカル・セールス名', 'メモ'],
+    ['elSalesName', 'Expert Labs担当営業名', 'OO（Notes ID）の候補・メモ'], ['otherMembers', 'その他案件関係者名', 'PPTL/PJTL の確認用・メモ']]],
+  ['サービス内容', [
+    ['offering', 'Offering', 'メモ'], ['products', 'サービス対象製品', 'メモ'], ['serviceSummary', 'サービス内容（概要）', 'メモ'],
+    ['startDate', 'サービス期間 開始', 'メイン C11'], ['endDate', 'サービス期間 終了', 'メイン E11'], ['periodNote', 'サービス期間の補足', 'メモ'],
+    ['workLocation', 'サービス提供場所', 'メモ', ['workLocationDetail']], ['workDetail', 'サービス内容（詳細）', 'メモ'],
+    ['docs', '提出ドキュメント', 'メモ'], ['meetingFrequency', '打合せ回数', 'メモ'], ['serviceExclusions', 'サービス除外事項', 'メモ'],
+    ['confidential', '機密情報取扱い', 'メモ', ['confidentialNote']],
+    ['meetingInternal', '社内関係者との打ち合わせの調整', 'メモ', ['meetingInternalNote']],
+    ['meetingExternal', '社外関係者との打ち合わせの調整', 'メモ', ['meetingExternalNote']]]],
+  ['契約情報', [
+    ['contractType', 'ご提供形態', 'メモ'], ['dealType', '契約形態', 'メモ'],
+    ['paymentPlan', '支払い計画', '支払計画（分割方法。確定は営業確認後）・メモ'], ['monthlyReport', '月次作業報告書提出の必要性', 'メモ']]]
+];
+const REQ_COVERED = (() => { const o = ['preChecks']; REQ_GROUPS.forEach(g => g[1].forEach(r => { o.push(r[0]); (r[3] || []).forEach(k => o.push(k)); })); return o; })();
+const flat1 = v => String(v == null ? '' : v).replace(/\s*[\r\n]+\s*/g, ' ／ ').replace(/[\u3000 ]+/g, ' ').trim();
+function reqVal(key) {
+  const q = S.request; if (!q) return '';
+  const j = a => (Array.isArray(a) ? a.filter(Boolean).join('、') : flat1(a));
+  const wn = (v, n) => j(v) + (n ? '（' + flat1(n) + '）' : '');
+  switch (key) {
+    case 'products': return (q.products || []).filter(Boolean).join(' / ');
+    case 'workLocation': return [q.workLocation, q.workLocationDetail].filter(Boolean).map(flat1).join(' / ');
+    case 'confidential': return [q.confidential, q.confidentialNote].filter(Boolean).map(flat1).join(' ');
+    case 'meetingInternal': return wn(q.meetingInternal, q.meetingInternalNote);
+    case 'meetingExternal': return wn(q.meetingExternal, q.meetingExternalNote);
+    default: return j(q[key]);
+  }
+}
+// 取得元: sheet=依頼シート黒字(赤) / reference=グレー参考例 / default=システム補完(青) / manual=手入力(黒)
+const reqOrigin = key => ((S.request && S.request.origin) || {})[key] || '';
+const srcCls = o => o === 'reference' ? 's-ref' : o === 'default' ? 's-tool' : o === 'manual' ? 's-man' : 's-auto';
+const srcLbl = o => o === 'reference' ? '参考例（グレー）' : o === 'default' ? 'システム補完' : o === 'manual' ? '手入力' : '依頼シート';
+function reqCells(key, also) {
+  const q = S.request || {}, c = [];
+  [key].concat(also || []).forEach(k => ((q.cells || {})[k] || []).forEach(x => { if (!c.includes(x)) c.push(x); }));
+  return c.length ? c.join(', ') : ((q.tplCells || {})[key] || '');
+}
+function preChecksText() {
+  const q = S.request || {}, L = q.preCheckLabels || {};
+  return (q.preChecks || []).filter(p => p.yn || p.note).map(p => (L[p.id] || p.id) + '=' + [p.yn, p.note].filter(Boolean).join(' ')).join(' ／ ');
+}
+// CPS メイン「メモ」欄 (3セル) へ書く文面。値のある項目だけを出す
+function buildMemo() {
+  if (!S.request) return [];
+  const lines = REQ_GROUPS.map(g => '【' + g[0] + '】' + g[1].map(r => [r[1], reqVal(r[0])]).filter(x => x[1]).map(x => x[0] + ': ' + x[1]).join(' ／ '));
+  const pc = preChecksText();
+  if (pc) lines[2] += ' ／ 【事前確認事項】' + pc;
+  if (S.payment.rows.length && !S.payment.confirmed) lines[2] += ' ／ ※支払計画はツール既定値（要営業確認）';
+  return lines;
+}
+function oneTimeOnlyWarn() {
+  const p = reqVal('paymentPlan'), n = months().length;
+  return /一回|1回/.test(p) && n > 3 ? '<div class="warn">依頼シートの支払い計画は「支払い一回」ですが、サービス期間が ' + n + 'ヶ月です（依頼シート注記: 支援期間3ヶ月以内のみ選択可）。営業へ確認してください。</div>' : '';
+}
+function requestPanel() {
+  if (!S.request) return '';
+  let n = 0, tot = 0, h = '<h3 style="margin:16px 0 6px;font-size:14px;color:#0f172a">見積もり依頼記入シートの内容 → CPS 反映</h3>' +
+    '<p class="hint">依頼シートの全項目を引き継いでいます。CPS に専用セルがある項目はそのセルへ、無い項目は メイン「メモ」欄へ参考記入します（出力JSONの <code>request</code> / <code>main.memo</code>）。文字色＝取得元: <span class="s-auto">依頼シート</span> / <span class="s-ref">参考例</span> / <span class="s-tool">システム補完</span> / <span class="s-man">手入力</span></p>' +
+    '<div class="tw"><table><thead><tr><th>項目</th><th>依頼シートのセル</th><th>取込内容</th><th>取得元</th><th>CPS 反映先</th></tr></thead><tbody>';
+  REQ_GROUPS.forEach(g => {
+    h += '<tr><td colspan="5" class="sub" style="text-align:left">' + g[0] + '</td></tr>';
+    g[1].forEach(r => {
+      const v = reqVal(r[0]), o = reqOrigin(r[0]); tot++; if (v) n++;
+      h += '<tr><td style="text-align:left">' + esc(r[1]) + '</td><td>' + esc(reqCells(r[0], r[3])) + '</td><td class="' + (v ? srcCls(o) : '') + '" style="white-space:normal;text-align:left;max-width:520px">' + (v ? esc(v) : '<span style="color:#94a3b8">未入力</span>') + '</td><td>' + (v ? srcLbl(o) : '') + '</td><td style="text-align:left;color:#64748b">' + esc(r[2]) + '</td></tr>';
+    });
+  });
+  const q = S.request, L = q.preCheckLabels || {};
+  h += '<tr><td colspan="5" class="sub" style="text-align:left">事前確認事項（Y / N）</td></tr>';
+  (q.preChecks || []).forEach(p => {
+    const v = [p.yn, p.note].filter(Boolean).join(' '), o = p.origin === 'reference' ? 'reference' : 'sheet'; tot++; if (v) n++;
+    h += '<tr><td style="text-align:left">' + esc(L[p.id] || p.id) + '</td><td>' + esc(p.cell || p.tplCell || '') + '</td><td class="' + (v ? srcCls(o) : '') + '" style="text-align:left">' + (v ? esc(v) : '<span style="color:#94a3b8">未入力</span>') + '</td><td>' + (v ? srcLbl(o) : '') + '</td><td style="text-align:left;color:#64748b">メモ</td></tr>';
+  });
+  return h + '</tbody></table></div><p class="hint">取込 ' + n + ' / ' + tot + ' 項目。OO・PPTL・PJTL は Notes ID が必要なため自動入力しません（依頼シートに該当項目なし。上の候補を参考に人が入力）。</p>';
+}
 
 // ===== 描画 =====
 function renderSide() {
@@ -210,15 +299,19 @@ function stepBasic() {
   return '<h2>0. 基本情報</h2>' +
     (b.fromEstimate ? '<div class="warn" style="background:#f0fdf4;border-color:#86efac;color:#166534">概算見積シートの出力を入力として引き継ぎました。<span class="badge b-tool">Tool</span> / <span class="badge b-auto">Auto</span> の値は内容を確認し、必要に応じて編集してください。</div>'
       : '<div class="warn">概算見積シートからの引継ぎデータがありません。手入力するか、<a href="quotation-generator.html">概算見積シート</a>の「作成・出力」タブから「CPS入力へ渡す」を実行してください。</div>') +
-    '<div class="grid2">' + f('customerName','お客様名', b.customerName) + f('projectName','プロジェクト名（サービス名）', b.projectName) +
-    f('oppNo','Opp No.', b.oppNo) + f('oo','OO（Opportunity Owner の Notes ID）', b.oo) + f('pptl','PPTL（Notes ID）', b.pptl) + f('pjtl','PJTL（Notes ID）', b.pjtl) +
+    '<div class="grid2">' + f('customerName','お客様名' + (S.request ? badge('auto') : ''), b.customerName) + f('projectName','プロジェクト名（サービス名）' + (S.request ? badge('auto') : ''), b.projectName) +
+    f('oppNo','Opp No.' + (S.request ? badge('auto') : ''), b.oppNo) + f('oo','OO（Opportunity Owner の Notes ID）', b.oo) + f('pptl','PPTL（Notes ID）', b.pptl) + f('pjtl','PJTL（Notes ID）', b.pjtl) +
     '<div class="fld"><label>サービス期間（開始）' + badge(b.fromEstimate ? 'auto' : 'manual') + '</label><input type="date" id="start" value="' + esc(b.start) + '" onchange="setBasic(\'start\',this.value,true)"></div>' +
     '<div class="fld"><label>サービス期間（終了）</label><input type="date" id="end" value="' + esc(b.end) + '" onchange="setBasic(\'end\',this.value,true)"></div>' +
     '<div class="fld"><label>承認GP%（試算用）</label><input type="number" id="gp" step="0.1" value="' + esc(b.gp) + '" oninput="setBasic(\'gp\',this.value)"></div>' +
     '<div class="fld"><label>リスクレベル（→ Contingency率）</label><select id="risk" onchange="setBasic(\'risk\',this.value)">' +
     RISK.map(r => '<option value="' + r[0] + '"' + (r[0] === +b.risk ? ' selected' : '') + '>' + r[0] + ' — ' + r[2] + ' Risk (' + Math.round(r[1] * 100) + '%)</option>').join('') + '</select></div></div>' +
     '<p class="hint" style="margin-top:10px">期間: ' + n + 'ヶ月' + (yrs > 1 ? ' / ' + yrs + '年にまたがるため、RunExcel が複数年マクロで「サブ◯年目」「見積詳細◯年目」を作成します（Windows + マクロ有効のExcelが必要）。' : '') +
-    ' インフレ率適用基準年: ' + BASE_YEAR + ' / Cost Infla率: ' + C_INF + '</p>' + navBtns();
+    ' インフレ率適用基準年: ' + BASE_YEAR + ' / Cost Infla率: ' + C_INF + '</p>' + ooHint() + oneTimeOnlyWarn() + requestPanel() + navBtns();
+}
+function ooHint() {
+  const e = reqVal('elSalesName');
+  return S.request ? '<p class="hint" style="margin-top:6px">OO（Opportunity Owner の Notes ID）の候補: 依頼シートの Expert Labs担当営業名 = <b class="' + srcCls(reqOrigin('elSalesName')) + '">' + (e ? esc(e) : '（未記入）') + '</b>。PPTL / PJTL に当たる項目は依頼シートにありません。Notes ID を人が入力してください。</p>' : '';
 }
 function setBasic(id, v, rebuild) {
   S.basic[id] = (id === 'gp' || id === 'risk') ? +v : v;
@@ -344,13 +437,15 @@ function buildJson() {
     return o;
   });
   const j = {
-    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.4', generatedAt: new Date().toISOString(),
+    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.6', generatedAt: new Date().toISOString(),
     note: '項目構成は暫定仕様（既存の見積詳細入力ツールのJSON仕様とは要すり合わせ）',
     main: {
       customerName: b.customerName, projectName: b.projectName, oppNo: b.oppNo, oo: b.oo, pptl: b.pptl, pjtl: b.pjtl,
       servicePeriod: {start: b.start, end: b.end}, approvedGpPct: b.gp, riskLevel: +b.risk, contingencyRate: contRate(),
-      costInflation: C_INF, inflationBaseYear: BASE_YEAR, servicePrice: +S.price || 0
+      costInflation: C_INF, inflationBaseYear: BASE_YEAR, servicePrice: +S.price || 0,
+      memo: buildMemo(), ooCandidate: reqVal('elSalesName')
     },
+    request: S.request || null,
     months: ms.map(m => m.y + '/' + pad(m.m)),
     sections: {}, totals: {},
     paymentPlan: {source: 'tool-default', confirmedBySales: !!S.payment.confirmed, mode: S.payment.mode,
@@ -380,7 +475,7 @@ function importJson(input) {
       S = defaultState(); const m = j.main, b = S.basic;
       Object.assign(b, {customerName: m.customerName, projectName: m.projectName, oppNo: m.oppNo, oo: m.oo, pptl: m.pptl, pjtl: m.pjtl,
         start: m.servicePeriod.start, end: m.servicePeriod.end, gp: m.approvedGpPct, risk: m.riskLevel});
-      S.price = m.servicePrice || 0; S.priceSrc = 'manual';
+      S.price = m.servicePrice || 0; S.priceSrc = 'manual'; S.request = j.request || null;
       KEYS.forEach(k => (j.sections[k] || []).forEach(o => {
         const r = emptyRow(k); r.name = o.name; r.src = o.source || 'manual';
         if (o.band != null) r.band = o.band; if (o.hourlyCost != null) r.hourly = o.hourlyCost; if (o.monthlyCost != null) r.monthly = o.monthlyCost;
