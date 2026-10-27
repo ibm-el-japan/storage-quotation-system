@@ -16,7 +16,7 @@ t('A1 記入日 (Excel date cell) -> 2026-10-26 @C4', p.createdDate === '2026-10
 t('A2 記入者 @C5', p.author === '記入 太郎(Kinyu Taro)' && C.author[0] === 'C5');
 t('A3 お客様名/案件名 @C9/@C10', p.customerName === 'サンプル商事様' && p.projectName === 'バックアップ基盤構築' && C.customerName[0] === 'C9' && C.projectName[0] === 'C10');
 t('A4 Opp(HW/SW) trimmed @C12', p.oppNoProduct === '006xx0000000001AAA' && C.oppNoProduct[0] === 'C12', p.oppNoProduct);
-t('A5 Opp(サービス) empty -> filled from product, origin=default, cell points to C12', p.oppNoService === p.oppNoProduct && p.origin.oppNoService === 'default' && C.oppNoService[0] === 'C12', [p.origin.oppNoService, C.oppNoService]);
+t('A5 v2.5.10 Opp(サービス) empty -> stays empty (not copied from product), origin=empty', p.oppNoService === '' && p.oppNoService !== p.oppNoProduct && p.origin.oppNoService === 'empty', [p.oppNoService, p.origin.oppNoService, C.oppNoService]);
 t('A6 BP @C14', p.bpName === 'ダミーBP株式会社' && C.bpName[0] === 'C14');
 t('A7 ストレージ担当営業名 @C15 (not confused with Expert Labs)', p.salesName === '営業 一郎(Eigyo Ichiro)' && C.salesName[0] === 'C15', p.salesName);
 t('A8 ストレージ担当TS名 @C16', p.tsName === '技術 二郎(Gijutsu Jiro)' && C.tsName[0] === 'C16', p.tsName);
@@ -54,7 +54,7 @@ w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(p));
 w.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
 const v = id => doc.getElementById(id).value;
 t('B1 基本情報 text fields', v('customer-name') === 'サンプル商事様' && v('project-name') === 'バックアップ基盤構築' && v('ext-created') === '2026-10-26' && v('ext-author') === p.author, [v('customer-name'), v('ext-created')]);
-t('B2 基本情報 Opp / BP / 営業 / TS', v('ext-opp-hw') === p.oppNoProduct && v('ext-opp-svc') === p.oppNoProduct && v('ext-bp') === p.bpName && v('ext-sales') === p.salesName && v('ext-ts') === p.tsName);
+t('B2 基本情報 Opp / BP / 営業 / TS', v('ext-opp-hw') === p.oppNoProduct && v('ext-opp-svc') === '' && v('ext-opp-svc') !== v('ext-opp-hw') && v('ext-bp') === p.bpName && v('ext-sales') === p.salesName && v('ext-ts') === p.tsName);
 t('B3 基本情報 Expert Labs営業 field exists and is empty', doc.getElementById('ext-el-sales') && v('ext-el-sales') === '');
 t('B4 基本情報 Offering/製品 line', /Storage Defender（Data Protect）/.test(v('ext-offering')) && !/Sentinel|DRS/.test(v('ext-offering')), v('ext-offering'));
 t('B5 基本情報 提供場所 = onsite / 大阪', /お客様先（オンサイト） \/ 大阪/.test(v('ext-location')), v('ext-location'));
@@ -68,7 +68,7 @@ const labs = w.eval('getMonthLabels()');
 t('B11 工数: 月ラベル 3か月 (9〜11月)', labs.length === 3 && labs[0].label === '2027/09' && labs[2].label === '2027/11', labs);
 const chip = id => { const l = doc.getElementById(id).closest('.info-row').querySelector('label .cell-ref'); return l ? l.textContent : ''; };
 t('B12 chips: C9 / C15 / C42 / C21', /C9\b/.test(chip('customer-name')) && /C15/.test(chip('ext-sales')) && /C42/.test(chip('ext-location')) && /C21/.test(chip('ext-offering')), [chip('customer-name'), chip('ext-sales'), chip('ext-location'), chip('ext-offering')]);
-t('B13 derived Opp(サービス) is system-blue (no red chip in 基本情報) and its source cell C12 is shown in the coverage panel', chip('ext-opp-svc') === '' && w.eval('_fieldSrc["ext-opp-svc"]') === 'tool' && /Opportunity No（サービス）[\s\S]*C12/.test(doc.getElementById('cov-body').textContent));
+t('B13 v2.5.10 blank Opp(サービス) is not derived from product: field empty, no source cell shown, Opp(HW/SW) still @C12', v('ext-opp-svc') === '' && /Opportunity No（HW\/SW製品）[\s\S]*C12/.test(doc.getElementById('cov-body').textContent) && !/製品側の番号で補完/.test(doc.getElementById('cov-body').textContent));
 t('B14 empty fields have no chip (DNSO, Expert Labs営業)', chip('ext-dnso') === '' && chip('ext-el-sales') === '');
 
 // C. checklist (checked items only, doc/work split)
@@ -95,7 +95,7 @@ t('E2 取込状況: 社外調整の補足 row', /社外打ち合わせ調整の�
 t('E3 取込状況: 事前確認 yn1 = D51 N', /D51/.test(cov) && /SO案件ではない/.test(cov));
 t('E4 取込状況: empty pre-check shows shifted template cell D55', /D55 空欄/.test(cov));
 t('E5 取込状況: 支払い計画 chip C80 + 営業確認', /C80/.test(cov) && /営業確認/.test(cov));
-t('E6 取込状況: Opp(サービス) default note', /製品側の番号で補完/.test(cov));
+t('E6 v2.5.10 取込状況: no 補完 note for Opp(サービス); shows 空欄', !/製品側の番号で補完/.test(cov));
 
 // F. state round-trip
 const st = w.collectState();

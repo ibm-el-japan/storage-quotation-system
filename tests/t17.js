@@ -15,7 +15,7 @@ const miss = Object.keys(req).filter(k => !internal.includes(k) && !(k in h.requ
 t('all parser keys present in handoff.request', miss.length === 0, miss);
 t('origin/cells/tplCells/preChecks/preCheckLabels carried', !!h.request.origin && !!h.request.cells && !!h.request.tplCells && h.request.preChecks.length === 12 && Object.keys(h.request.preCheckLabels).length === 12);
 t('values equal to the parsed sheet', h.request.customerName === req.customerName && h.request.bpName === req.bpName && h.request.dealType === req.dealType && JSON.stringify(h.request.docs) === JSON.stringify(req.docs));
-t('Opp No: service side used, falls back to product side', h.oppNo === (req.oppNoService || req.oppNoProduct) && !!h.oppNo, h.oppNo);
+t('Opp No: service side only, never falls back to product side (v2.5.10)', h.oppNo === (req.oppNoService || '') && (req.oppNoService ? true : h.oppNo === ''), h.oppNo);
 // 2. screen edits win over imported values
 q.eval("document.getElementById('ext-bp').value='編集後BP'; document.getElementById('ext-sales').value='編集後営業';");
 const h2 = q.buildCpsHandoff();

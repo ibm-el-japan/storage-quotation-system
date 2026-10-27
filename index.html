@@ -72,7 +72,7 @@ footer{background:#0f172a;color:#94a3b8;text-align:center;padding:16px 20px;font
 <div id="app">
   <header>
     <div class="top-row">
-      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.5.9</span></h1>
+      <h1>🚀 Storage Expert Labs Quotation Automation System <span class="badge">v2.5.10</span></h1>
       <div><span style="font-size:12px;color:#94a3b8">Expert Labs Storage Division</span></div>
     </div>
     <p>Quotation Request 提出から Estimated Cost 試算、S-LINK / 仕様書・別紙の自動生成までを一気通貫で自動化する独立システム</p>
@@ -660,9 +660,7 @@ function parseQuotationRequestExcel(wb) {
     }
   }
 
-  // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
-  let oppDerived = false;
-  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; refs.oppNoService = (refs.oppNoProduct || []).slice(); }
+  // Opportunity No（HW/SW製品）と（サービス）は別番号で登録するため、一方が空欄でももう一方の番号を補完しない (v2.5.10)
 
   // 項目ごとの取得元を決定
   const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
@@ -670,7 +668,6 @@ function parseQuotationRequestExcel(wb) {
   Object.keys(data).forEach(k => {
     if (SKIP.includes(k)) return;
     const list = refs[k];
-    if (k === 'oppNoService' && oppDerived) { data.origin[k] = 'default'; return; }
     if (list && list.length && !isEmptyVal(data[k])) {
       data.origin[k] = list.some(r => !isGrey(r[0], r[1])) ? 'sheet' : 'reference';
     } else if (!isEmptyVal(data[k])) {

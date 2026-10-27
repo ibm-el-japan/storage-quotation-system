@@ -649,9 +649,7 @@ function parseQuotationRequestExcel(wb) {
     }
   }
 
-  // D14 注記: サービス側 Opportunity No は HW/SW 製品側の登録でも可 → システムが補完
-  let oppDerived = false;
-  if (!data.oppNoService && data.oppNoProduct) { data.oppNoService = data.oppNoProduct; oppDerived = true; refs.oppNoService = (refs.oppNoProduct || []).slice(); }
+  // Opportunity No（HW/SW製品）と（サービス）は別番号で登録するため、一方が空欄でももう一方の番号を補完しない (v2.5.10)
 
   // 項目ごとの取得元を決定
   const isEmptyVal = v => Array.isArray(v) ? v.length === 0 : !String(v == null ? '' : v).trim();
@@ -659,7 +657,6 @@ function parseQuotationRequestExcel(wb) {
   Object.keys(data).forEach(k => {
     if (SKIP.includes(k)) return;
     const list = refs[k];
-    if (k === 'oppNoService' && oppDerived) { data.origin[k] = 'default'; return; }
     if (list && list.length && !isEmptyVal(data[k])) {
       data.origin[k] = list.some(r => !isGrey(r[0], r[1])) ? 'sheet' : 'reference';
     } else if (!isEmptyVal(data[k])) {

@@ -44,7 +44,7 @@ t('D2 no colour info => values still parsed', plain.customerName==='HAL（株）
 // ---- E. D14 note: service Opp No falls back to product Opp No
 const wb2 = rd(TPL_BLACK); delete wb2.Sheets[wb2.SheetNames[0]]['C14'];
 const e = P(wb2);
-t('E1 Opp(service) blank => system default from product', e.oppNoService===e.oppNoProduct && e.origin.oppNoService==='default', e.origin.oppNoService);
+t('E1 v2.5.10 Opp(service) blank => stays blank, NOT copied from product', e.oppNoService==='' && !!e.oppNoProduct && e.oppNoService!==e.oppNoProduct && e.origin.oppNoService==='empty', [e.oppNoService, e.origin.oppNoService]);
 
 // ---- F. quotation-generator: field colours
 w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(g)); w.checkIncomingRequestHandoff();
