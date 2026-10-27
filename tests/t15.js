@@ -39,6 +39,16 @@ t('A23 支払い計画 各月（標準） @C80', p.paymentPlan === '各月（標
 t('A24 月次報告書 無 @C83', p.monthlyReport === '無' && C.monthlyReport[0] === 'C83');
 t('A25 all non-empty sheet fields have origin=sheet (red)', ['createdDate', 'author', 'customerName', 'projectName', 'oppNoProduct', 'bpName', 'salesName', 'tsName', 'offering', 'products', 'startDate', 'workLocation', 'workDetail', 'docs', 'meetingExternalNote', 'contractType', 'dealType', 'paymentPlan', 'monthlyReport'].every(k => p.origin[k] === 'sheet'), p.origin);
 
+// A+. ストレージ担当営業 と Expert Labs担当営業 は別人: 両方入力されていても取り違えない / OO(sm22) はストレージ担当営業のまま
+{
+  const wb2 = rd(FIX); wb2.Sheets[wb2.SheetNames[0]]['C17'] = {t: 's', v: 'EL営業 花子(EL Hanako)'};
+  const p2 = w.parseQuotationRequestExcel(wb2);
+  t('A26 both sales names filled: salesName=C15, elSalesName=C17 (distinct people)', p2.salesName === '営業 一郎(Eigyo Ichiro)' && p2.elSalesName === 'EL営業 花子(EL Hanako)' && p2.cells.salesName[0] === 'C15' && p2.cells.elSalesName[0] === 'C17', [p2.salesName, p2.elSalesName]);
+  const sl2 = load('slink-spec-generator.html', {STORAGE_QUOTATION_REQUEST_DATA: JSON.stringify(p2)}); await new Promise(r => setTimeout(r, 300));
+  const mm = sl2.eval('slinkMetaList');
+  t('A27 S-LINK OO(sm22) stays ストレージ担当営業; Expert Labs営業 is a separate team member in sm24', mm.find(m => m.id === 'sm22').val === p2.salesName && /EL営業 花子/.test(mm.find(m => m.id === 'sm24').val) && !/EL営業/.test(mm.find(m => m.id === 'sm22').val), [mm.find(m => m.id === 'sm22').val, mm.find(m => m.id === 'sm24').val]);
+}
+
 // B. import into the UI
 w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(p));
 w.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
