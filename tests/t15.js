@@ -66,6 +66,8 @@ const pm = doc.getElementById('period-map-info');
 t('B10 期間カード: C41 + 補完注記', pm.style.display === 'block' && /C41/.test(pm.textContent) && /1日で補完/.test(pm.textContent), pm.textContent);
 const labs = w.eval('getMonthLabels()');
 t('B11 工数: 月ラベル 3か月 (9〜11月)', labs.length === 3 && labs[0].label === '2027/09' && labs[2].label === '2027/11', labs);
+const kh = [...doc.querySelectorAll('#tab-kosu table thead th')].map(e => e.textContent.replace(/\s+/g,' ').trim());
+t('B11b v2.5.11 工数表の月見出しが取込期間(2027/09〜11, 3列)に作り直される', kh.filter(x => /^\d{4}\/\d{2}/.test(x)).length === 3 && /^2027\/09/.test(kh.find(x => /^\d{4}\//.test(x))), kh);
 const chip = id => { const l = doc.getElementById(id).closest('.info-row').querySelector('label .cell-ref'); return l ? l.textContent : ''; };
 t('B12 chips: C9 / C15 / C42 / C21', /C9\b/.test(chip('customer-name')) && /C15/.test(chip('ext-sales')) && /C42/.test(chip('ext-location')) && /C21/.test(chip('ext-offering')), [chip('customer-name'), chip('ext-sales'), chip('ext-location'), chip('ext-offering')]);
 t('B13 v2.5.10 blank Opp(サービス) is not derived from product: field empty, no source cell shown, Opp(HW/SW) still @C12', v('ext-opp-svc') === '' && /Opportunity No（HW\/SW製品）[\s\S]*C12/.test(doc.getElementById('cov-body').textContent) && !/製品側の番号で補完/.test(doc.getElementById('cov-body').textContent));
