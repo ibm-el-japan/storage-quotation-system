@@ -100,3 +100,12 @@ ibm-el-japan/storage-quotation-system
 2. **情報の取得・確認方法**:
    - 各ツールの画面上にある「**📂 保存ファイル読込**」や「**📂 GitHubから開く**」メニューから、過去に保存された案件データやテンプレート設定をいつでもワンクリックで復元・再利用できます。
    - `WORK_LOG.md` または GitHub の [コミット履歴](https://github.com/ibm-el-japan/storage-quotation-system/commits/main) から、過去の更新内容と変更差分をいつでも確認できます。
+
+### CPS入力結果をCPS雛形(.xlsm)へ適用する (`tools/apply_cps.py`)
+CPS入力ページが出力した `cps-input/1` JSON を、`CostPlanSheetINF2026v1.1`（2年/3年）の入力セルへ書き込みます。シートXMLを直接編集するため、マクロ・フォームコントロール・入力規則は変更されません。
+```
+python3 tools/apply_cps.py <CostPlan_*.json> "<雛形>.xlsm" <出力>.xlsm 2y   # 2年版は 2y、3年版は 3y
+```
+- 単年(同一暦年内)のサービス期間のみ対応（年をまたぐ場合は中断）。OO/PPTL/PJTL が JSON に無い場合は雛形の `XXX` のまま。
+- 営業未確認の支払計画は、メインのメモ欄に「要営業確認」と記載（R10）。
+- 出力はExcelで全再計算されるよう設定済み。**顧客別の適用結果は非公開リポジトリで管理**します。
