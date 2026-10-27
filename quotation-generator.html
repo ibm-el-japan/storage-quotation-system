@@ -522,7 +522,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <span class="ti">▼</span>
         </div>
         <div class="card-body">
-          <p class="hint">場所（自由入力）と距離区分（<a href="出張判定図.pdf" target="_blank">出張判定図.pdf</a>：赤=中距離／青=遠距離）を入力・選択すると、構築・テスト工数から訪問回数・宿泊数・出張手当を算定します。
+          <p class="hint">場所（自由入力）と距離区分（<a href="出張判定図.pdf" target="_blank">出張判定図.pdf</a>で判定。判定は人が行い、ツールは自動選択しません）を入力・選択すると、構築・テスト工数から訪問回数・宿泊数・出張手当を算定します。
             <span class="src-badge src-tool">システム</span>=自動算出、<span class="src-badge src-manual">手入力</span>=手入力。人数・単価は手入力です。</p>
           <div id="travel-req-info" class="cov-note" style="display:none;background:#fff5f5;border-color:#fca5a5;color:#c00000"></div>
           <div class="info-grid">
@@ -530,7 +530,12 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <input type="text" id="ta-office" placeholder="例: 大阪" oninput="taChanged()"></div>
             <div class="info-row"><label>距離区分（出張判定図で判定） <span class="src-badge src-manual">手入力</span></label>
               <select id="ta-zone" onchange="taZoneChanged()">
-                <option value="">（未選択）</option><option value="short">短距離（日帰り圏）</option><option value="mid">中距離（赤）</option><option value="long">遠距離（青）</option>
+                <option value="">（未選択）</option><option value="short">短距離（日帰り圏：図で赤線・青線が無い範囲）</option><option value="mid">中距離（図の赤線）</option><option value="long">遠距離（図の青線／図の範囲外）</option>
+              </select>
+              <div class="hint" style="margin:4px 0 0;font-size:11.5px">基点: 東京都内事業所＝東京駅／名古屋／大阪／幕張の各事業所の判定図。赤線上の駅＝中距離、青線上の駅＝遠距離、線の無い範囲＝短距離。図の範囲外（仙台・福岡など）は遠距離。</div></div>
+            <div class="info-row"><label>移動手段（運賃の種別） <span class="src-badge src-manual">手入力</span></label>
+              <select id="ta-trans" onchange="taFareChanged()">
+                <option value="shinkansen">新幹線（大阪・仙台程度まで）</option><option value="air">航空機（それより遠方）</option>
               </select></div>
             <div class="info-row"><label>出張形態 <span id="ta-mode-badge" class="src-badge src-tool">システム</span></label>
               <select id="ta-mode" onchange="taModeChanged()"><option value="day">日帰り</option><option value="stay">宿泊</option></select></div>
@@ -542,10 +547,11 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <input type="number" id="ta-weekh" min="1" value="40" oninput="taChanged()"></div>
             <div class="info-row"><label>1回の出張あたり宿泊数（宿泊時） <span class="src-badge src-template">システム</span></label>
               <input type="number" id="ta-npt" min="0" value="4" oninput="taChanged()"></div>
-            <div class="info-row"><label>往復交通費 円/人 <span class="src-badge src-manual">手入力</span></label>
-              <input type="number" id="ta-fare" min="0" value="" placeholder="例: 28000" oninput="taChanged()"></div>
-            <div class="info-row"><label>宿泊費 円/泊 <span class="src-badge src-template">システム</span></label>
-              <input type="number" id="ta-lodge" min="0" value="0" oninput="taChanged()"></div>
+            <div class="info-row"><label>往復交通費 円/人（新幹線または航空機の往復運賃） <span class="src-badge src-manual">手入力</span></label>
+              <input type="number" id="ta-fare" min="0" value="" placeholder="例: 28000" oninput="taFareChanged()"></div>
+            <div class="info-row"><label>宿泊費 円/泊 <span id="ta-lodge-badge" class="src-badge src-tool">システム</span></label>
+              <input type="number" id="ta-lodge" min="0" value="0" oninput="taLodgeEdited()">
+              <div id="ta-lodge-note" class="hint" style="margin:4px 0 0;font-size:11.5px">往復交通費を入力すると自動算出（作業員2名分の往復運賃×1.3を5,000円単位で切上げ）。直接入力で変更できます。</div></div>
             <div class="info-row"><label>食事（宿泊出張手当の判定） <span class="src-badge src-manual">手入力</span></label>
               <select id="ta-meal" onchange="taChanged()">
                 <option value="4000">朝食×・夕食× → 4,000円</option><option value="3200">朝食○・夕食× → 3,200円</option>
@@ -628,6 +634,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
             <li>訪問回数・宿泊数とも予備20%を加算（切上げ）。</li>
             <li>出張手当: 宿泊時＝宿泊出張手当（食事別）×宿泊数。日帰り時＝中距離1,500円／遠距離3,500円×訪問回数。短距離は手当なし。</li>
             <li>中距離以上はPC借用費を必ず計上。遠距離は 片道移動時間×2×訪問回数×0.5 を工数に追加する目安として表示（工数は手入力のまま）。</li>
+            <li>距離区分（出張判定図.pdf：東京都内（基点: 東京駅）／名古屋／大阪／幕張の各事業所）: 赤線上の駅＝中距離、青線上の駅＝遠距離、線の無い範囲＝短距離（日帰り圏）。図の範囲外（仙台・福岡など）は遠距離。判定は人が行い、ツールは自動選択しない。</li>
+            <li>宿泊費（円/泊）: 新幹線で移動しやすい地域（大阪・仙台程度まで）＝作業員2名分の新幹線往復運賃×1.3、それより遠方＝作業員2名分の航空機往復運賃×1.3 を、いずれも5,000円単位で切り上げ。往復交通費を入力すると自動算出（手入力で変更可）。</li>
             <li>※ 宿泊時に中距離/遠距離手当を併給するか、距離区分ごとの標準出張形態は未確定のため、運用ルールとして要確認（設計課題）。</li>
           </ul>
         </div>
@@ -743,6 +751,15 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
                 <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">工数の月見出しを修正</span></td>
                 <td style="text-align:left;white-space:normal">
                   依頼シートを取り込んだとき、期間（例: 2027年9月〜3か月）は反映されるのに<strong>工数表の月見出しが初期の「2026/04〜12か月」のまま</strong>になる不具合を修正。取込後に工数表を作り直し、見出し・列数が期間と一致する。
+                </td>
+              </tr>
+              <tr>
+                <td><strong>v2.5.11</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">距離区分の定義・宿泊費の自動算出</span></td>
+                <td style="text-align:left;white-space:normal">
+                  <strong>交通費等</strong>: 出張判定図.pdf（東京都内〔基点: 東京駅〕／名古屋／大阪／幕張の各事業所）に基づき距離区分の定義を明記（赤線＝中距離、青線＝遠距離、線の無い範囲＝短距離、図の範囲外＝遠距離）。区分の選択は従来どおり人が行う（R6）。<strong>宿泊費（円/泊）</strong>は、往復交通費（新幹線: 大阪・仙台程度まで／航空機: それより遠方）を入力すると「作業員2名分の往復運賃×1.3（30%上乗せ）を5,000円単位で切上げ」で自動算出（青=システム）。直接入力すると手入力（黒）になり、空欄に戻すと自動算出へ戻る。移動手段の選択欄を追加。
                 </td>
               </tr>
               <tr>
@@ -1784,10 +1801,12 @@ const TA_RULE = {
   allowanceMid: 1500, allowanceLong: 3500,   // 中距離/遠距離 出張手当（日帰り）
   buffer: 0.20,                               // 移動回数・宿泊回数の予備
   dayHours: 8,                                // 日帰り: 1日の現地作業時間
-  travelTimeFactor: 0.5                       // 遠距離: 移動時間×0.5 を工数に追加する目安
+  travelTimeFactor: 0.5,                      // 遠距離: 移動時間×0.5 を工数に追加する目安
+  lodgePersons: 2, lodgeUpliftPct: 30, lodgeUnit: 5000   // 宿泊費(円/泊) = 作業員2名分の往復運賃(新幹線 or 航空機) ×1.3 を5,000円単位で切上げ
 };
 let _taHoursManual = false;
 let _taModeManual = false;
+let _taLodgeManual = false;
 
 function taOnsiteHoursFromKosu() {
   const n = getMonthLabels().length;
@@ -1861,6 +1880,40 @@ function taRefresh() {
   taRender();
 }
 function taChanged() { taRefresh(); }
+// 宿泊費(円/泊)の算出: 2名分の往復運賃 × (100+30)% を 5,000円単位で切上げ。整数演算で浮動小数誤差を避ける
+function taLodgeFromFare(fare) {
+  const f = Math.round(Number(fare) || 0);
+  if (f <= 0) return 0;
+  const raw100 = f * TA_RULE.lodgePersons * (100 + TA_RULE.lodgeUpliftPct);   // 100倍した額
+  return Math.ceil(raw100 / (100 * TA_RULE.lodgeUnit)) * TA_RULE.lodgeUnit;
+}
+function taLodgeBadge(manual) {
+  const b = document.getElementById('ta-lodge-badge');
+  if (b) { b.className = 'src-badge ' + (manual ? 'src-manual' : 'src-tool'); b.textContent = manual ? '手入力' : 'システム'; }
+}
+function taFareChanged() {
+  const lodgeEl = document.getElementById('ta-lodge');
+  if (!_taLodgeManual && lodgeEl) {
+    lodgeEl.value = taLodgeFromFare(document.getElementById('ta-fare').value);
+    taLodgeBadge(false);
+  }
+  const note = document.getElementById('ta-lodge-note');
+  if (note) {
+    const fare = parseFloat(document.getElementById('ta-fare').value) || 0;
+    const mode = (document.getElementById('ta-trans') || {}).value === 'air' ? '航空機' : '新幹線';
+    note.textContent = fare > 0
+      ? mode + '往復 ¥' + fmt(fare) + ' × ' + TA_RULE.lodgePersons + '名 × 1.' + (TA_RULE.lodgeUpliftPct / 10) + ' → ' + fmt(TA_RULE.lodgeUnit) + '円単位切上げ ＝ ¥' + fmt(taLodgeFromFare(fare)) + (_taLodgeManual ? '（宿泊費は手入力のため反映していません）' : '')
+      : '往復交通費を入力すると自動算出（作業員2名分の往復運賃×1.3を5,000円単位で切上げ）。直接入力で変更できます。';
+  }
+  taRefresh();
+}
+function taLodgeEdited() {
+  const el = document.getElementById('ta-lodge');
+  _taLodgeManual = String(el.value).trim() !== '';     // 空欄に戻したら自動算出へ戻す
+  if (!_taLodgeManual) { el.value = taLodgeFromFare(document.getElementById('ta-fare').value); }
+  taLodgeBadge(_taLodgeManual);
+  taFareChanged();
+}
 function taHoursEdited() {
   _taHoursManual = true;
   const b = document.getElementById('ta-hours-badge');
