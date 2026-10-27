@@ -37,6 +37,15 @@ body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-seri
 .txt-ref{color:#8b8f98;font-style:italic}
 .txt-sys{color:#1d4ed8}
 .txt-man{color:#111827}
+.cov-edit{display:block;width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;font:inherit;padding:1px 3px;border-radius:3px;line-height:1.4;min-height:20px;resize:vertical}
+.cov-edit.txt-auto{color:#c00000;font-weight:600}
+.cov-edit.txt-ref{color:#8b8f98;font-style:italic}
+.cov-edit.txt-sys{color:#1d4ed8}
+.cov-edit.txt-man{color:#111827}
+.cov-edit:hover{border-color:#cbd5e1;background:#fff}
+.cov-edit:focus{border-color:#3b82f6;background:#fff;outline:none}
+.cov-edit::placeholder{color:#b45309;font-weight:400;font-style:normal}
+.cov-sel{font:inherit;font-size:12px;margin-bottom:2px}
 .cov-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
 .cov-tbl th,.cov-tbl td{border:1px solid #d5dfee;padding:4px 8px;text-align:left;vertical-align:top}
 .cov-tbl th{background:#eaf1fb;color:#1a3a5c}
@@ -291,7 +300,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.5.6</span>
+    <span class="ver" id="ver-badge">v2.5.7</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -424,6 +433,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
             <span class="src-badge src-tool">青文字: システムが決定・補完</span>
             <span class="src-badge src-manual">黒文字: 手入力</span>
           </div>
+          <p class="hint" style="margin:4px 0">「取込内容」欄は取込後に直接修正できます。修正した項目は<b>黒文字（手入力）</b>になり、基本情報・チェックシート・S-LINK・CPS入力へ反映されます（保存データにも含まれます）。</p>
           <div id="cov-body"><p class="hint">依頼シート（Excel）を取り込むと、ここに項目ごとの取込結果が表示されます。</p></div>
           <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:8px;font-weight:600;color:#1a3a5c">
             <input type="checkbox" id="cov-reviewed" onchange="_elReviewed=this.checked;updateReviewWarning()">
@@ -702,7 +712,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.6 (Request Sheet → CPS Full Reflection Edition)</strong></td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.7 (Editable Import Panel Edition)</strong></td></tr>
               <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
@@ -729,6 +739,15 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.7</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">取込状況パネルを直接編集</span></td>
+                <td style="text-align:left;white-space:normal">
+                  「依頼シート取込状況・値の取得元」パネルの<strong>取込内容を直接修正</strong>できるようにした（31項目＋事前確認12問のY/N・補足）。修正した値は基本情報の入力欄・取込データ・チェックシート（サービス内容／対象／提出ドキュメント／前提／適用除外）・工数の月ラベル（期間）へ反映され、取得元は「手入力（黒）」になる。依頼シートの元セルは「修正済」として残る。保存データ・S-LINK・CPS入力へも反映。基本情報側で編集した値もパネルに反映。再描画しても入力中のフォーカス・カーソル位置を保持。チェックシートの再反映では、手入力で追加した行と利用者がチェックを外した行は保持（R3）。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v2.5.6</strong></td>
                 <td>2026-10</td>
@@ -1022,7 +1041,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.5.6';
+const APP_VERSION = 'v2.5.7';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
@@ -1695,7 +1714,7 @@ function checklistRowHtml(si, ii, item) {
   return '<tr>' +
     '<td style="text-align:center"><input type="checkbox" ' + chk + ' onchange="CHECKLIST_DATA[' + si + '].items[' + ii + '].checked=this.checked"></td>' +
     '<td style="display:flex;align-items:center;gap:4px">' +
-      '<input type="text" class="' + inputClass + '" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value;CHECKLIST_DATA[' + si + '].items[' + ii + '].src=\'manual\';rebuildChecklistSection(' + si + ')">' +
+      '<input type="text" class="' + inputClass + '" style="flex:1" value="' + escHtml(item.text) + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].text=this.value;CHECKLIST_DATA[' + si + '].items[' + ii + '].src=\'manual\';delete CHECKLIST_DATA[' + si + '].items[' + ii + '].gen;rebuildChecklistSection(' + si + ')">' +
       srcBadge + cellHtml + tagHtml +
     '</td>' +
     '<td><input type="text" value="' + escHtml(item.tag || '') + '" oninput="CHECKLIST_DATA[' + si + '].items[' + ii + '].tag=this.value" placeholder="タグ"></td>' +
@@ -3366,7 +3385,21 @@ function watchFieldEdits() {
     el.dataset.srcWatch = '1';
     el.addEventListener('input', () => {
       if (_fieldSrc[id] && _fieldSrc[id] !== 'manual') setFieldSrc(id, 'manual');
-      if (_incomingRequestData) renderImportCoverage(_incomingRequestData);
+      if (_incomingRequestData) {
+        if (!_fieldSrc[id]) setFieldSrc(id, 'manual');
+        covFromField(id, el.value);
+      }
+    });
+  });
+  // サービス開始/終了年月日 (v2.5.7): 手入力で変更したら取得元を手入力へ
+  [['svc-start', 'startDate'], ['svc-end', 'endDate']].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.srcWatch) return;
+    el.dataset.srcWatch = '1';
+    el.addEventListener('change', () => {
+      if (!_incomingRequestData && !_fieldSrc[id]) return;
+      setFieldSrc(id, 'manual');
+      if (_incomingRequestData) { covSet(key, el.value, { noField: true }); covCommit(key); }
     });
   });
 }
@@ -3417,17 +3450,17 @@ function mergeRequestIntoPremise(req) {
   sec.items.forEach(it => {
     if (/^プロジェクトの打ち合わせ場所は/.test(it.text) && req.meetingFrequency) {
       it.text = 'プロジェクトの打ち合わせは ' + req.meetingFrequency.replace(/\s+/g, ' ') + ' を想定しています。';
-      it.checked = true; it.src = reqSrc(req, 'meetingFrequency'); it.cell = cellText(req, 'meetingFrequency');
+      it.checked = true; it.src = reqSrc(req, 'meetingFrequency'); it.gen = true; it.cell = cellText(req, 'meetingFrequency');
     }
-    if (isOnsite && /^必要な場合はオンサイトでの作業を実施します/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation'); }
+    if (isOnsite && /^必要な場合はオンサイトでの作業を実施します/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.gen = true; it.cell = cellText(req, 'workLocation'); }
     if (isOnsite && /^作業場所はお客様指定施設/.test(it.text)) {
       it.text = '作業場所は ' + loc + ' のお客様指定施設を想定しています。';
-      it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation');
+      it.checked = true; it.src = reqSrc(req, 'workLocation'); it.gen = true; it.cell = cellText(req, 'workLocation');
     }
     if (isOnsite && /^サービスはリモートサポートとなります|^本サービスは、設計・構築のリモート支援/.test(it.text)) {
-      it.checked = false; it.src = 'tool';
+      it.checked = false; it.src = 'tool'; it.gen = true;
     }
-    if (isRemote && /^サービスはリモートサポートとなります/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.cell = cellText(req, 'workLocation'); }
+    if (isRemote && /^サービスはリモートサポートとなります/.test(it.text)) { it.checked = true; it.src = reqSrc(req, 'workLocation'); it.gen = true; it.cell = cellText(req, 'workLocation'); }
   });
 }
 
@@ -3494,23 +3527,37 @@ function srcBadgeHtml(src) {
 function renderImportCoverage(req) {
   const box = document.getElementById('cov-body');
   if (!box) return;
+  // 編集中の入力欄のフォーカス・キャレット・入力途中の文字列を、再描画後も保つ (v2.5.7)
+  const ae = document.activeElement;
+  const keep = (ae && box.contains(ae) && ae.dataset && ae.dataset.k)
+    ? { k: ae.dataset.k, p: ae.dataset.p || '', s: ae.selectionStart, e: ae.selectionEnd, v: ae.value } : null;
   const rows = [];
   const cur = id => _fieldSrc[id];
-  // key: 依頼シートの項目キー / id: 対応する入力欄ID(手入力で上書きされたかの判定用)
-  const add = (label, key, value, id, note) => {
-    const has = Array.isArray(value) ? value.length > 0 : !!String(value || '').trim();
-    const shown = Array.isArray(value) ? value.join(' / ') : String(value || '');
+  const ctl = (k, part, text, src, multi, ph) => {
+    const lines = String(text).split('\n').length;
+    const rowsN = multi ? Math.min(8, Math.max(2, lines)) : Math.max(1, Math.min(4, Math.ceil(String(text).length / 46)));
+    return '<textarea class="cov-edit ' + srcClassOf(src) + '" data-k="' + k + '"' + (part ? ' data-p="' + part + '"' : '') + (multi ? ' data-multi="1"' : '') +
+      ' rows="' + rowsN + '" spellcheck="false" placeholder="' + (ph || '（未入力：ここに入力）') + '">' + escHtml(text) + '</textarea>';
+  };
+  // key: 依頼シートの項目キー / id: 対応する入力欄ID / multi: 複数行の項目
+  const add = (label, key, value, id, note, multi) => {
+    const arr = Array.isArray(value);
+    const text = arr ? value.join(multi ? '\n' : ' / ') : String(value || '');
+    const has = !!text.trim();
     const org = req.origin ? req.origin[key] : 'sheet';
-    let src = !has ? '' : (cur(id) === 'manual' ? 'manual' : reqSrc(req, key));
+    const man = org === 'manual' || (cur(id) === 'manual' && id !== 'ext-offering');
+    const src = !has ? '' : (man ? 'manual' : reqSrc(req, key));
     let state;
     const cellTxt = cellText(req, key === 'workLocation' ? ['workLocation'] : key);
-    const cellHtml = has && cellTxt ? cellChipHtml(cellTxt, src).trim() : '<span class="cell-ref none" title="テンプレート上の該当セル">' + tplCellOf(req, key) + (has ? '' : ' 空欄') + '</span>';
+    const cellHtml = has && cellTxt
+      ? (src === 'manual' ? '<span class="cell-ref none" title="取込時の依頼シートのセル（値は手入力で修正済み）">' + escHtml(cellTxt) + ' 修正済</span>' : cellChipHtml(cellTxt, src).trim())
+      : '<span class="cell-ref none" title="テンプレート上の該当セル">' + tplCellOf(req, key) + (has ? '' : ' 空欄') + '</span>';
     if (!has) state = '<span class="cov-empty">未入力</span>';
+    else if (src === 'manual') state = '<span class="cov-ok">✎ 手入力で修正</span>';
     else if (src === 'ref') state = '<span class="cov-ref">参考例のみ（要確認）</span>';
     else if (src === 'tool') state = '<span class="cov-sys">システム補完</span>';
     else state = '<span class="cov-ok">✔ 取込済</span>';
-    const sh = shown.length > 110 ? shown.slice(0, 110) + '…' : shown;
-    rows.push('<tr><td>' + escHtml(label) + '</td><td>' + cellHtml + '</td><td>' + state + '</td><td class="' + srcClassOf(src) + '">' + escHtml(sh) + '</td><td>' +
+    rows.push('<tr><td>' + escHtml(label) + '</td><td>' + cellHtml + '</td><td>' + state + '</td><td>' + ctl(key, '', text, src, multi) + '</td><td>' +
       (has ? srcBadgeHtml(src) : '') + (note ? ' <span style="color:#57606a">' + note + '</span>' : '') + '</td><td style="color:#57606a">' + escHtml(REFLECT_TO[key] || '') + '</td></tr>');
   };
   const sec = t => rows.push('<tr><td colspan="6" class="cov-sec">' + t + '</td></tr>');
@@ -3534,16 +3581,17 @@ function renderImportCoverage(req) {
   add('その他案件関係者名', 'otherMembers', req.otherMembers, 'ext-others');
   sec('Offering / サービス対象製品');
   add('Offering', 'offering', req.offering, 'ext-offering');
-  add('サービス対象製品', 'products', req.products || [], 'ext-offering');
+  add('サービス対象製品', 'products', req.products || [], 'ext-offering',
+    (req.origin && req.origin.products === 'manual') ? '※「 / 」区切り。工数の既定値は再計算しません（工数タブで確認）' : '「 / 」区切りで入力');
   sec('サービス内容');
-  add('サービス内容（概要）', 'serviceSummary', req.serviceSummary, 'ext-summary');
-  add('サービス期間 開始', 'startDate', req.startDate, 'svc-start', req.periodNote ? '※' + escHtml(req.periodNote) + '（システム補完）' : '');
-  add('サービス期間 終了', 'endDate', req.endDate, 'svc-end');
+  add('サービス内容（概要）', 'serviceSummary', req.serviceSummary, 'ext-summary', '', true);
+  add('サービス期間 開始', 'startDate', req.startDate, 'svc-start', (req.periodNote ? '※' + escHtml(req.periodNote) + '（システム補完）' : '') + ' <span style="color:#57606a">YYYY-MM-DD</span>');
+  add('サービス期間 終了', 'endDate', req.endDate, 'svc-end', '<span style="color:#57606a">YYYY-MM-DD</span>');
   add('サービス提供場所', 'workLocation', [req.workLocation, req.workLocationDetail].filter(Boolean).join(' / '), 'ext-location');
-  add('サービス内容（詳細）', 'workDetail', wd.kept, '', '定型行 ' + wd.dropped.length + '件は除外');
-  add('提出ドキュメント', 'docs', req.docs, 'ext-docs');
+  add('サービス内容（詳細）', 'workDetail', wd.kept, '', '定型行 ' + wd.dropped.length + '件は除外（1行＝1項目）', true);
+  add('提出ドキュメント', 'docs', Array.isArray(req.docs) ? req.docs.join('、') : req.docs, 'ext-docs');
   add('打合せ回数', 'meetingFrequency', req.meetingFrequency, 'ext-meeting');
-  add('サービス除外事項', 'serviceExclusions', splitBullets(req.serviceExclusions), 'ext-excl');
+  add('サービス除外事項', 'serviceExclusions', splitBullets(req.serviceExclusions), 'ext-excl', '1行＝1項目', true);
   add('機密情報取扱い', 'confidential', [req.confidential, req.confidentialNote].filter(Boolean).join(' '), 'ext-conf');
   add('社内関係者との打ち合わせの調整', 'meetingInternal', req.meetingInternal, 'ext-mtg-int');
   if (req.meetingInternalNote) add('　社内打ち合わせ調整の補足', 'meetingInternalNote', req.meetingInternalNote, 'ext-mtg-int-note');
@@ -3553,25 +3601,158 @@ function renderImportCoverage(req) {
   Object.keys(PRECHECK_LABELS).forEach(id => {
     const pc = (req.preChecks || []).find(p => p.id === id) || { yn: '', note: '', origin: 'empty' };
     const v = [pc.yn, pc.note].filter(Boolean).join(' ');
-    const src = !v ? '' : (pc.origin === 'reference' ? 'ref' : 'auto');
-    const pcCell = v && pc.cell ? cellChipHtml(pc.cell, src).trim() : '<span class="cell-ref none">' + (pc.tplCell || PRECHECK_CELLS[id] || '') + (v ? '' : ' 空欄') + '</span>';
-    rows.push('<tr><td>' + escHtml(PRECHECK_LABELS[id]) + '</td><td>' + pcCell + '</td><td>' + (!v ? '<span class="cov-empty">未入力</span>' : src === 'ref' ? '<span class="cov-ref">参考例のみ（要確認）</span>' : '<span class="cov-ok">✔ 取込済</span>') +
-      '</td><td class="' + srcClassOf(src) + '">' + escHtml(v) + '</td><td>' + (v ? srcBadgeHtml(src) : '') + '</td><td style="color:#57606a">取込状況パネルのみ(事前確認事項)</td></tr>');
+    const src = !v ? '' : (pc.origin === 'reference' ? 'ref' : pc.origin === 'manual' ? 'manual' : 'auto');
+    const pcCell = v && pc.cell
+      ? (src === 'manual' ? '<span class="cell-ref none" title="取込時の依頼シートのセル（値は手入力で修正済み）">' + escHtml(pc.cell) + ' 修正済</span>' : cellChipHtml(pc.cell, src).trim())
+      : '<span class="cell-ref none">' + (pc.tplCell || PRECHECK_CELLS[id] || '') + (v ? '' : ' 空欄') + '</span>';
+    const sel = id === 'yn2' ? '' : '<select class="cov-sel" data-k="pc:' + id + '" data-p="yn">' +
+      ['', 'Y', 'N', 'N/A'].map(o => '<option value="' + o + '"' + (pc.yn === o ? ' selected' : '') + '>' + (o || '—') + '</option>').join('') + '</select>';
+    rows.push('<tr><td>' + escHtml(PRECHECK_LABELS[id]) + '</td><td>' + pcCell + '</td><td>' +
+      (!v ? '<span class="cov-empty">未入力</span>' : src === 'manual' ? '<span class="cov-ok">✎ 手入力で修正</span>' : src === 'ref' ? '<span class="cov-ref">参考例のみ（要確認）</span>' : '<span class="cov-ok">✔ 取込済</span>') +
+      '</td><td>' + sel + ctl('pc:' + id, 'note', pc.note || '', src, false, id === 'yn2' ? '（未入力：ここに入力）' : '補足') + '</td><td>' + (v ? srcBadgeHtml(src) : '') + '</td><td style="color:#57606a">取込状況パネルのみ(事前確認事項)</td></tr>');
   });
   sec('契約情報');
   add('ご提供形態', 'contractType', req.contractType, 'ext-contract');
   add('契約形態', 'dealType', req.dealType, 'ext-deal');
   add('月次作業報告書提出の必要性', 'monthlyReport', req.monthlyReport, 'ext-report');
-  rows.push('<tr><td>支払い計画</td><td>' + (cellText(req, 'paymentPlan') ? cellChipHtml(cellText(req, 'paymentPlan'), reqSrc(req, 'paymentPlan')).trim() : '<span class="cell-ref none">' + tplCellOf(req, 'paymentPlan') + '</span>') + '</td><td><span class="cov-pend">営業確認</span></td><td class="' + srcClassOf(reqSrc(req, 'paymentPlan')) + '">' + escHtml(req.paymentPlan || '') +
-    '</td><td>' + srcBadgeHtml(cur('ext-pay') === 'manual' ? 'manual' : reqSrc(req, 'paymentPlan')) + ' <span style="color:#57606a">ツールでは確定しません（CPS登録後に別紙へ反映）</span></td><td style="color:#57606a">' + REFLECT_TO.paymentPlan + '</td></tr>');
+  {
+    const pm = (req.origin && req.origin.paymentPlan === 'manual') || cur('ext-pay') === 'manual';
+    const ps = pm && req.paymentPlan ? 'manual' : reqSrc(req, 'paymentPlan');
+    rows.push('<tr><td>支払い計画</td><td>' + (cellText(req, 'paymentPlan') ? (pm ? '<span class="cell-ref none">' + escHtml(cellText(req, 'paymentPlan')) + ' 修正済</span>' : cellChipHtml(cellText(req, 'paymentPlan'), reqSrc(req, 'paymentPlan')).trim()) : '<span class="cell-ref none">' + tplCellOf(req, 'paymentPlan') + '</span>') +
+      '</td><td><span class="cov-pend">営業確認</span></td><td>' + ctl('paymentPlan', '', req.paymentPlan || '', ps, false) +
+      '</td><td>' + srcBadgeHtml(ps) + ' <span style="color:#57606a">ツールでは確定しません（CPS登録後に別紙へ反映）</span></td><td style="color:#57606a">' + REFLECT_TO.paymentPlan + '</td></tr>');
+  }
 
   const greyN = (req.greyKeys || []).length + (req.preChecks || []).filter(p => p.origin === 'reference').length;
   const banner = (req.colorDetect === false)
     ? '<div class="cov-note">文字色を判別できませんでした（ファイル形式による）。取込値はすべて「依頼シート」として扱っています。</div>'
     : (greyN > 0 ? '<div class="cov-note">グレー文字（テンプレートの参考記入例）が <b>' + greyN + '項目</b> あります。実案件では黒字で記入されるため、'
         + 'これらは実入力ではなく<b>参考例</b>として表示しています。内容を確認し、実際の値を入力してください。</div>' : '');
-  box.innerHTML = banner + '<table class="cov-tbl"><thead><tr><th style="width:20%">項目</th><th style="width:11%">依頼シートのセル</th><th style="width:10%">状態</th><th>取込内容（文字色＝取得元）</th><th style="width:15%">取得元</th><th style="width:18%">反映先</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  box.innerHTML = banner + '<table class="cov-tbl"><thead><tr><th style="width:18%">項目</th><th style="width:10%">依頼シートのセル</th><th style="width:9%">状態</th><th>取込内容（文字色＝取得元・直接修正できます）</th><th style="width:15%">取得元</th><th style="width:16%">反映先</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+  if (!box.dataset.editWatch) {
+    box.dataset.editWatch = '1';
+    box.addEventListener('input', covOnEdit);
+    box.addEventListener('change', covOnEdit);
+    box.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.tagName === 'TEXTAREA' && !ev.target.dataset.multi) ev.preventDefault(); });
+  }
+  if (keep) {
+    const n = Array.prototype.find.call(box.querySelectorAll('[data-k]'), x => x.dataset.k === keep.k && (x.dataset.p || '') === keep.p);
+    if (n) {
+      if (n.tagName === 'TEXTAREA') n.value = keep.v;
+      n.focus();
+      try { if (n.tagName === 'TEXTAREA') n.setSelectionRange(keep.s, keep.e); } catch (e) {}
+    }
+  }
   updateReviewWarning();
+}
+
+// ===== 取込状況パネルの直接編集 (v2.5.7) =====
+// パネルで修正した値は ① 対応する入力欄 ② 取込データ(_incomingRequestData) ③ チェックシート へ反映し、
+// 取得元を「手入力」(黒)にする。取込データは保存データ(collectState)・S-LINK/CPS 引き継ぎにそのまま含まれる。
+const COV_CL_KEYS = ['workDetail', 'products', 'docs', 'serviceExclusions', 'workLocation', 'meetingFrequency'];
+const COV_KEY_FIELD = (() => { const m = { products: 'ext-offering', paymentPlan: 'ext-pay' }; Object.keys(EXT_ORIGIN_KEY).forEach(id => { if (!m[EXT_ORIGIN_KEY[id]]) m[EXT_ORIGIN_KEY[id]] = id; }); return m; })();
+function covSetField(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = v;
+  setFieldSrc(id, 'manual');
+}
+// 1項目の値を取込データへ書き込む。opt.noField=true: 入力欄側の編集が起点のため入力欄は更新しない
+function covSet(key, val, opt) {
+  const req = _incomingRequestData;
+  const noField = opt && opt.noField;
+  const fld = (id, v) => { if (!noField) covSetField(id, v); };
+  req.origin = req.origin || {};
+  req.origin[key] = 'manual';
+  req.greyKeys = (req.greyKeys || []).filter(k => k !== key);
+  const offSum = () => [req.offering, (req.products || []).join(' / ')].filter(Boolean).join(' - ');
+  switch (key) {
+    case 'products':
+      req.products = val.split(/\s*[\/／\n]\s*/).map(x => x.trim()).filter(Boolean);
+      fld('ext-offering', offSum()); break;
+    case 'offering':
+      req.offering = val; fld('ext-offering', offSum()); break;
+    case 'workLocation': {
+      const m = val.split(/\s*\/\s*/);
+      req.workLocation = (m[0] || '').trim(); req.workLocationDetail = m.slice(1).join(' / ').trim();
+      fld('ext-location', val); break;
+    }
+    case 'confidential': {
+      const m = val.match(/^(有り|無し)\s*([\s\S]*)$/);
+      req.confidential = m ? m[1] : val; req.confidentialNote = m ? m[2] : '';
+      fld('ext-conf', val); break;
+    }
+    case 'workDetail': {
+      const keepDropped = wdDropped(req.workDetail);   // 定型行(設計/構築 等)は取込時のまま保持 (R4)
+      req.workDetail = val.split(/\r?\n/).map(x => x.trim()).filter(Boolean).concat(keepDropped).join('\n'); break;
+    }
+    case 'docs':
+      req.docs = val; fld('ext-docs', val); break;
+    case 'serviceExclusions': {
+      const ls = val.split(/\r?\n|・/).map(x => x.trim()).filter(Boolean);
+      req.serviceExclusions = ls.join('\n');
+      fld('ext-excl', ls.map(x => '・' + x).join('')); break;
+    }
+    case 'startDate': case 'endDate': {
+      req[key] = val;
+      const id = key === 'startDate' ? 'svc-start' : 'svc-end';
+      const iso = String(val).trim().replace(/\//g, '-').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!noField && iso) {
+        covSetField(id, iso[1] + '-' + iso[2].padStart(2, '0') + '-' + iso[3].padStart(2, '0'));
+        applySvcDates();
+      }
+      break;
+    }
+    default:
+      req[key] = val;
+      if (COV_KEY_FIELD[key]) fld(COV_KEY_FIELD[key], val);
+  }
+}
+function covPersist(req) {
+  // 同一セッション内の再読込でも修正内容を保つ (保存データ側は collectState が _incomingRequestData を保存)
+  try { sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(req)); } catch (e) {}
+}
+function covCommit(key) {
+  const req = _incomingRequestData;
+  if (!req) return;
+  if (COV_CL_KEYS.includes(key)) {
+    applyRequestToChecklist(req, true);
+    CHECKLIST_DATA.forEach((_, i) => rebuildChecklistSection(i));
+  }
+  showTravelRequestInfo(req); showPeriodMapInfo(req); showKosuMapInfo(req);
+  covPersist(req);
+  renderImportCoverage(req);
+}
+function covOnEdit(ev) {
+  const el = ev.target, k = el && el.dataset && el.dataset.k;
+  const req = _incomingRequestData;
+  if (!k || !req) return;
+  if (k.indexOf('pc:') === 0) {
+    const id = k.slice(3);
+    req.preChecks = req.preChecks || [];
+    let pc = req.preChecks.find(p => p.id === id);
+    if (!pc) { pc = { id, yn: '', note: '', origin: 'empty', cell: '', tplCell: PRECHECK_CELLS[id] || '' }; req.preChecks.push(pc); }
+    if (el.dataset.p === 'yn') pc.yn = el.value; else pc.note = el.value;
+    pc.origin = 'manual';
+    covPersist(req); renderImportCoverage(req);
+    return;
+  }
+  covSet(k, el.value);
+  covCommit(k);
+}
+// 基本情報の入力欄を直接編集したとき、取込データ側にも反映してパネル表示と一致させる
+function covFromField(id, val) {
+  if (!_incomingRequestData) return;
+  const key = EXT_ORIGIN_KEY[id];
+  if (!key) return;
+  if (id === 'ext-offering') {
+    const i = val.indexOf(' - ');
+    if (i >= 0) { covSet('offering', val.slice(0, i), { noField: true }); covSet('products', val.slice(i + 3), { noField: true }); covCommit('products'); }
+    else { covSet('offering', val, { noField: true }); covCommit('offering'); }
+    return;
+  }
+  covSet(key, val, { noField: true });
+  covCommit(key);
 }
 
 function updateReviewWarning() {
@@ -3607,6 +3788,124 @@ function pickProductProfile(prods) {
   if (has(/テープ|Tape|TS4/)) return PRODUCT_PROFILES.tape;
   if (has(/Protect/)) return PRODUCT_PROFILES.isp;
   return null;
+}
+
+// 依頼シートの内容をチェックシート(サービス内容/対象/ドキュメント/前提/適用除外)へ反映する。
+// reapply=true: 取込状況パネルでの編集後の再反映 (依頼由来の行を作り直す。手入力で追加した行は保持 / v2.5.7)
+function applyRequestToChecklist(req, reapply) {
+  // 再反映時: 依頼由来の行をいったん既定へ戻し、利用者が外した(チェックOFFにした)依頼由来行はOFFのまま保つ
+  const prevOff = {};
+  if (reapply) {
+    CHECKLIST_DATA.forEach(sec => sec.items.forEach(it => { if (['要件依頼', '対象製品', '個別除外'].includes(it.tag) && !it.checked) prevOff[sec.title + '\u0000' + it.text] = true; }));
+    covResetChecklist();
+  }
+  // Auto-populate / check items in checklist
+  // サービス内容: 定型行(設計/構築/稼動テスト/ドキュメント/Q&A 等)は除外し、依頼シート固有の記述のみ取り込む (R4)。
+  // 依頼固有の記述が無い場合のみ既定の定型項目(1.設計作業〜5.QA)を残す。固有記述がある場合は v2.2.0 同様に置き換える (R2/R5)。
+  if (req.workDetail) {
+    const srvSec = CHECKLIST_DATA.find(s => s.title === "サービス内容");
+    if (srvSec) {
+      const { kept } = cleanWorkDetail(req.workDetail);
+      // 過去の取込分(要件依頼)を除いてから再取込し、重複を防ぐ
+      srvSec.items = srvSec.items.filter(it => it.tag !== '要件依頼' || (reapply && !covIsGen(it)));
+      // v2.2.0 方針維持: 依頼シート固有の記述がある場合は既定の汎用項目(Template)を置き換える。
+      // 定型行のみ(kept が空)の場合は既定項目を残す。手入力(Manual)項目は常に保持する。
+      // 依頼シートに「QA支援」「設計」等の定型だけの行がある場合は、対応する既定項目をチェック済みで残す(依頼内容の欠落防止 / v2.5.4)
+      const bpTags = [];
+      wdDropped(req.workDetail).forEach(l => {
+        if (/Q\s*&\s*A|QA/i.test(l)) bpTags.push('QA'); else if (/テスト/.test(l)) bpTags.push('テスト');
+        else if (/ドキュメント/.test(l)) bpTags.push('成果物'); else if (/設計/.test(l)) bpTags.push('設計'); else if (/構築/.test(l)) bpTags.push('構築');
+      });
+      if (kept.length > 0) {
+        srvSec.items = srvSec.items.filter(it => it.src === 'manual' || !it.text.trim() || (bpTags.includes(it.tag) && it.tag));
+        srvSec.items.forEach(it => { if (it.tag && bpTags.includes(it.tag)) { it.checked = true; it.src = reqSrc(req, 'workDetail'); it.gen = true; it.cell = cellText(req, 'workDetail'); } });
+      }
+      const blanks = srvSec.items.filter(it => !it.text.trim());
+      const filled = srvSec.items.filter(it => it.text.trim());
+      const autoItems = kept
+        .filter(l => !sectionHas({items: filled}, l))
+        .map(l => ({ checked: true, text: l, tag: "要件依頼", src: reqSrc(req, 'workDetail'), gen: true, cell: cellText(req, 'workDetail') }));
+      srvSec.items = filled.concat(autoItems, blanks);
+    }
+  }
+  mergeRequestIntoPremise(req);
+  if (req.products && req.products.length > 0) {
+    const targetSec = CHECKLIST_DATA.find(s => s.title === "サービス対象");
+    if (targetSec) {
+      const prodItems = req.products.map(p => ({
+        checked: true,
+        text: "・" + p + " 支援一式",
+        tag: "対象製品",
+        src: reqSrc(req, 'products'),
+        gen: true,
+        cell: cellText(req, 'products')
+      }));
+      targetSec.items = prodItems.concat(reapply ? targetSec.items.filter(it => it.src === 'manual' && !it.gen && it.text.trim()) : []);
+    }
+  }
+  // 提出ドキュメント: 既定項目と一致すればチェック、無ければ新規行として追加 (R2)
+  const reqDocs = Array.isArray(req.docs) ? req.docs : String(req.docs || '').split(/[、,，\n]|・/).map(s => s.trim()).filter(Boolean);
+  if (reqDocs.length > 0) {
+    const docSec = CHECKLIST_DATA.find(s => s.title === "提出ドキュメント");
+    if (docSec) {
+      const cleanDocs = reqDocs.map(d => d.replace(/^[・\s]+/, '').trim()).filter(Boolean);
+      cleanDocs.forEach(d => {
+        const hit = docSec.items.find(it => it.text.trim() && (it.text.includes(d) || d.includes(it.text)));
+        if (hit) { hit.checked = true; hit.src = reqSrc(req, 'docs'); hit.gen = true; hit.cell = cellText(req, 'docs'); return; }
+        const blankIdx = docSec.items.findIndex(it => !it.text.trim());
+        const newItem = {checked: true, text: d, tag: "要件依頼", src: reqSrc(req, 'docs'), gen: true, cell: cellText(req, 'docs')};
+        if (blankIdx >= 0) docSec.items[blankIdx] = newItem; else docSec.items.push(newItem);
+      });
+    }
+  }
+  // サービス除外事項: 再取込で重複しないよう過去の個別除外を除いてから先頭に追加 (R2)
+  if (req.serviceExclusions) {
+    const excSec = CHECKLIST_DATA.find(s => s.title.includes("適用除外"));
+    if (excSec) {
+      excSec.items = excSec.items.filter(it => it.tag !== '個別除外' || (reapply && !covIsGen(it)));
+      const excLines = splitBullets(req.serviceExclusions);
+      const newItems = excLines
+        .filter(el => !sectionHas(excSec, el))
+        .map(el => ({checked: true, text: el, tag: "個別除外", src: reqSrc(req, 'serviceExclusions'), gen: true, cell: cellText(req, 'serviceExclusions')}));
+      excSec.items = newItems.concat(excSec.items);
+    }
+  }
+  if (reapply) CHECKLIST_DATA.forEach(sec => sec.items.forEach(it => { if (it.gen && prevOff[sec.title + '\u0000' + it.text]) it.checked = false; }));
+}
+
+// 取込状況パネルでの修正に備え、依頼由来のチェックシート行を既定へ戻す (v2.5.7)。手入力(manual)の行は保持
+function covIsGen(it) { return !!it.gen || !!(it.src && it.src !== 'manual' && it.src !== 'template'); }
+function covResetChecklist() {
+  const cl = o => JSON.parse(JSON.stringify(o));
+  const def = t => CHECKLIST_DEFAULT.find(x => x.title === t);
+  const sec = t => CHECKLIST_DATA.find(x => x.title === t);
+  const unmark = it => { delete it.src; delete it.cell; delete it.gen; };
+  const srv = sec('サービス内容');
+  if (srv) {
+    srv.items = srv.items.filter(it => !(it.tag === '要件依頼' && covIsGen(it)));
+    srv.items.forEach(it => { if (it.tag && covIsGen(it)) unmark(it); });
+    const miss = def('サービス内容').items.filter(d => d.text.trim() && d.tag && !srv.items.some(i => i.tag === d.tag));
+    srv.items = cl(miss).concat(srv.items);
+  }
+  const tg = sec('サービス対象');
+  if (tg) {
+    tg.items = tg.items.filter(it => !(it.tag === '対象製品' && covIsGen(it)));
+    if (!tg.items.some(i => i.text.trim())) tg.items = cl(def('サービス対象').items);
+  }
+  const doc = sec('提出ドキュメント');
+  if (doc) {
+    doc.items = doc.items.filter(it => !(it.tag === '要件依頼' && covIsGen(it)));
+    doc.items.forEach(it => { if (covIsGen(it)) { it.checked = false; unmark(it); } });
+  }
+  const exc = CHECKLIST_DATA.find(x => x.title.includes('適用除外'));
+  if (exc) exc.items = exc.items.filter(it => !(it.tag === '個別除外' && covIsGen(it)));
+  const pre = sec('前提');
+  if (pre) {
+    [/^プロジェクトの打ち合わせ(場所)?は/, /^必要な場合はオンサイト/, /^作業場所は/, /^サービスはリモートサポート/, /^本サービスは、設計・構築のリモート支援/].forEach(re => {
+      const i = pre.items.findIndex(it => re.test(it.text)), d = def('前提').items.find(x => re.test(x.text));
+      if (i >= 0 && d && covIsGen(pre.items[i])) pre.items[i] = cl(d);
+    });
+  }
 }
 
 function checkIncomingRequestHandoff() {
@@ -3748,76 +4047,7 @@ function checkIncomingRequestHandoff() {
       buildTravelTable();
     }
 
-    // Auto-populate / check items in checklist
-    // サービス内容: 定型行(設計/構築/稼動テスト/ドキュメント/Q&A 等)は除外し、依頼シート固有の記述のみ取り込む (R4)。
-    // 依頼固有の記述が無い場合のみ既定の定型項目(1.設計作業〜5.QA)を残す。固有記述がある場合は v2.2.0 同様に置き換える (R2/R5)。
-    if (req.workDetail) {
-      const srvSec = CHECKLIST_DATA.find(s => s.title === "サービス内容");
-      if (srvSec) {
-        const { kept } = cleanWorkDetail(req.workDetail);
-        // 過去の取込分(要件依頼)を除いてから再取込し、重複を防ぐ
-        srvSec.items = srvSec.items.filter(it => it.tag !== '要件依頼');
-        // v2.2.0 方針維持: 依頼シート固有の記述がある場合は既定の汎用項目(Template)を置き換える。
-        // 定型行のみ(kept が空)の場合は既定項目を残す。手入力(Manual)項目は常に保持する。
-        // 依頼シートに「QA支援」「設計」等の定型だけの行がある場合は、対応する既定項目をチェック済みで残す(依頼内容の欠落防止 / v2.5.4)
-        const bpTags = [];
-        wdDropped(req.workDetail).forEach(l => {
-          if (/Q\s*&\s*A|QA/i.test(l)) bpTags.push('QA'); else if (/テスト/.test(l)) bpTags.push('テスト');
-          else if (/ドキュメント/.test(l)) bpTags.push('成果物'); else if (/設計/.test(l)) bpTags.push('設計'); else if (/構築/.test(l)) bpTags.push('構築');
-        });
-        if (kept.length > 0) {
-          srvSec.items = srvSec.items.filter(it => it.src === 'manual' || !it.text.trim() || (bpTags.includes(it.tag) && it.tag));
-          srvSec.items.forEach(it => { if (it.tag && bpTags.includes(it.tag)) { it.checked = true; it.src = reqSrc(req, 'workDetail'); it.cell = cellText(req, 'workDetail'); } });
-        }
-        const blanks = srvSec.items.filter(it => !it.text.trim());
-        const filled = srvSec.items.filter(it => it.text.trim());
-        const autoItems = kept
-          .filter(l => !sectionHas({items: filled}, l))
-          .map(l => ({ checked: true, text: l, tag: "要件依頼", src: reqSrc(req, 'workDetail'), cell: cellText(req, 'workDetail') }));
-        srvSec.items = filled.concat(autoItems, blanks);
-      }
-    }
-    mergeRequestIntoPremise(req);
-    if (req.products && req.products.length > 0) {
-      const targetSec = CHECKLIST_DATA.find(s => s.title === "サービス対象");
-      if (targetSec) {
-        const prodItems = req.products.map(p => ({
-          checked: true,
-          text: "・" + p + " 支援一式",
-          tag: "対象製品",
-          src: reqSrc(req, 'products'),
-          cell: cellText(req, 'products')
-        }));
-        targetSec.items = prodItems;
-      }
-    }
-    // 提出ドキュメント: 既定項目と一致すればチェック、無ければ新規行として追加 (R2)
-    const reqDocs = Array.isArray(req.docs) ? req.docs : String(req.docs || '').split(/[、,，\n]|・/).map(s => s.trim()).filter(Boolean);
-    if (reqDocs.length > 0) {
-      const docSec = CHECKLIST_DATA.find(s => s.title === "提出ドキュメント");
-      if (docSec) {
-        const cleanDocs = reqDocs.map(d => d.replace(/^[・\s]+/, '').trim()).filter(Boolean);
-        cleanDocs.forEach(d => {
-          const hit = docSec.items.find(it => it.text.trim() && (it.text.includes(d) || d.includes(it.text)));
-          if (hit) { hit.checked = true; hit.src = reqSrc(req, 'docs'); hit.cell = cellText(req, 'docs'); return; }
-          const blankIdx = docSec.items.findIndex(it => !it.text.trim());
-          const newItem = {checked: true, text: d, tag: "要件依頼", src: reqSrc(req, 'docs'), cell: cellText(req, 'docs')};
-          if (blankIdx >= 0) docSec.items[blankIdx] = newItem; else docSec.items.push(newItem);
-        });
-      }
-    }
-    // サービス除外事項: 再取込で重複しないよう過去の個別除外を除いてから先頭に追加 (R2)
-    if (req.serviceExclusions) {
-      const excSec = CHECKLIST_DATA.find(s => s.title.includes("適用除外"));
-      if (excSec) {
-        excSec.items = excSec.items.filter(it => it.tag !== '個別除外');
-        const excLines = splitBullets(req.serviceExclusions);
-        const newItems = excLines
-          .filter(el => !sectionHas(excSec, el))
-          .map(el => ({checked: true, text: el, tag: "個別除外", src: reqSrc(req, 'serviceExclusions'), cell: cellText(req, 'serviceExclusions')}));
-        excSec.items = newItems.concat(excSec.items);
-      }
-    }
+    applyRequestToChecklist(req, false);
     buildChecklist();
     recalcAll();
     _elReviewed = false;
