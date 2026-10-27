@@ -14,16 +14,19 @@ const p = w.parseQuotationRequestExcel(wb);
 w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(p));
 w.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
 const K = w.eval('kosuData');
-t('B1 mtg1 filled from 打合せ回数', K.mtg1.values[0] === 17.5 && K.mtg1.values[11] === 17.5 && K.mtg1.values[12] === 0, K.mtg1.values.slice(0, 13));
-t('B2 mtg1 source = tool (blue)', K.mtg1.src === 'tool');
-t('B3 default hours are tool (blue)', ['des1', 'bld2', 'tst3'].every(k => K[k].values[0] > 0 && K[k].src === 'tool'), ['des1', 'bld2', 'tst3'].map(k => K[k].src));
-t('B4 row input has blue class + badge', doc.querySelector('input[data-krow="des1"]').className === 'input-src-tool' && /システム/.test(doc.querySelector('#kosu-table-wrap .kosu-badge').textContent));
-t('B5 hint records basis for mtg1', /打合せ回数/.test(K.mtg1.hint));
-// C. manual edit flips to manual
+const allZero = Object.keys(K).every(k => K[k].values.every(v => v === 0));
+t('B1 v2.5.8: 工数 stays at the initial value 0 after import (no 打合せ回数 auto-fill)', allZero && K.mtg1.values[0] === 0 && K.mtg1.values[11] === 0);
+t('B2 no row is marked system-decided (blue) and no row carries a request-sheet basis', Object.keys(K).every(k => !K[k].src && !K[k].cell));
+t('B3 every hour input is an editable number box starting at 0', Array.from(doc.querySelectorAll('input[data-krow]')).every(i => i.type === 'number' && !i.readOnly && i.value === '0'));
+t('B4 the 工数 map box says hours are not auto-filled', /自動反映しません/.test(doc.getElementById('kosu-map-info').textContent) && !/月17\.5h/.test(doc.getElementById('kosu-map-info').textContent), doc.getElementById('kosu-map-info').textContent);
+t('B5 no basis memo is written to the hint column', !/打合せ回数/.test(K.mtg1.hint));
+// C. manual edit -> manual (black)
 const inp = doc.querySelector('input[data-krow="des1"]'); inp.value = '55'; inp.dispatchEvent(new w.Event('input', {bubbles: true}));
 t('C1 edit => manual (black)', w.eval("kosuData['des1'].src") === 'manual' && doc.querySelector('input[data-krow="des1"]').className === 'input-src-manual');
 t('C2 value kept', w.eval("kosuData['des1'].values[0]") === 55);
-// D. existing mtg1 not overwritten on re-import
+const inp2 = doc.querySelector('input[data-krow="mtg1"]'); inp2.value = '12.5'; inp2.dispatchEvent(new w.Event('input', {bubbles: true}));
+t('C3 any number can be typed and changed again (定例打ち合わせ 12.5 -> 8)', (() => { const e = doc.querySelector('input[data-krow="mtg1"]'); const a = w.eval("kosuData['mtg1'].values[0]") === 12.5; e.value = '8'; e.dispatchEvent(new w.Event('input', {bubbles: true})); return a && w.eval("kosuData['mtg1'].values[0]") === 8; })());
+// D. entered hours are not overwritten by a re-import
 w.eval("kosuData['mtg1'].values[0]=3; kosuData['mtg1'].src='manual'");
 w.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify(p)); w.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
 t('D1 re-import does not overwrite entered mtg1', w.eval("kosuData['mtg1'].values[0]") === 3);
@@ -34,10 +37,10 @@ t('E2 request values use request colour', box.querySelectorAll('.input-src-auto'
 t('E3 distance zone not auto-decided', doc.getElementById('ta-zone').value === '');
 // F. state save / restore keeps src
 const st = w.collectState();
-t('F1 state keeps kosu src', st.kosuData.des1.src === 'manual' && st.kosuData.bld2.src === 'tool');
+t('F1 state keeps kosu src and the entered hours', st.kosuData.des1.src === 'manual' && st.kosuData.des1.values[0] === 55 && !st.kosuData.bld2.src);
 const w2 = load('quotation-generator.html'); await new Promise(r => setTimeout(r, 300));
 w2.restoreState(JSON.parse(JSON.stringify(st))); await new Promise(r => setTimeout(r, 100));
-t('F2 restore keeps kosu src + class', w2.eval("kosuData['bld2'].src") === 'tool' && w2.document.querySelector('input[data-krow="bld2"]').className === 'input-src-tool');
+t('F2 restore keeps kosu src + class + hours', w2.eval("kosuData['des1'].src") === 'manual' && w2.eval("kosuData['des1'].values[0]") === 55 && w2.document.querySelector('input[data-krow="des1"]').className === 'input-src-manual');
 // G. customer outputs carry no colours/badges
 const cs = String(w.buildKosuSheet ? w.buildKosuSheet() : '');
 t('G2 kosu sheet output has no source classes', !/input-src-|kosu-badge/.test(cs));

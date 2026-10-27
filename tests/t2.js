@@ -1,5 +1,6 @@
 const {load, t, XLSX, ROOT, summary} = require('./harness');
-const w = load('quotation-generator.html');
+(async () => {
+const w = load('quotation-generator.html'); await new Promise(r => setTimeout(r, 300));
 const doc = w.document;
 console.log('[T2] customer output: R3 unchecked excluded / hint not leaked / custom work detail');
 const req = {customerName:'テスト株式会社', projectName:'Ceph構築', workDetail:'以下の製品の支援\n① Ceph x 5台\n　・設計\n　・構築\nIBM Storage Ceph 8.x の5ノード構成における基本設計とRGW構成\nクラスタ初期構築とS3疎通確認', docs:['基本設計書'], serviceExclusions:'・ネットワーク関連作業', meetingFrequency:'週1回 リモート', workLocation:'リモート', products:['Ceph']};
@@ -27,3 +28,4 @@ t('quote table still has rows (基本機能設計 / 基本構築)', /基本機�
 // R4 in output: stray one-liner
 t('R4: no stray bullet-only line in output', !/(^|\n)\s*[・]?\s*(設計|構築|稼動テスト|ドキュメント|Q&A)\s*(\n|$)/.test(out));
 summary();
+})();

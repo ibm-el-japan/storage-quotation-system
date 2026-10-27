@@ -63,7 +63,7 @@ t('B4 Ceph wins over Fusion (Fusion+Ceph combo)', /Ceph/.test(pick(['Storage Fus
 t('B5 Fusion HCI / Scale / Virtualize / Tape mapping', /Fusion/.test(pick(['IBM Fusion（HCI）'])) && /Scale/.test(pick(['Storage Scale System（製品名：SSS6000）'])) && /Virtualize/.test(pick(['Storage Virtualize系製品（製品名：FS7600）'])) && /テープ/.test(pick(['テープ製品（製品名：TS4300）'])));
 t('B6 unknown product -> no profile (no guess)', pick(['SAN Switch']) === null && pick([]) === null);
 
-// ---- C. handoff applies the profile and the PM ratio
+// ---- C. v2.5.8: the 工数 sheet starts at 0 -- product profiles / PM ratio are NOT auto-filled; hand entry is preserved
 async function handoff(products, extra) {
   const g = load('quotation-generator.html'); await new Promise(r => setTimeout(r, 300));
   const req = Object.assign({version: '2.5', products, origin: {products: 'sheet'}, cells: {products: ['C44']}}, extra || {});
@@ -71,24 +71,24 @@ async function handoff(products, extra) {
   g.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
   return g;
 }
+const zeroAll = g => { const K = g.eval('kosuData'); return Object.keys(K).every(k => K[k].values.every(v => v === 0) && !K[k].src); };
 const gd = await handoff(['Storage Defender（Data Protect）']);
-const Kd = gd.eval('kosuData');
-t('C1 Defender: design/build/test/doc/QA from profile', Kd.des1.values[0] === 58 && Kd.bld2.values[0] === 72 && Kd.tst3.values[0] === 24 && Kd.doc1.values[0] === 124 && Kd.qa1.values[0] === 20, [Kd.des1.values[0], Kd.bld2.values[0], Kd.tst3.values[0], Kd.doc1.values[0], Kd.qa1.values[0]]);
-const baseD = 58 + 72 + 24 + 124 + 20;
-t('C2 PM = ROUNDUP(other hours x 6%) (Excel uses ROUNDUP(SUM x 0.1) in many files)', Kd.pm1.values[0] === Math.ceil(baseD * 0.06), [Kd.pm1.values[0], Math.ceil(baseD * 0.06)]);
-t('C3 profile hours and PM are system-decided (blue), with basis hint', ['des1', 'bld2', 'tst3', 'doc1', 'qa1', 'pm1'].every(k => Kd[k].src === 'tool') && /概算見積実績/.test(Kd.pm1.hint), Kd.pm1.hint);
-t('C4 Defender does not add the ISP rows (des2/bld3)', !(Kd.des2.values[0] > 0) && !(Kd.bld3.values[0] > 0));
+t('C1 Defender import: every 工数 cell stays 0 (no profile hours)', zeroAll(gd));
+t('C2 no PM hours are auto-computed', gd.eval("kosuData['pm1'].values[0]") === 0 && !/概算見積実績/.test(gd.eval("kosuData['pm1'].hint")));
 const gs = await handoff(['Storage Virtualize系製品（製品名：FS7600）', 'Storage Protect']);
-const Ks = gs.eval('kosuData');
-t('C5 Virtualize + Protect: flash profile + ISP add-on rows', Ks.des1.values[0] === 128 && Ks.bld2.values[0] === 88 && Ks.des2.values[0] === 16 && Ks.bld3.values[0] === 24, [Ks.des1.values[0], Ks.des2.values[0], Ks.bld3.values[0]]);
-t('C6 hnd1 (handover) set for flash', Ks.hnd1.values[0] === 8, Ks.hnd1.values[0]);
+t('C3 Virtualize + Protect import: still all 0 (no ISP add-on rows either)', zeroAll(gs));
+t('C4 every 工数 input renders as 0', Array.from(gs.document.querySelectorAll('input[data-krow]')).every(i => i.value === '0'));
 const gx = await handoff(['SAN Switch']);
-t('C7 no profile => no invented hours and no PM', !(gx.eval('kosuData').des1.values[0] > 0) && !(gx.eval('kosuData').pm1.values[0] > 0));
+t('C5 unknown product: all 0', zeroAll(gx));
 const gm = load('quotation-generator.html'); await new Promise(r => setTimeout(r, 300));
 gm.eval("kosuData['pm1'].values[0] = 9; kosuData['pm1'].src = 'manual'");
 gm.sessionStorage.setItem('STORAGE_QUOTATION_REQUEST_DATA', JSON.stringify({version: '2.5', products: ['Storage Scale'], origin: {products: 'sheet'}, cells: {}}));
 gm.checkIncomingRequestHandoff(); await new Promise(r => setTimeout(r, 300));
-t('C8 entered PM hours are not overwritten', gm.eval("kosuData['pm1'].values[0]") === 9 && gm.eval("kosuData['pm1'].src") === 'manual');
+t('C6 entered PM hours are not overwritten', gm.eval("kosuData['pm1'].values[0]") === 9 && gm.eval("kosuData['pm1'].src") === 'manual');
+const gw = await handoff(['Storage Ceph'], {workload: {design: 10, build: 20, test: 5, doc: 3, qa: 2, pm: 1, totalHours: 41}});
+t('C7 a legacy request-form "workload" block is ignored too (工数 is always entered by hand)', zeroAll(gw));
+const hh = gd.eval("(() => { const n = getMonthLabels().length; let g = 0; KOSU_SECTIONS.forEach(s => s.rows.forEach(r => g += sumRow(r.id, n))); return g; })()");
+t('C8 with 工数 0 the labour cost is 0 (nothing hidden in the total)', hh === 0 && gd.document.getElementById('kosu-total-h').textContent === '0');
 
 // ---- D. cross-year rate difference
 $('start-year').value = 2026; $('start-month').value = 9; $('period-months').value = 6; w.rebuildKosuMonths();

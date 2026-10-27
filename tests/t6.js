@@ -35,7 +35,7 @@ const h = w.buildCpsHandoff();
 console.log('  handoff:', JSON.stringify({s:h.start,e:h.end,gp:h.gp,c:h.contingency,p:h.price,hrs:h.monthlyHours,oc:h.otherCosts}));
 t('handoff period', h.start === '2026-11-15' && h.end === '2027-03-31', [h.start, h.end]);
 const sumAll = w.eval("(()=>{let g=0;const n=getMonthLabels().length;KOSU_SECTIONS.forEach(s=>s.rows.forEach(r=>g+=sumRow(r.id,n)));return g})()");
-t('handoff monthly hours: m2=32(+定例17.5), m5=8(+定例17.5), total = grand total', h.monthlyHours[1] === 32 + 17.5 && h.monthlyHours[4] === 8 + 17.5 && h.monthlyHours[0] >= 40 && h.monthlyHours.reduce((a,b)=>a+b,0) === sumAll, [h.monthlyHours, sumAll]);
+t('handoff monthly hours = the hand-entered hours only (v2.5.8: no auto 定例), total = grand total', h.monthlyHours[1] === 32 && h.monthlyHours[4] === 8 && h.monthlyHours[0] === 40 && h.monthlyHours.reduce((a,b)=>a+b,0) === sumAll && sumAll === 80, [h.monthlyHours, sumAll]);
 t('handoff other cost allocated sums to 60000', h.otherCosts.length === 1 && h.otherCosts[0].amounts.reduce((a,b)=>a+b,0) === 60000, h.otherCosts);
 t('handoff price > 0 and matches sum-total', h.price === parseInt(w.document.getElementById('sum-total').textContent.replace(/[^\d]/g,''),10) && h.price > 0, h.price);
 // S-LINK handoff payload

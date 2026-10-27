@@ -48,7 +48,7 @@ t('C6 chip rendered in checklist DOM', doc.querySelectorAll('#tab-checklist .cel
 // D. 工数 tab
 const km = doc.getElementById('kosu-map-info');
 t('D1 工数 map box lists 期間/製品/打合せ with cells', km.style.display === 'block' && /C43/.test(km.textContent) && /C47/.test(km.textContent) && /C37/.test(km.textContent), km.textContent);
-t('D2 mtg1 row shows C47 chip', /C47/.test(w.eval("kosuData['mtg1'].cell")) && !!doc.querySelector('#kosu-table-wrap .cell-ref'));
+t('D2 v2.5.8: mtg1 is not auto-filled, so it carries no cell basis', w.eval("kosuData['mtg1'].values[0]") === 0 && !w.eval("kosuData['mtg1'].cell") && !doc.querySelector('#kosu-table-wrap .cell-ref'));
 const inp = doc.querySelector('input[data-krow="mtg1"]'); inp.value = '9'; inp.dispatchEvent(new w.Event('input', {bubbles: true}));
 t('D3 manual edit drops the cell basis', !w.eval("kosuData['mtg1'].cell"));
 // E. 交通費 tab
