@@ -3,6 +3,7 @@ const {load, t, summary} = require('./harness');
 const w = load('quotation-generator.html'); await new Promise(r=>setTimeout(r,300)); const doc = w.document; const $ = id => doc.getElementById(id);
 console.log('[T3] travel assistant');
 const K = w.eval('kosuData');
+t('v2.5.9 宿泊費 円/泊 initial value is 0 (editable number)', $('ta-lodge').value === '0' && $('ta-lodge').type === 'number', $('ta-lodge').value);
 K['bld2'].values[0]=120; K['tst3'].values[0]=80;          // 200h onsite (構築+テスト)
 K['bld6'].values[0]=50;                                    // 移動時間 row must be excluded
 w.recalcAll();
@@ -20,7 +21,7 @@ t('overnight allowance uses meal rule (default 4,000) x nights', r.allowUnit===4
 t('PC rental required for long', r.pc===true);
 t('travel-time hours = 3*2*6*0.5 = 18', r.extraH===18, r.extraH);
 t('total = fare*2*6 + 15000*2*24 + 4000*2*24', r.total === 28000*2*6 + 15000*2*24 + 4000*2*24, r.total);
-t('v2.5.8 宿泊費 label has no cap wording; default stays 10,000 as a plain value', !/上限/.test($('ta-lodge').closest('.info-row').textContent) && /宿泊費 円\/泊/.test($('ta-lodge').closest('.info-row').textContent));
+t('v2.5.8 宿泊費 label has no cap wording; label shown without cap',  !/上限/.test($('ta-lodge').closest('.info-row').textContent) && /宿泊費 円\/泊/.test($('ta-lodge').closest('.info-row').textContent));
 t('v2.5.8 場所 is a free-text input (not a fixed list), label no longer 基点事業所', $('ta-office').tagName==='INPUT' && $('ta-office').type==='text' && /場所/.test($('ta-office').closest('.info-row').querySelector('label').textContent) && !/基点事業所/.test($('ta-office').closest('.info-row').textContent));
 // day trip mid
 $('ta-zone').value='mid'; $('ta-mode').value='day'; $('ta-mode').dispatchEvent(new w.Event('change'));
