@@ -301,7 +301,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.5.14</span>
+    <span class="ver" id="ver-badge">v2.5.15</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -652,7 +652,12 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
         <button class="btn bw" onclick="generateOutput('quote')">💴 見積もりのみ作成</button>
         <button class="btn bg" onclick="window.print()">🖨️ 印刷/PDF</button>
         <button class="btn" style="background:#0f766e;color:#fff" onclick="generateCustomerOutput()">📋 お客様提出用</button>
-        <button class="btn" style="background:#0f766e;color:#fff" onclick="printCustomerOutput()">🖨️ お客様提出用 印刷/PDF</button>
+        <label for="co-format" style="margin-left:4px">出力形式:</label>
+        <select id="co-format" title="お客様提出用の出力形式">
+          <option value="pdf">PDF</option>
+          <option value="xlsx">Microsoft Excel</option>
+        </select>
+        <button class="btn" style="background:#0f766e;color:#fff" onclick="printCustomerOutput()" title="PDF: 印刷ダイアログから「PDFに保存」／Microsoft Excel: .xlsx をダウンロード">🖨️ お客様提出用印刷</button>
         <button class="btn bv" onclick="handoffToSlink()">📑 S-LINK / 仕様書生成へ渡す →</button>
         <button class="btn" style="background:#b45309;color:#fff" onclick="handoffToCps()" title="概算見積の出力をCPS(見積詳細入力ツール)の入力として渡します。S-LINK/仕様書生成とは別メニューです">🧮 CPS入力（見積詳細）へ渡す →</button>
       </div>
@@ -718,7 +723,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.14 (Shared Parser Edition)</strong></td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.15 (Shared Parser Edition)</strong></td></tr>
               <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
@@ -745,6 +750,15 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.15</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">お客様提出用印刷</span></td>
+                <td style="text-align:left;white-space:normal">
+                  「作成・出力」の「お客様提出用 印刷/PDF」を「お客様提出用印刷」に変更し、出力形式として PDF または Microsoft Excel (.xlsx) を選べるようにした（既定は PDF）。Excel は画面上の編集・削除を反映し、前提シート・見積もりシートの2シートで出力する。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v2.5.14</strong></td>
                 <td>2026-10</td>
@@ -1119,7 +1133,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.5.14';
+const APP_VERSION = 'v2.5.15';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
@@ -2430,6 +2444,8 @@ function printCustomerOutput() {
     showToast('先に「お客様提出用」ボタンで出力を生成してください');
     return;
   }
+  const fmtEl = document.getElementById('co-format');
+  if (fmtEl && fmtEl.value === 'xlsx') { exportCustomerExcel(); return; }
   const printWrap = document.createElement('div');
   printWrap.id = 'co-print-wrap';
   printWrap.style.cssText = 'font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13px;color:#1a2b45';
@@ -2441,6 +2457,89 @@ function printCustomerOutput() {
   document.body.classList.remove('print-customer');
   Array.from(printWrap.children).forEach(c => coArea.appendChild(c));
   document.body.removeChild(printWrap);
+}
+
+// 画面上のお客様提出用(編集・行削除を反映した内容)を Microsoft Excel (.xlsx) にする。色・バッジ・ボタンは含めない。
+function coCellText(el) {
+  const c = el.cloneNode(true);
+  c.querySelectorAll('.np, button').forEach(n => n.remove());
+  return c.textContent.replace(/[\r\n\t]+/g, ' ').trim();   // 全角スペース等、文中の空白は変更しない
+}
+function coCellValue(text) {
+  const m = /^¥\s*([\d,]+)$/.exec(text);
+  return m ? {t: 'n', v: parseInt(m[1].replace(/,/g, ''), 10), z: '"¥"#,##0'} : text;
+}
+function buildCustomerWorkbook() {
+  const coArea = document.getElementById('customer-output-area');
+  if (!coArea) return null;
+  const blocks = Array.from(coArea.querySelectorAll(':scope > .sheet-block'));
+  const wb = XLSX.utils.book_new();
+
+  // 前提シート
+  const premise = blocks.find(b => !b.classList.contains('co-quote-sheet'));
+  if (premise) {
+    const rows = [], merges = [];
+    Array.from(premise.querySelector('.sheet-body').children).forEach(el => {
+      if (el.classList.contains('np')) return;
+      if (el.classList.contains('co-title')) { merges.push({s: {r: rows.length, c: 0}, e: {r: rows.length, c: 1}}); rows.push([coCellText(el)]); rows.push([]); }
+      else if (el.classList.contains('sec-block')) {
+        el.querySelectorAll('.co-section-heading, .co-item').forEach(n => rows.push([coCellText(n)]));
+        rows.push([]);
+      } else {
+        const sp = Array.from(el.querySelectorAll('span')).map(coCellText);
+        if (sp.length) rows.push([sp[0], coCellValue(sp[1] || '')]);
+      }
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch: 110}, {wch: 16}]; ws['!merges'] = merges;
+    XLSX.utils.book_append_sheet(wb, ws, '前提シート');
+  }
+
+  // 見積もりシート
+  const quote = blocks.find(b => b.classList.contains('co-quote-sheet'));
+  if (quote) {
+    const rows = [], merges = [];
+    const mergeRow = () => merges.push({s: {r: rows.length - 1, c: 0}, e: {r: rows.length - 1, c: 2}});
+    const disc = quote.querySelector('.co-disclaimer');
+    if (disc) {
+      disc.innerHTML.split(/<br\s*\/?>/i).forEach(line => {
+        const d = document.createElement('div'); d.innerHTML = line;
+        rows.push([d.textContent.trim()]); mergeRow();
+      });
+      rows.push([]);
+    }
+    rows.push(['作業項目', '工数', '作業内容']);
+    quote.querySelectorAll('table.co-quote-tbl tbody tr').forEach(tr => {
+      const tds = Array.from(tr.children);
+      if (tr.classList.contains('co-total-row')) {
+        const sp = Array.from(tr.querySelectorAll('span')).map(coCellText);
+        rows.push([sp[0] || '', '', coCellValue(sp[1] || '')]);
+      } else if (tds.length === 1) {
+        const txt = coCellText(tds[0]);
+        if (!txt) return;                       // 区切り行
+        rows.push([txt]); mergeRow();
+      } else {
+        rows.push(tds.map(coCellText));
+      }
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch: 36}, {wch: 12}, {wch: 80}]; ws['!merges'] = merges;
+    XLSX.utils.book_append_sheet(wb, ws, '見積もりシート');
+  }
+  return wb.SheetNames.length ? wb : null;
+}
+function customerExcelFileName() {
+  const v = id => (document.getElementById(id) || {value: ''}).value.trim();
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const base = ['概算見積', v('customer-name'), v('project-name')].filter(Boolean).join('_')
+    .replace(/[\\/:*?"<>|\s]+/g, '_');
+  return base + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.xlsx';
+}
+function exportCustomerExcel() {
+  const wb = buildCustomerWorkbook();
+  if (!wb) { showToast('先に「お客様提出用」ボタンで出力を生成してください'); return; }
+  XLSX.writeFile(wb, customerExcelFileName());
+  showToast('Microsoft Excel (.xlsx) を出力しました');
 }
 
 function generateCustomerOutput() {
@@ -2487,7 +2586,7 @@ function generateCustomerOutput() {
     '<span style="font-size:12px;color:#374151;margin-left:4px">収録シート:</span>' +
     '<span style="font-size:12px;background:#fff;border:1px solid #d1fae5;border-radius:4px;padding:2px 10px;color:#065f46;font-weight:600">前提シート</span>' +
     '<span style="font-size:12px;background:#fff;border:1px solid #d1fae5;border-radius:4px;padding:2px 10px;color:#065f46;font-weight:600">見積もりシート</span>' +
-    '<button style="margin-left:auto;background:#0f766e;color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="printCustomerOutput()">🖨️ 印刷 / PDF 出力</button>';
+    '<button style="margin-left:auto;background:#0f766e;color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="printCustomerOutput()">🖨️ お客様提出用印刷</button>';
   coArea.appendChild(coMenuBar);
 
   // SHEET 1: 前提シート
