@@ -6,6 +6,8 @@ const ROOT = path.resolve(__dirname, '..') + '/';
 const TPL_BLACK = path.join(__dirname, 'tpl_black.xlsx');   // make_black_template.py で生成
 function load(file, session) {
   let html = fs.readFileSync(ROOT + file, 'utf8').replace(/<script src="https?:[^>]*><\/script>/g, '');
+  // ローカルの共通スクリプト (common/*.js) はブラウザ同様に読み込む。<script> 内に </script> は無いので直接埋め込める
+  html = html.replace(/<script src="(common\/[^"]+)"><\/script>/g, (_, p) => '<script>' + fs.readFileSync(ROOT + p, 'utf8') + '\n</script>');
   const dom = new JSDOM(html, {url: 'http://localhost/' + file, runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(w) {
       w.XLSX = XLSX; w.JSZip = require('jszip'); w.alert = m => { w.__alerts = (w.__alerts || []).concat(m); };

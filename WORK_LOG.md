@@ -14,6 +14,14 @@ Storage Quotation System で作成・編集された案件作業ファイル（`
 
 ## 🛠️ システム更新履歴
 
+### 2026-10 (v2.5.13) — 依頼シート取込み処理を1ファイルへ集約
+- **背景**: `readSheetColors`＋`parseQuotationRequestExcel`（約445行・21KB）が index / request-form / quotation-generator / slink-spec-generator に同一内容で複製され、直すたびに4か所を同期する必要があった（v2.5.2/2.5.3 のコメントだけが差分）。
+- **対応**: `common/request-parser.js` に移動（本体はバイト一致）。4ページは SheetJS の直後に `<script src="common/request-parser.js">` で読み込む。ページ内の複製は削除。
+- **単体HTML保存**: 概算見積シートの3つの保存経路と request-form の「案件別HTMLを直接保存」で、`<script src>` を共通コード自身（`inlineRequestParser`）の埋め込みに置換。保存したHTMLは単体で取込み可能（fetch不使用のため file:// でも動作）。再保存しても同一（冪等）。
+- **検証**: t21（24件）。4ページに複製が無いこと、4ページで同一結果、保存HTML単体での取込み、二重保存、移動前コードとのバイト一致。全体 t1–t21 = 597件。
+- **運用の変更**: 「4ページのパーサが同一であること（md5比較）」の確認は不要になり、t21 が代わりに複製が無いことを検査する。
+- **注意**: 公開リポジトリには `common/` も必ず含めること（無いと取込み機能が動かない）。
+
 ### 2026-10 (v2.5.12) — CPS入力ツールから記入済みExcel(.xlsm)を直接出力
 - **要望**: 必須入力の完了後、JSON出力だけでなく CostPlanSheetINF2026v1.1（2年版/3年版）へ反映してExcelで出力したい。
 - **方式**: `cps-input.html` に JSZip(CDN) を追加。雛形 .xlsm をブラウザで読み込み、シートXML（メイン/見積詳細/支払計画）の入力セルだけを置換して再圧縮（`fillCps`）。SheetJSで保存し直すとVBA・フォームコントロール・入力規則拡張が失われるため不使用。`apply_cps.py` の方式をJSへ移植し、対象を全7区分へ拡張。

@@ -17,7 +17,7 @@ IBM Expert Labs Japan（ストレージ）の見積業務を自動化する。
 | `slink-spec-generator.html` | S-LINK 24項目、仕様書、別紙 |
 | `cps-input.html` | CPS(Cost Plan Sheet)入力。別メニュー(R8) |
 
-`parseQuotationRequestExcel` は index / request-form / quotation-generator / slink-spec-generator の **4ページで同一実装**。変更時は4箇所を同期する。
+`parseQuotationRequestExcel` / `readSheetColors` は **`common/request-parser.js` の1ファイルのみ**（v2.5.13 で集約。index / request-form / quotation-generator / slink-spec-generator が `<script src>` で読み込む）。ページ内に複製を作らない（t21 が検査）。
 
 ## 3. 守るべき制約 (会議メモ R1–R11)
 - R1 値の取得元を表示する（Phase3 で文字色にも拡張）。
@@ -45,6 +45,7 @@ IBM Expert Labs Japan（ストレージ）の見積業務を自動化する。
 | v2.5.11 | 交通費等: 出張判定図に基づく距離区分の定義、宿泊費（円/泊）＝2名分の往復運賃（新幹線/航空機）×1.3 を5,000円単位切上げで自動算出（手入力可）。t19 追加（全体540件）。 |
 | v2.5.11 | 取込後の工数表の月見出し・列数が取込期間と一致しない不具合を修正（t15 B11b、全体517件）。 |
 | v2.5.12 | CPS入力ツールから記入済みCPS(.xlsm)を直接出力（雛形をブラウザで選択、JSZip、シートXML直接編集）。t20 追加（全体573件）。 |
+| v2.5.13 | 依頼シート取込み処理を `common/request-parser.js` に集約（4ページの複製を廃止、挙動変更なし）。単体HTML保存時は共通コードを埋め込む。t21 追加（全体597件）。 |
 | v2.5.6 | 依頼シートの全項目（31項目＋事前確認12問）をCPS入力へ反映。CPS入力の基本情報に反映表、CPSに専用セルが無い項目は メイン「メモ」欄へ。JSONに `request`/`main.memo` 追加（`cps-input/1` のまま）。OO/PPTL/PJTL は自動入力しない。t17 追加（全体446件）。 |
 | v2.5.5 | 過去の概算見積Excel（現行119件）の計算ロジックを分析（`docs/ESTIMATE_LOGIC_ANALYSIS.md`、匿名化）。価格式・丸め・単価表・eDOUはExcelと一致（t16で回帰化）。製品別の既定工数を実績中央値に更新（Defender／ISP／Fusion／テープを追加）、PM比率の自動算出、年度跨ぎの単価差分（目安表示＋行追加）を追加 |
 | v2.5.4 | 新様式の依頼シート（A1:F85）対応。ストレージ担当営業とExpert Labs担当営業は別人（OO=ストレージ担当営業）。パーサーを見出し・項目名ベースに変更（旧様式も同一結果）、Expert Labs担当営業名・調整の補足・期間の補完注記を追加 |
