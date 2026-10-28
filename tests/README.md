@@ -2,9 +2,9 @@
 
 ```bash
 cd storage-quotation-system/tests
-npm install            # jsdom, xlsx@0.18.5
+npm install            # jsdom, xlsx@0.18.5, jszip
 python3 make_black_template.py   # t9/t10 用の「黒字版」テンプレートを生成
-for i in $(seq 1 19); do node t$i.js | tail -1; done
+for i in $(seq 1 20); do node t$i.js | tail -1; done
 ```
 
 | ファイル | 内容 | 件数 |
@@ -22,6 +22,7 @@ for i in $(seq 1 19); do node t$i.js | tail -1; done
 | t16 | v2.5.5: 概算見積Excelとの整合。価格式・丸め度・eDOUがExcelの式と一致、製品別プロファイル選択（Defender≠Protect、Ceph優先。参考情報として保持）、取込後も工数は0のまま（v2.5.8）、年度跨ぎ単価差分の目安と行追加 | 24 |
 | t17 | v2.5.6: 依頼シートの全項目をCPS入力へ反映。パーサの全キーがhandoffに入る・画面修正が優先される・反映表に31項目＋事前確認12問・取得元色とセル番地・OO/PPTL/PJTLは自動入力しない・メモ3行に未対応項目が入る・JSON往復・引継ぎ無しでも壊れない・支払い一回の警告 | 26 |
 | t19 | v2.5.11: 交通費等。宿泊費＝2名分の往復運賃×1.3を5,000円単位で切上げ（境界値・全件検証）、往復交通費入力で自動算出・手入力で保持・空欄で自動へ戻る、距離区分の定義文言、その他費用への反映 | 23 |
+| t20 | v2.5.12: CPS(Excel)出力。2年版/3年版の全区分への書込み、年またぎの振分け、インフレ適用、変更パーツの限定（VBA等はバイト一致）、請求日の共有数式、範囲外の拒否、`apply_cps.py` との同一セル比較（雛形はローカルのみ。無い環境は雛形依存の検査をSKIP） | 33 |
 | t18 | v2.5.7: 取込状況パネルの直接編集。31項目＋事前確認12問が編集可能・入力欄/取込データ/チェックシート/期間へ反映・取得元が手入力（黒）に・フォーカスとカーソルの保持・手入力行と未チェック行の保持（再反映）・基本情報側の編集がパネルへ反映・保存/復元の往復・S-LINK/CPS引継ぎ・お客様向け出力に非混入 | 66 |
 
 - 注意: t4 / t5 / t8 は CPS の xlsm（`CostPlanSheetTPS2026v1.xlsm`、`work/CostPlanSheetINF2026v1.1_*.xlsm`、`（2年/3年）CostPlanSheetINF2026v1.1.xlsm`）を読む。**単価表を含むためGitHubには置いていない**。ローカルの `storage-quotation-system/` 直下 / `work/` に置いて実行する。無い場合はその3本だけ失敗/スキップする。

@@ -48,7 +48,7 @@ t('memo has no newline (single-line cells)', memo.every(l => !/[\r\n]/.test(l)))
 w.eval("S.payment.confirmed=true");
 const j = w.buildJson();
 t('JSON has request + main.memo + ooCandidate', !!j.request && Array.isArray(j.main.memo) && j.main.memo.length === 3 && 'ooCandidate' in j.main);
-t('JSON keeps schema cps-input/1 + v2.5.6', j.schema === 'cps-input/1' && /v2\.5\.6/.test(j.generatedBy));
+t('JSON keeps schema cps-input/1 + v2.5.12', j.schema === 'cps-input/1' && /v2\.5\.12/.test(j.generatedBy));
 // 5. round trip via importJson
 const w2 = load('cps-input.html'); await wait(300);
 const f = {files: [new w2.File([JSON.stringify(j)], 'x.json')]};

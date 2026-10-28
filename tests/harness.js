@@ -8,7 +8,7 @@ function load(file, session) {
   let html = fs.readFileSync(ROOT + file, 'utf8').replace(/<script src="https?:[^>]*><\/script>/g, '');
   const dom = new JSDOM(html, {url: 'http://localhost/' + file, runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(w) {
-      w.XLSX = XLSX; w.alert = m => { w.__alerts = (w.__alerts || []).concat(m); };
+      w.XLSX = XLSX; w.JSZip = require('jszip'); w.alert = m => { w.__alerts = (w.__alerts || []).concat(m); };
       w.print = () => {}; w.HTMLElement.prototype.scrollIntoView = () => {};
       if (session) Object.entries(session).forEach(([k, v]) => w.sessionStorage.setItem(k, v));
     }});

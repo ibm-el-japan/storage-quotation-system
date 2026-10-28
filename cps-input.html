@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>見積詳細入力ツール連携 (CPS Input) — Expert Labs Storage</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;font-size:13.5px;line-height:1.6;color:#1e293b;background:#f1f5f9;padding:16px 16px 80px}
@@ -52,8 +53,8 @@ td.sub,th.sub{background:#eef6ff;font-weight:700;text-align:right;padding:3px 8p
     <a href="slink-spec-generator.html">📑 S-LINK / 仕様書生成</a>
   </div>
   <div class="header">
-    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.6</span></h1>
-    <p>Cost Plan Sheet（CostPlanSheetTPS2026v1）の入力ツール。概算見積シートの出力を入力として引き継ぎ、CPS作成用 JSON を出力します（スライド14〜18）。S-LINK・仕様書生成とは独立した別メニューです。</p>
+    <h1>🧮 見積詳細入力ツール連携 (CPS入力) <span class="ver">v2.5.12</span></h1>
+    <p>Cost Plan Sheet（CostPlanSheetTPS2026v1）の入力ツール。概算見積シートの出力を入力として引き継ぎ、CPS作成用 JSON、または記入済みの CPS（Excel .xlsm）を出力します（スライド14〜18）。S-LINK・仕様書生成とは独立した別メニューです。</p>
   </div>
   <div class="layout">
     <div class="side" id="side"></div>
@@ -407,8 +408,10 @@ function stepSummary() {
   h += '<tr><td colspan="3" class="sub">合計</td><td class="sub" id="pay-tot"></td><td></td><td></td></tr></tbody></table></div><div id="pay-chk" style="font-size:12px;margin-bottom:6px"></div>' +
     '<label style="display:flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600"><input type="checkbox" style="width:auto" ' + (P.confirmed ? 'checked' : '') + ' onchange="S.payment.confirmed=this.checked"> 営業に確認済み（確定した支払計画である）</label>' +
     '<h2 style="margin-top:18px">出力</h2>' +
-    '<div class="warn">出力JSONを作業フォルダへ移動し、PowerShell「RunExcel」を実行するとCPS（Excel）が作成されます（スライド14）。実行環境は IBM Box 作業フォルダ（<code>…\\IBM SLS Storage\\Operation\\見積り関連AI自動化\\.bob_見積り</code>）。JSONの項目構成は本ツールの暫定仕様です。既存の「見積詳細入力ツール」のJSONと異なる場合は、RunExcel 側の読込みキーとの対応付けが必要です。</div>' +
-    '<div class="btns"><button class="btn g" onclick="exportJson()">💾 CPS用JSONをダウンロード</button><button class="btn s" onclick="go(7)">← 戻る</button></div>';
+    '<div class="warn"><b>CPS（Excel）を直接出力</b>: 下の「CPS雛形」に <code>（2年_26-27）CostPlanSheetINF2026v1.1.xlsm</code> または <code>（3年_26-28）…xlsm</code> を選択すると、入力内容を雛形へ書き込んだ .xlsm を出力します（マクロ・数式・書式は雛形のまま。雛形ファイルはサーバーへ送信されず、ブラウザ内だけで処理します）。Excel で開くと自動再計算されます。<br>' +
+    '<b>JSON出力</b>: 従来どおり、JSONを作業フォルダへ移動し PowerShell「RunExcel」で CPS を作成する運用にも使えます（スライド14）。JSONの項目構成は本ツールの暫定仕様です。</div>' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label class="btn s">📂 CPS雛形(.xlsm)を選択<input type="file" accept=".xlsm" style="display:none" onchange="pickTemplate(this)"></label><span id="tpl-info" style="font-size:12px">' + tplInfo() + '</span></div>' +
+    '<div class="btns"><button class="btn g" onclick="exportXlsm()">📗 CPS（Excel .xlsm）を出力</button><button class="btn g" onclick="exportJson()">💾 CPS用JSONをダウンロード</button><button class="btn s" onclick="go(7)">← 戻る</button></div>';
   return h;
 }
 function setPrice(v) { S.price = +v || 0; S.priceSrc = 'manual'; updateCalc(); }
@@ -437,7 +440,7 @@ function buildJson() {
     return o;
   });
   const j = {
-    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.6', generatedAt: new Date().toISOString(),
+    schema: JSON_SCHEMA, template: TEMPLATE, generatedBy: 'Expert Labs Storage Quotation System v2.5.12', generatedAt: new Date().toISOString(),
     note: '項目構成は暫定仕様（既存の見積詳細入力ツールのJSON仕様とは要すり合わせ）',
     main: {
       customerName: b.customerName, projectName: b.projectName, oppNo: b.oppNo, oo: b.oo, pptl: b.pptl, pjtl: b.pjtl,
@@ -459,11 +462,17 @@ function stamp() { const d = new Date(); return d.getFullYear() + pad(d.getMonth
 function exportJson() {
   if (!months().length) { alert('サービス期間（開始・終了）を入力してください。'); return; }
   const j = buildJson();
-  if (!j.main.servicePrice) { if (!confirm('提示額が未入力です（CPSのサービス料金は空欄になります）。続行しますか？')) return; }
-  if (S.payment.rows.length && !S.payment.confirmed && !confirm('支払計画は営業未確認の既定値です。このまま出力しますか？')) return;
-  const blob = new Blob([JSON.stringify(j, null, 2)], {type: 'application/json'});
+  if (!exportChecks(j)) return;
+  download(new Blob([JSON.stringify(j, null, 2)], {type: 'application/json'}), 'CostPlan_見積詳細_' + stamp() + '.json');
+}
+function exportChecks(j) {
+  if (!j.main.servicePrice) { if (!confirm('提示額が未入力です（CPSのサービス料金は空欄になります）。続行しますか？')) return false; }
+  if (S.payment.rows.length && !S.payment.confirmed && !confirm('支払計画は営業未確認の既定値です。このまま出力しますか？')) return false;
+  return true;
+}
+function download(blob, name) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'CostPlan_見積詳細_' + stamp() + '.json'; a.click(); URL.revokeObjectURL(a.href);
+  a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
 function importJson(input) {
   const f = input.files[0]; if (!f) return;
@@ -489,6 +498,178 @@ function importJson(input) {
     input.value = '';
   };
   rd.readAsText(f);
+}
+
+// ===== CPS (Excel .xlsm) 直接出力 =====
+// 雛形(.xlsm)のシートXMLだけを書き換えて保存する (cps-results/apply_cps.py と同じ方式)。
+// SheetJS等で再保存するとVBA・フォームコントロール・入力規則拡張が失われるため使わない。
+let TPL = null;   // {name, buf(ArrayBuffer), layout:'2y'|'3y'}
+const XLSM_LAYOUT = {
+  '2y': {main: 'メイン', details: ['見積詳細1年目', '見積詳細2年目'], pay: '支払計画', price: 'O22', memo: ['C34', 'C35', 'C36'], wrap: '329'},
+  '3y': {main: 'メイン', details: ['見積詳細'], pay: '支払計画', price: 'O21', memo: ['C33', 'C34', 'C35'], wrap: '331'}
+};
+const BAND_LABEL = {'Band 6': 'SLS-Bnd6', 'Band 7': 'SLS-Bnd7', 'Band 8': 'SLS-Bnd8', 'Band 9': 'SLS-Bnd9', 'Band 10': 'SLS-Bnd10', 'Executive': 'SLS-Bnd10'};
+const MCOL = 'EFGHIJKLMNOP';
+const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const serial = s => { const d = parseIso(s); if (!d) throw new Error('日付が不正です: ' + s); return Math.round((d.getTime() - Date.UTC(1899, 11, 30)) / 86400000); };
+
+function xPut(xml, ref, kind, val) {   // セルを置換 (スタイルs=は維持)。kind: 'n' 数値 | 's' 文字列
+  const mm = new RegExp('<c r="' + ref + '"((?:\\s+[a-z]+="[^"]*")*)\\s*(?:/>|>.*?</c>)', 's').exec(xml);
+  if (!mm) throw new Error('雛形にセルが見つかりません: ' + ref + '（雛形が想定と異なります）');
+  const sm = /s="(\d+)"/.exec(mm[1]), st = sm ? ' s="' + sm[1] + '"' : '';
+  const cell = kind === 'n' ? '<c r="' + ref + '"' + st + '><v>' + val + '</v></c>'
+    : '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(val) + '</t></is></c>';
+  return xml.slice(0, mm.index) + cell + xml.slice(mm.index + mm[0].length);
+}
+function xUnshare(xml, col) {   // 共有数式(<f t="shared">)を行ごとの通常数式へ展開 (親セルを上書きしても子が壊れないように)
+  const master = new RegExp('<c r="' + col + '(\\d+)"[^>]*><f t="shared" ref="[^"]*" si="(\\d+)">([^<]*)</f>').exec(xml);
+  if (!master) return xml;
+  const r0 = master[1], si = master[2], f = master[3];
+  const expand = n => f.replace(new RegExp('\\b([A-Z]+)' + r0 + '\\b', 'g'), '$1' + n);
+  xml = xml.replace(new RegExp('(<c r="' + col + '(\\d+)"[^>]*>)<f t="shared" si="' + si + '"/>', 'g'), (_, head, n) => head + '<f>' + expand(n) + '</f>');
+  return xml.replace(new RegExp('<f t="shared" ref="[^"]*" si="' + si + '">([^<]*)</f>'), '<f>$1</f>');
+}
+function xPutWrapped(xml, ref, text, wrapStyle) {   // 長文を結合メモセルへ。雛形のwrapスタイルを適用し行高を合わせる
+  xml = xPut(xml, ref, 's', text);
+  xml = xml.replace(new RegExp('(<c r="' + ref + '") s="\\d+"'), '$1 s="' + wrapStyle + '"');
+  const row = ref.replace(/\D+/, '');
+  const w = seg => [...seg].reduce((t, ch) => t + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
+  const lines = Math.max(1, text.split('\n').reduce((t, seg) => t + Math.ceil(w(seg) / 62), 0));
+  const ht = Math.min(409, Math.max(15, 15 * lines + 3));
+  return xml.replace(new RegExp('<row r="' + row + '"([^>]*?)>'), (_, a) =>
+    '<row r="' + row + '"' + a.replace(/\s(?:ht|customHeight)="[^"]*"/g, '') + ' ht="' + ht + '" customHeight="1">');
+}
+async function xlsmSheetPaths(zip) {   // workbook.xml + rels から シート名 → パス
+  if (!zip.file('xl/workbook.xml') || !zip.file('xl/_rels/workbook.xml.rels')) throw new Error('CostPlanSheetINF2026 の雛形（.xlsm）ではありません');
+  const wb = await zip.file('xl/workbook.xml').async('string'), rl = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  const rel = {}; (rl.match(/<Relationship [^>]*>/g) || []).forEach(t => { const id = /Id="([^"]+)"/.exec(t), tg = /Target="([^"]+)"/.exec(t); if (id && tg) rel[id[1]] = tg[1]; });
+  const out = {};
+  (wb.match(/<sheet [^>]*>/g) || []).forEach(t => {
+    const n = /name="([^"]+)"/.exec(t), r = /r:id="([^"]+)"/.exec(t);
+    if (n && r && rel[r[1]]) out[n[1].replace(/&amp;/g, '&')] = 'xl/' + rel[r[1]].replace(/^\/?(xl\/)?/, '');
+  });
+  return out;
+}
+async function detectLayout(zip) {
+  const p = await xlsmSheetPaths(zip);
+  const layout = p['見積詳細1年目'] ? '2y' : (p['見積詳細'] ? '3y' : null);
+  if (!layout || !p['メイン'] || !p['支払計画'] || !zip.file('xl/vbaProject.bin')) throw new Error('CostPlanSheetINF2026 の雛形（.xlsm）ではありません');
+  return layout;
+}
+// 月別セルの配置先: 年→見積詳細シート、月→列(E=1月)
+function monthPlace(layout, startYear, y, m) {
+  const idx = y - startYear, n = XLSM_LAYOUT[layout].details.length;
+  if (idx < 0 || idx >= n) throw new Error('サービス期間が雛形の対応範囲を超えています（' + (layout === '2y' ? '2年版は暦年で2年分まで' : '3年版は見積詳細シート1枚＝暦年1年分まで。年をまたぐ場合は2年版を使用、または雛形のマクロ「複数年対応」で年別シートを作成') + '）。');
+  return {sheet: idx, col: MCOL[m - 1]};
+}
+
+async function fillCps(j, buf) {
+  const zip = await JSZip.loadAsync(buf), layout = await detectLayout(zip), L = XLSM_LAYOUT[layout], P = await xlsmSheetPaths(zip);
+  const m = j.main, ms = j.months.map(s => { const a = s.split('/'); return {y: +a[0], m: +a[1]}; });
+  if (!ms.length) throw new Error('サービス期間がありません');
+  const y0 = ms[0].y, baseYear = m.inflationBaseYear || BASE_YEAR, cinf = m.costInflation || C_INF;
+  const fac = i => ms[i].y < baseYear ? 1 : Math.pow(cinf, ms[i].y - baseYear);
+  const warnings = [];
+  ms.forEach(x => monthPlace(layout, y0, x.y, x.m));   // 範囲チェックを先に (書込み前に失敗させる)
+  if (ms.some((_, i) => fac(i) > 1) && KEYS.some(k => SECTIONS[k].kind !== 'hourly' && (j.sections[k] || []).length))
+    warnings.push('Other Cost / SSO / 連結子会社 / H-2 Other Cost の金額は雛形に数式が無いため、' + baseYear + '年超の月はインフレ率(' + Math.round((cinf - 1) * 100) + '%/年)を適用した金額を入力しています（本ツールの合計と一致）');
+
+  // ---- メイン
+  let x = await zip.file(P[L.main]).async('string');
+  x = xPut(x, 'C5', 's', m.customerName); x = xPut(x, 'C6', 's', m.projectName); x = xPut(x, 'C7', 's', m.oppNo);
+  [['C8', 'oo'], ['C9', 'pptl'], ['C10', 'pjtl']].forEach(([ref, k]) => { if (m[k]) x = xPut(x, ref, 's', m[k]); });   // 空欄は雛形の XXX を残す (人が入力)
+  x = xPut(x, 'C11', 'n', serial(m.servicePeriod.start)); x = xPut(x, 'E11', 'n', serial(m.servicePeriod.end));
+  x = xPut(x, 'C12', 'n', m.approvedGpPct / 100); x = xPut(x, 'C13', 'n', m.riskLevel);
+  if (m.servicePrice) x = xPut(x, L.price, 'n', m.servicePrice); else warnings.push('提示額が未入力のため、サービス料金は空欄です');
+  const pp = j.paymentPlan || {};
+  let memo = (m.memo || []).slice();
+  if (!memo.length && (pp.rows || []).length && !pp.confirmedBySales) memo = ['【要営業確認】支払計画はツール既定値（請求日=月末、支払期日=請求日+30日、均等配分）。営業確認未了のため確定値ではありません。'];
+  memo.slice(0, 3).forEach((line, i) => { x = xPutWrapped(x, L.memo[i], line, L.wrap); });
+  zip.file(P[L.main], x);
+
+  // ---- 見積詳細: 使う年のシートごとに 名前/Band/単価 と 月別の値
+  const used = new Set(ms.map(z => z.y - y0));
+  const SPEC = {   // [先頭行, 行ピッチ, 名前行からの単価行オフセット]
+    telIn: [8, 3], telOut: [41, 2], other: [85, 1], sso: [99, 2], sub: [123, 2], h2: [147, 2], h2o: [181, 1]};
+  for (const sIdx of used) {
+    const path = P[L.details[sIdx]]; let d = await zip.file(path).async('string');
+    KEYS.forEach(key => {
+      const sec = SECTIONS[key], [r0, pitch] = SPEC[key];
+      const rows = j.sections[key] || [];
+      if (rows.length > LIMITS[key]) throw new Error(sec.label + ' が雛形の上限(' + LIMITS[key] + '行)を超えています');
+      rows.forEach((r, i) => {
+        const row = r0 + pitch * i;
+        if (r.name) d = xPut(d, 'B' + row, 's', r.name);
+        if (sec.kind !== 'amount') {   // 単価行 = 名前行+1
+          if (r.band && (key === 'telIn' || key === 'h2') && BAND_LABEL[r.band]) d = xPut(d, 'B' + (row + 1), 's', BAND_LABEL[r.band]);
+          const unit = sec.kind === 'hourly' ? r.hourlyCost : r.monthlyCost;
+          if (unit != null) d = xPut(d, 'C' + (row + 1), 'n', unit);
+        }
+        const vals = r.hours || r.manMonths || r.amounts || [];
+        ms.forEach((mo, k) => {
+          if (mo.y - y0 !== sIdx) return;
+          const col = MCOL[mo.m - 1], v = +vals[k] || 0;
+          if (sec.kind === 'amount') d = xPut(d, col + row, 'n', Math.round(v * fac(k) * 1000) / 1000);          // 金額は雛形に数式なし → インフレ適用後を直接入力
+          else {
+            d = xPut(d, col + row, 'n', v);                                                                      // 時間 / 人月
+            if (sec.kind === 'monthly') d = xPut(d, col + (row + 1), 'n', Math.round(v * (+r.monthlyCost || 0) * fac(k) * 1000) / 1000);   // SSO/連結: 金額行は数式なし
+          }
+        });
+      });
+    });
+    zip.file(path, d);
+  }
+
+  // ---- 支払計画 (請求日は雛形の数式=支払期日-30日。異なる場合のみ請求日を直接入力)
+  let px = await zip.file(P[L.pay]).async('string');
+  const prow = pp.rows || [];
+  if (prow.length > 200) throw new Error('支払計画の行数が雛形の上限(200)を超えています');
+  prow.forEach((r, i) => {
+    if (!r.dueDate) throw new Error('支払計画 ' + (i + 1) + ' 行目の支払期日が未入力です');
+    px = xPut(px, 'D' + (5 + i), 'n', serial(r.dueDate)); px = xPut(px, 'E' + (5 + i), 'n', r.amount);
+    if (r.billingDate && serial(r.billingDate) !== serial(r.dueDate) - 30) {   // 請求日の既定(=支払期日-30日)と違う行だけ直接入力
+      px = xUnshare(px, 'C');
+      px = xPut(px, 'C' + (5 + i), 'n', serial(r.billingDate));
+    }
+  });
+  zip.file(P[L.pay], px);
+
+  // ---- 開いた時に再計算 (数式の保存値は古い)。calcChain は削除 (Excelが再構築)
+  let w = await zip.file('xl/workbook.xml').async('string');
+  w = w.replace(/<calcPr([^>]*?)\/>/, (_, a) => /fullCalcOnLoad/.test(a) ? '<calcPr' + a + '/>' : '<calcPr' + a + ' fullCalcOnLoad="1"/>');
+  zip.file('xl/workbook.xml', w);
+  if (zip.file('xl/calcChain.xml')) {
+    zip.remove('xl/calcChain.xml');
+    zip.file('xl/_rels/workbook.xml.rels', (await zip.file('xl/_rels/workbook.xml.rels').async('string')).replace(/<Relationship [^>]*calcChain[^>]*\/>/g, ''));
+    zip.file('[Content_Types].xml', (await zip.file('[Content_Types].xml').async('string')).replace(/<Override [^>]*calcChain[^>]*\/>/g, ''));
+  }
+  return {layout, warnings, data: await zip.generateAsync({type: 'uint8array', compression: 'DEFLATE'})};
+}
+
+function tplInfo() {
+  return TPL ? '<b style="color:#15803d">✔ ' + esc(TPL.name) + '（' + (TPL.layout === '2y' ? '2年版: 暦年2年分まで' : '3年版: 見積詳細1枚＝暦年1年分') + '）</b>'
+             : '<span style="color:#b45309">未選択（「CPS雛形」を選ぶと Excel 出力できます）</span>';
+}
+async function pickTemplate(input) {
+  const f = input.files[0]; if (!f) return;
+  try {
+    const buf = await f.arrayBuffer(); let zip; try { zip = await JSZip.loadAsync(buf); } catch (e) { throw new Error('Excelファイル（.xlsm）として読み込めません'); }
+    const layout = await detectLayout(zip);
+    TPL = {name: f.name, buf, layout};
+  } catch (err) { TPL = null; alert('雛形を読み込めません: ' + err.message); }
+  const e = document.getElementById('tpl-info'); if (e) e.innerHTML = tplInfo();
+  input.value = '';
+}
+async function exportXlsm() {
+  if (!months().length) { alert('サービス期間（開始・終了）を入力してください。'); return; }
+  if (!TPL) { alert('先に「CPS雛形(.xlsm)を選択」で、（2年_26-27）または（3年_26-28）CostPlanSheetINF2026v1.1.xlsm を選んでください。'); return; }
+  const j = buildJson();
+  if (!exportChecks(j)) return;
+  try {
+    const r = await fillCps(j, TPL.buf);
+    download(new Blob([r.data], {type: 'application/vnd.ms-excel.sheet.macroEnabled.12'}), 'CostPlan_' + (j.main.customerName || '見積詳細').replace(/[\\/:*?"<>|\s]+/g, '_') + '_' + stamp() + '.xlsm');
+    if (r.warnings.length) alert('出力しました。確認事項:\n・' + r.warnings.join('\n・'));
+  } catch (err) { alert('CPS(Excel)を出力できません: ' + err.message); }
 }
 
 // ===== INIT =====

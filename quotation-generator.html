@@ -300,7 +300,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.5.11</span>
+    <span class="ver" id="ver-badge">v2.5.12</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -717,7 +717,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.11 (Kosu Header Sync Edition)</strong></td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.12 (CPS Excel Export Edition)</strong></td></tr>
               <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
@@ -744,6 +744,15 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.12</strong></td>
+                <td>2026-10</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">CPS(Excel)の直接出力</span></td>
+                <td style="text-align:left;white-space:normal">
+                  「見積詳細入力ツール連携（CPS入力）」の出力ステップに<strong>CPS雛形（2年版／3年版 .xlsm）を選んで記入済みExcelを出力</strong>する機能を追加。TEL内・TEL外・Other Cost・SSO・連結子会社・Harmony-2・H-2 Other Cost・メイン・支払計画を雛形へ書き込む。マクロ・数式・書式は雛形のまま。従来のJSON出力も残す。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v2.5.11</strong></td>
                 <td>2026-10</td>
@@ -1091,7 +1100,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.5.11';
+const APP_VERSION = 'v2.5.12';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
