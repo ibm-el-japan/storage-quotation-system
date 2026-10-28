@@ -1,10 +1,13 @@
 # tests — Storage Quotation System 回帰テスト (jsdom + SheetJS)
 
 ```bash
+tools/check.sh         # 構文チェック + t1–tN を全て実行（推奨。初回は npm install とフィクスチャ生成も行う）
+
+# 個別に実行する場合
 cd storage-quotation-system/tests
 npm install            # jsdom, xlsx@0.18.5, jszip
 python3 make_black_template.py   # t9/t10 用の「黒字版」テンプレートを生成
-for i in $(seq 1 21); do node t$i.js | tail -1; done
+node t11.js
 ```
 
 | ファイル | 内容 | 件数 |
@@ -23,8 +26,9 @@ for i in $(seq 1 21); do node t$i.js | tail -1; done
 | t17 | v2.5.6: 依頼シートの全項目をCPS入力へ反映。パーサの全キーがhandoffに入る・画面修正が優先される・反映表に31項目＋事前確認12問・取得元色とセル番地・OO/PPTL/PJTLは自動入力しない・メモ3行に未対応項目が入る・JSON往復・引継ぎ無しでも壊れない・支払い一回の警告 | 26 |
 | t19 | v2.5.11: 交通費等。宿泊費＝2名分の往復運賃×1.3を5,000円単位で切上げ（境界値・全件検証）、往復交通費入力で自動算出・手入力で保持・空欄で自動へ戻る、距離区分の定義文言、その他費用への反映 | 23 |
 | t20 | v2.5.12: CPS(Excel)出力。2年版/3年版の全区分への書込み、年またぎの振分け、インフレ適用、変更パーツの限定（VBA等はバイト一致）、請求日の共有数式、範囲外の拒否、`apply_cps.py` との同一セル比較（雛形はローカルのみ。無い環境は雛形依存の検査をSKIP） | 33 |
-| t21 | v2.5.13: 依頼シート取込みの共通化。4ページに複製が無い・4ページで同一結果・保存した単体HTMLだけで取込み可能・再保存しても同一・移動前コードとバイト一致 | 24 |
+| t21 | v2.5.13: 依頼シート取込みの共通化。4ページに複製が無い・4ページで同一結果・保存した単体HTMLだけで取込み可能・再保存しても同一・移動前コードとバイト一致（直前コミットに旧コピーがある間のみ。コミット後はSKIP） | 23 |
 | t18 | v2.5.7: 取込状況パネルの直接編集。31項目＋事前確認12問が編集可能・入力欄/取込データ/チェックシート/期間へ反映・取得元が手入力（黒）に・フォーカスとカーソルの保持・手入力行と未チェック行の保持（再反映）・基本情報側の編集がパネルへ反映・保存/復元の往復・S-LINK/CPS引継ぎ・お客様向け出力に非混入 | 66 |
+| t22 | v2.5.14: 文書とバージョン表記の整合。CHANGELOG 先頭 == APP_VERSION / ver-badge / Release Version / 変更履歴表 / ポータルのバッジ、CHANGELOG の版が重複なく降順、README・CHANGELOG・MAINTENANCE のリンク先が存在、管理者パスワードの参照先、文書にトークンが無い | 18 |
 
 - 注意: t4 / t5 / t8 は CPS の xlsm（`CostPlanSheetTPS2026v1.xlsm`、`work/CostPlanSheetINF2026v1.1_*.xlsm`、`（2年/3年）CostPlanSheetINF2026v1.1.xlsm`）を読む。**単価表を含むためGitHubには置いていない**。ローカルの `storage-quotation-system/` 直下 / `work/` に置いて実行する。無い場合はその3本だけ失敗/スキップする。
 - ハーネス（`harness.js`）: `load(file, sessionObj)`。ページ先頭の `let` 変数は `window` に出ないので `w.eval('...')` で読む。ロード後 300ms 待つ。
