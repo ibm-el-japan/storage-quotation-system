@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage Expert Labs Quotation Automation System — HTML化の価値と全体設計書</title>
+<style>
+  :root {
+    --bg-page: #f8fafc;
+    --bg-card: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --text-sub: #64748b;
+    --border: #e2e8f0;
+    --border-subtle: #cbd5e1;
+    --primary: #0f62fe;
+    --primary-dark: #0043ce;
+    --primary-light: #edf5ff;
+    --accent-blue: #005fb8;
+    --accent-green: #198038;
+    --accent-green-bg: #defbe6;
+    --accent-amber: #b28600;
+    --accent-amber-bg: #fdf3d8;
+    --accent-purple: #8a3ffc;
+    --accent-purple-bg: #f6f2ff;
+    --accent-red: #da1e28;
+    --accent-red-bg: #fff1f1;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic", YuGothic, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+    font-size: 14.5px;
+    padding: 32px 16px;
+  }
+
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    padding: 40px 48px;
+  }
+
+  /* Header */
+  .doc-header {
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  .doc-badge {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+  .doc-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.3;
+    margin-bottom: 10px;
+  }
+  .doc-subtitle {
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+  .doc-meta {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 12.5px;
+    color: var(--text-sub);
+  }
+  .doc-meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+  /* Section Styling */
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 36px 0 16px;
+    padding-left: 12px;
+    border-left: 4px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3 {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 22px 0 10px;
+  }
+  p { margin-bottom: 12px; color: var(--text-main); }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    text-align: left;
+  }
+  th {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fafcff; }
+
+  /* Cards & Callouts */
+  .callout {
+    padding: 16px 18px;
+    border-radius: 8px;
+    margin: 16px 0 20px;
+    border-left: 4px solid;
+    font-size: 13.5px;
+  }
+  .callout.info {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: #003a9b;
+  }
+  .callout.success {
+    background: var(--accent-green-bg);
+    border-color: var(--accent-green);
+    color: #0f5123;
+  }
+  .callout.warning {
+    background: var(--accent-amber-bg);
+    border-color: var(--accent-amber);
+    color: #684f00;
+  }
+  .callout.security {
+    background: #fff5f5;
+    border-color: var(--accent-red);
+    color: #8c1017;
+  }
+  .callout-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Grid Layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin: 16px 0 24px;
+  }
+  .feature-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    background: #ffffff;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .feature-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border-color: #cbd5e1;
+  }
+  .feature-card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .feature-card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Diagram Flow Box */
+  .flow-container {
+    background: #f8fafc;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 24px 20px;
+    margin: 20px 0 28px;
+  }
+  .flow-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .flow-box {
+    background: #ffffff;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 170px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  .flow-box.in { border-color: #f59e0b; background: #fffbeb; }
+  .flow-box.hub { border-color: #6366f1; background: #eef2ff; }
+  .flow-box.work { border-color: #0f62fe; background: #edf5ff; }
+  .flow-box.out { border-color: #10b981; background: #ecfdf5; }
+  .flow-box-title { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+  .flow-box-sub { font-size: 11.5px; color: var(--text-muted); }
+  .flow-arrow { font-size: 18px; color: #94a3b8; font-weight: bold; }
+
+  /* Code / Syntax */
+  code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #0f172a;
+  }
+  pre {
+    background: #1e293b;
+    color: #f8fafc;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 14px 0 20px;
+    line-height: 1.5;
+  }
+
+  /* List */
+  ul, ol { margin-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; font-size: 13.5px; }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-sub);
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .container { border: none; box-shadow: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Document Header -->
+  <header class="doc-header">
+    <div class="doc-badge">IBM Storage Expert Labs Japan — 公式設計・価値解説書</div>
+    <h1 class="doc-title">Storage Quotation Automation System<br>HTML化の価値と全体設計書</h1>
+    <div class="doc-subtitle">現行Excel（Cost Plan Sheet）との差異・前提条件・データ保存方式・GitHub管理方針・処理フローの総括</div>
+    <div class="doc-meta">
+      <span><strong>システム版数:</strong> v2.5.16</span>
+      <span><strong>公開URL:</strong> <a href="https://ibm-el-japan.github.io/storage-quotation-system/" target="_blank" style="color:var(--primary);text-decoration:none;">ibm-el-japan.github.io/storage-quotation-system</a></span>
+      <span><strong>対象:</strong> 見積もり担当者・営業・技術営業・管理部門</span>
+    </div>
+  </header>
+
+  <!-- 1. HTML化するメリット -->
+  <section>
+    <h2>1. HTML化するメリット（5大導入価値）</h2>
+    <p>従来のExcelベースの手作業による見積もり作成フローを、ブラウザ完結のHTMLツール群へ移行することで得られる主要なメリットは以下の5点です。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">評価軸</th>
+            <th style="width: 38%;">現行Excel運用の課題</th>
+            <th style="width: 44%;">HTML化による改善・導入メリット</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>① 二重入力・転記の完全排除</strong></td>
+            <td>営業の依頼書、概算見積、仕様書Word、別紙、CPS（CostPlanSheet）のそれぞれへ、案件名・顧客名・工数・金額を手動でコピペ・再入力。</td>
+            <td><strong>Single Source 一括自動連携</strong><br>営業の「見積もり依頼記入シート（.xlsx）」を1回ドラッグ＆ドロップするだけで全項目を自動解析し、後続の全ツール・全成果物へシームレスに自動展開（再入力ゼロ）。</td>
+          </tr>
+          <tr>
+            <td><strong>② 100% OS非依存（Mac/Win共通）</strong></td>
+            <td>Windows専用マクロ(VBA)に依存。Mac環境で開くとマクロエラーやレイアウト崩れ・フォント乱れが発生し、手動修正を余儀なくされていた。</td>
+            <td><strong>Mac / Windows 完全共通動作</strong><br>Chrome、Safari、Edge 等の標準ブラウザのみで同一に動作。OSやExcelバージョンに左右されず、常に同一の計算結果と正規成果物を生成。</td>
+          </tr>
+          <tr>
+            <td><strong>③ UIの堅牢性・操作性</strong></td>
+            <td>Excel上で行の追加・削除や改行を行うと、行高の崩れ、数式の参照ズレ、チェックボックスの重なり・ズレが頻発。</td>
+            <td><strong>堅牢なWeb UI操作</strong><br>「＋」「✕」ボタンによる直感的な行操作、動的な自動再計算、自動折り返しが崩れることなく安定動作。</td>
+          </tr>
+          <tr>
+            <td><strong>④ 出張費・手当の自動計算</strong></td>
+            <td>訪問先ごとの距離区分（短/中/遠）、運賃調査、宿泊費計算、宿泊手当・帰着日手当の算出を手作業で行っており、計算ミスや確認負荷が大。</td>
+            <td><strong>出張費アシスタントの自動算定</strong><br>主要10都市プリセット（新幹線/航空便・運賃・宿泊費目安連動）、宿泊出張手当＋帰着日長距離手当(¥3,500)、予備率20%を自動試算・明細反映。</td>
+          </tr>
+          <tr>
+            <td><strong>⑤ 提出用資料のクリーン出力</strong></td>
+            <td>社内用のメモ、計算用セル、Provenanceバッジ等を誤って顧客に見せないよう、手作業で別ファイルに整形・コピー。</td>
+            <td><strong>クリーン出力の自動生成</strong><br>ワンクリックで社内用表示を排除した「前提シート」「見積もりシート」の公式2シート構成（PDF / Excel）を即時生成。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 2. 現行Excelとの違い -->
+  <section>
+    <h2>2. 現行Excel「コストプランシート（.xlsm）」との違い</h2>
+    <p>「コストプランシート_お客様名_案件名_20260116.xlsm」等の現行Excelと、本システム（Storage Quotation System）の位置づけ・機能の違いを整理します。</p>
+
+    <div class="callout info">
+      <div class="callout-title">📌 業務プロセスのカバー範囲の違い</div>
+      <div><strong>現行Excel (CPS):</strong> 社内原価計算・GP承認・支払計画登録のみを担う「最終承認シート」<br>
+      <strong>本HTMLシステム:</strong> 依頼受付 ➔ 概算見積試算 ➔ 顧客提出用見積書 ➔ 仕様書/別紙 ➔ CPS自動書込み までを繋ぐ「統合パイプライン」</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 20%;">比較項目</th>
+            <th style="width: 40%;">現行Excel（コストプランシート .xlsm）</th>
+            <th style="width: 40%;">本HTMLシステム（Storage Quotation System）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>システムの役割</strong></td>
+            <td>社内原価計算・GP%承認・支払計画登録のための<strong>「最終承認用シート」</strong>。</td>
+            <td>依頼受付から見積試算、顧客提出書、契約仕様書、CPS出力までを繋ぐ<strong>「統合パイプライン」</strong>。</td>
+          </tr>
+          <tr>
+            <td><strong>依頼要件の取込</strong></td>
+            <td>なし（依頼メールやExcelから目視で手動転記）。</td>
+            <td><strong>原本Excelを直接解析</strong>し、顧客情報・対象製品・作業要件を自動展開。</td>
+          </tr>
+          <tr>
+            <td><strong>工数・単価の管理</strong></td>
+            <td>セルに手入力。年度別Band単価（B6〜B10）は別シートを参照して手計算。</td>
+            <td><strong>年度別Band単価プリセット内蔵</strong>。月別工数（h）を入力するだけでLaborコストを自動計算。</td>
+          </tr>
+          <tr>
+            <td><strong>顧客向け見積書の作成</strong></td>
+            <td>別途見積書フォーマット（Excel/Word）を作成して転記。</td>
+            <td><strong>標準3列形式（前提＋見積もり）のPDF / Excel</strong> をワンクリック自動生成。</td>
+          </tr>
+          <tr>
+            <td><strong>契約仕様書・S-LINK</strong></td>
+            <td>別途Wordファイルを開いて手動起票。S-LINK画面へ手動入力。</td>
+            <td><strong>S-LINKメタデータ24項目一括コピー</strong>、<strong>Word（.doc）仕様書・別紙</strong> を自動生成。</td>
+          </tr>
+          <tr>
+            <td><strong>CPSへの反映</strong></td>
+            <td>全項目を最初から手作業で入力・検算。</td>
+            <td>全入力データを埋め込んだ <strong>記入済みCPS（.xlsm 2年版/3年版）を直接ダウンロード出力</strong>。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. ツールの前提条件 -->
+  <section>
+    <h2>3. ツールの前提条件</h2>
+    <div class="grid-2">
+      <div class="feature-card">
+        <div class="feature-card-title">💻 1. ユーザー実行環境</div>
+        <div class="feature-card-desc">
+          ・HTML5 / ECMAScript 2020 対応のモダンブラウザ（Chrome, Edge, Safari）。<br>
+          ・PCローカル環境または GitHub Pages から直接アクセス。<br>
+          ・専用アプリやNode.jsのインストールは不要（100%クライアント完結）。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-title">📑 2. 入出力の標準フォーマット</div>
+        <div class="feature-card-desc">
+          ・<strong>入力:</strong> IBM Storage Expert Labs Japan 標準「見積もり依頼記入シート（.xlsx）」。<br>
+          ・<strong>出力:</strong> 公式CPS雛形（<code>（2年_26-27）CostPlanSheetINF2026v1.1.xlsm</code> / <code>（3年_26-28）CostPlanSheetINF2026v1.1.xlsm</code>）。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-title">📈 3. 計算基準・社内単価テーブル</div>
+        <div class="feature-card-desc">
+          ・IBM Expert Labs 標準の年度別Band単価（2025〜2028年 Band 6〜10）。<br>
+          ・Contingency率（標準10%）、Gross Profit率（標準40%）。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-title">🚄 4. 出張・旅費の規程ルール</div>
+        <div class="feature-card-desc">
+          ・出張判定図に基づく距離区分定義（短距離: 日帰り圏、中距離: 赤線、遠距離: 青線/範囲外）。<br>
+          ・宿泊費（2名往復運賃×1.3 を5,000円切上げ）、手当（中距離¥1,500、遠距離日帰り¥3,500、宿泊手当¥4,000、帰着日手当¥3,500）。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. データ保存方式 -->
+  <section>
+    <h2>4. データ保存方式とセキュリティアーキテクチャ</h2>
+    <p>本システムは、<strong>「顧客機微情報を外部サーバーに一切送信しない」</strong> 完全クライアントサイド設計を採用しています。</p>
+
+    <div class="callout security">
+      <div class="callout-title">🔒 セキュリティ原則</div>
+      ・すべてのExcel解析（SheetJS）やExcel書き込み（JSZip）はブラウザ内メモリで完結し、外部クラウド・サーバーへのAPI通信は一切ありません。<br>
+      ・顧客名、Opportunity No、案件金額などの個別データは公開リポジトリへコミットされません。
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25%;">保存・連携方式</th>
+            <th style="width: 35%;">仕組みとライフサイクル</th>
+            <th style="width: 40%;">利用シーンとメリット</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>① <code>sessionStorage</code><br>（画面間一時連携）</strong></td>
+            <td>ブラウザのセッション領域に一時保管。タブを閉じるとメモリから即時破棄。</td>
+            <td>ポータル ➔ 概算見積 ➔ 仕様書 ➔ CPS入力 の画面遷移時にシームレスにデータを自動引継ぎ。共有PCでも安全。</td>
+          </tr>
+          <tr>
+            <td><strong>② 案件JSON入出力<br>（構造化データ保存）</strong></td>
+            <td>全入力値・工数・条件を構造化された <code>.json</code> ファイルとしてローカル保存。</td>
+            <td>「保存」ボタンでPCに保管し、「開く」でいつでも再編集・過去案件の流用が可能。</td>
+          </tr>
+          <tr>
+            <td><strong>③ スタンドアロン案件HTML<br>（自己完結型ファイル）</strong></td>
+            <td>共通パーサおよび案件データをHTML内部にインライン埋め込みして出力。</td>
+            <td>オフライン環境やメール添付でも、ダブルクリックだけで案件データ入りのツール画面が起動。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5. GitHubを利用する理由と管理方法 -->
+  <section>
+    <h2>5. GitHubを利用する理由と管理方法</h2>
+    <p>サーバーレス運用、厳密な版数管理、およびセキュリティ保護を両立するため、GitHubを活用しリポジトリの分離運用を行っています。</p>
+
+    <h3>なぜGitHubを利用するのか</h3>
+    <ul>
+      <li><strong>サーバー管理コストゼロ（GitHub Pages）:</strong> サーバー構築やミドルウェア保守なしで、チーム全員が常に最新版のWebツール（URL）にアクセス可能。</li>
+      <li><strong>厳密な版数管理と品質担保:</strong> 計算ロジックやUIの変更履歴がコミットログとして記録され、「誰が・いつ・何を変更したか」を完全に追跡可能。自動リグレッションテスト（<code>tools/check.sh</code>）でデグレを防止。</li>
+      <li><strong>組織内の共通ナレッジ化:</strong> ローカルに分散しがちなExcelマクロと異なり、コードとドキュメントが一元管理され、属人化を防止。</li>
+    </ul>
+
+    <h3>公開と非公開の完全分離方針</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 20%;">管理区分</th>
+            <th style="width: 30%;">リポジトリ・保管場所</th>
+            <th style="width: 25%;">格納対象（含めてよいもの）</th>
+            <th style="width: 25%;">格納禁止事項（厳守）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>公開リポジトリ</strong></td>
+            <td><code>ibm-el-japan/storage-quotation-system</code><br>（GitHub Pages配信）</td>
+            <td>・ツール本体HTML<br>・共通パーサ（<code>common/</code>）<br>・テストスイート（<code>tests/</code>）<br>・公開ドキュメント / スキルセット</td>
+            <td style="color:var(--accent-red);font-weight:bold;">・顧客名、案件名、Opp No<br>・実際の見積金額、案件メモ<br>・CPS実雛形（.xlsm）、単価表<br>・APIトークン、パスワード</td>
+          </tr>
+          <tr>
+            <td><strong>非公開領域</strong></td>
+            <td>担当者ローカルPC または<br>非公開作業用リポジトリ</td>
+            <td>・個別案件のJSON / 案件HTML<br>・顧客向け提出資料<br>・実機CPS雛形ファイル</td>
+            <td>（公開リポジトリへの誤コミット防止をコミット前スキャンで徹底）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6. システム全体の処理フロー -->
+  <section>
+    <h2>6. システム全体の処理フロー（1枚概要図）</h2>
+    <p>原本Excelの受付から、各ツールでの試算・連携、最終成果物の出力までの処理パイプラインです。</p>
+
+    <div class="flow-container">
+      <div class="flow-row">
+        <div class="flow-box in">
+          <div class="flow-box-title">【1. インプット】</div>
+          <div class="flow-box-sub">📄 見積もり依頼記入シート (.xlsx)<br>（営業・技術営業が記入）</div>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-arrow">⬇️ （Drag & Drop 取込み / 自動解析）</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-box hub">
+          <div class="flow-box-title">【2. 総合受付・解析ハブ】</div>
+          <div class="flow-box-sub">🌐 ポータル (<code>index.html</code>)<br>基本情報・製品・要件を解析し全画面へ展開</div>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-arrow">⬇️ （sessionStorage によるシームレス連携）</div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-box work" style="flex:1;min-width:200px;">
+          <div class="flow-box-title">① 依頼確認<br><code>request-form.html</code></div>
+          <div class="flow-box-sub">要件12項目・契約条件・製品群の確認</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-box work" style="flex:1.2;min-width:230px;">
+          <div class="flow-box-title">② 概算見積<br><code>quotation-generator.html</code></div>
+          <div class="flow-box-sub">Band単価 × 月別工数 (6区分)<br>出張費アシスタント (10都市/手当自動算定)</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-box work" style="flex:1;min-width:200px;">
+          <div class="flow-box-title">③ 仕様書・CPS<br><code>slink-spec / cps-input</code></div>
+          <div class="flow-box-sub">S-LINK・仕様書Word<br>CPS入力 ＆ .xlsm出力</div>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-arrow">⬇️ （ワンクリック成果物出力）</div>
+      </div>
+
+      <div class="flow-row" style="gap:10px;">
+        <div class="flow-box out">
+          <div class="flow-box-title">📊 顧客向け概算見積書</div>
+          <div class="flow-box-sub">PDF印刷 / Excel (.xlsx)<br>前提＋見積もり 2シート</div>
+        </div>
+        <div class="flow-box out">
+          <div class="flow-box-title">📝 サービス仕様書・別紙</div>
+          <div class="flow-box-sub">Word (.doc) / HTML<br>契約添付用ドキュメント</div>
+        </div>
+        <div class="flow-box out">
+          <div class="flow-box-title">📋 S-LINKメタデータ</div>
+          <div class="flow-box-sub">24項目一括コピー<br>契約登録画面へ貼付け</div>
+        </div>
+        <div class="flow-box out">
+          <div class="flow-box-title">📗 Cost Plan Sheet</div>
+          <div class="flow-box-sub">マクロ対応 .xlsm<br>2年版 / 3年版 記入済み</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. 将来構想 -->
+  <section>
+    <h2>7. 今後の拡張とポータル統合構想</h2>
+    <p>本システムは単独ツールにとどまらず、将来的な IBM Expert Labs 共通業務ポータルへの組み込みを前提とした拡張設計となっています。</p>
+    <ul>
+      <li><strong>Expert Labs 業務ポータルとの連携:</strong> HTMLベースの共通認証・案件管理ハブへ本見積パイプラインをモジュール統合。</li>
+      <li><strong>案件ステータス追跡:</strong> 依頼受付 ➔ 概算提示 ➔ 契約合意 ➔ CPS承認 の進行状況を一元可視化。</li>
+      <li><strong>製品テンプレート拡充:</strong> IBM Storage Scale, Ceph, Defender, Fusion, FlashSystem 等のプリセット標準化。</li>
+    </ul>
+  </section>
+
+  <footer class="doc-footer">
+    IBM Storage Expert Labs Japan — Storage Quotation Automation System Architecture & Value Document (v2.5.16)
+  </footer>
+
+</div>
+
+</body>
+</html>
