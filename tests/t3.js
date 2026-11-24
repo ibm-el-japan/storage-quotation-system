@@ -20,7 +20,7 @@ t('lodge has no cap (v2.5.8): 15,000 is used as entered', r.lodge===15000);
 t('overnight allowance uses meal rule (default 4,000) x nights', r.allowUnit===4000 && r.allowCnt===24, r);
 t('PC rental required for long', r.pc===true);
 t('travel-time hours = 3*2*6*0.5 = 18', r.extraH===18, r.extraH);
-t('total = fare*2*6 + 15000*2*24 + 4000*2*24', r.total === 28000*2*6 + 15000*2*24 + 4000*2*24, r.total);
+t('total = fare*2*6 + 15000*2*24 + 4000*2*24 + 3500*2*6 (inc return-day allowance)', r.total === 28000*2*6 + 15000*2*24 + 4000*2*24 + 3500*2*6, r.total);
 t('v2.5.8 宿泊費 label has no cap wording; label shown without cap',  !/上限/.test($('ta-lodge').closest('.info-row').textContent) && /宿泊費 円\/泊/.test($('ta-lodge').closest('.info-row').textContent));
 t('v2.5.8 場所 is a free-text input (not a fixed list), label no longer 基点事業所', $('ta-office').tagName==='INPUT' && $('ta-office').type==='text' && /場所/.test($('ta-office').closest('.info-row').querySelector('label').textContent) && !/基点事業所/.test($('ta-office').closest('.info-row').textContent));
 // day trip mid

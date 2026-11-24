@@ -301,7 +301,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 <div id="app">
   <div id="header">
     <h1>📋 概算見積シート</h1>
-    <span class="ver" id="ver-badge">v2.5.15</span>
+    <span class="ver" id="ver-badge">v2.5.16</span>
     <div class="header-btns">
       <label class="btn bg" style="background:#059669;cursor:pointer">📊 Excel読込 (.xlsx)<input type="file" id="tool-excel-upload" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="handleToolExcelUpload(this)"></label>
       <button class="btn bg" style="background:#059669" onclick="saveAndUpload()">💾 保存 → GitHubへ</button>
@@ -527,6 +527,22 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
             <span class="src-badge src-tool">システム</span>=自動算出、<span class="src-badge src-manual">手入力</span>=手入力。人数・単価は手入力です。</p>
           <div id="travel-req-info" class="cov-note" style="display:none;background:#fff5f5;border-color:#fca5a5;color:#c00000"></div>
           <div class="info-grid">
+            <div class="info-row"><label>主要訪問先プリセット <span class="src-badge src-manual">選択</span></label>
+              <select id="ta-preset" onchange="taPresetChanged()">
+                <option value="">（未選択 / 自由入力）</option>
+                <option value="nagoya">名古屋（遠距離・新幹線・¥30,000）</option>
+                <option value="kyoto">京都（遠距離・新幹線・¥40,000）</option>
+                <option value="osaka">大阪（遠距離・新幹線・¥40,000）</option>
+                <option value="hiroshima">広島（遠距離・新幹線・¥50,000）</option>
+                <option value="fukuoka">福岡（博多）（遠距離・航空便・¥80,000）</option>
+                <option value="fukushima">福島（中距離・新幹線・¥30,000）</option>
+                <option value="sendai">仙台（遠距離・新幹線・¥30,000）</option>
+                <option value="morioka">盛岡（遠距離・新幹線・¥40,000）</option>
+                <option value="aomori">青森（遠距離・新幹線・¥50,000）</option>
+                <option value="sapporo">北海道（札幌）（遠距離・航空便・¥100,000）</option>
+                <option value="other">その他（手動入力）</option>
+              </select>
+              <div class="hint" style="margin:4px 0 0;font-size:11.5px">主要地点を選択すると距離区分・移動手段・往復運賃・宿泊費目安を自動セットします（手入力で補正可能）。</div></div>
             <div class="info-row"><label>場所 <span class="src-badge src-manual">手入力</span></label>
               <input type="text" id="ta-office" placeholder="例: 大阪" oninput="taChanged()"></div>
             <div class="info-row"><label>距離区分（出張判定図で判定） <span class="src-badge src-manual">手入力</span></label>
@@ -536,7 +552,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               <div class="hint" style="margin:4px 0 0;font-size:11.5px">基点: 東京都内事業所＝東京駅／名古屋／大阪／幕張の各事業所の判定図。赤線上の駅＝中距離、青線上の駅＝遠距離、線の無い範囲＝短距離。図の範囲外（仙台・福岡など）は遠距離。</div></div>
             <div class="info-row"><label>移動手段（運賃の種別） <span class="src-badge src-manual">手入力</span></label>
               <select id="ta-trans" onchange="taFareChanged()">
-                <option value="shinkansen">新幹線（大阪・仙台程度まで）</option><option value="air">航空機（それより遠方）</option>
+                <option value="shinkansen">新幹線</option><option value="air">航空便</option>
               </select></div>
             <div class="info-row"><label>出張形態 <span id="ta-mode-badge" class="src-badge src-tool">システム</span></label>
               <select id="ta-mode" onchange="taModeChanged()"><option value="day">日帰り</option><option value="stay">宿泊</option></select></div>
@@ -619,8 +635,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
                 <tr><th>種別</th><th>条件</th><th>金額（円）</th></tr>
               </thead>
               <tbody>
-                <tr><td class="lc">中距離出張手当</td><td>—</td><td>1,500</td></tr>
-                <tr><td class="lc">長距離出張手当</td><td>—</td><td>3,500</td></tr>
+                <tr><td class="lc">中距離出張手当</td><td>日帰り（片道100km超〜）</td><td>1,500</td></tr>
+                <tr><td class="lc">長距離出張手当</td><td>日帰り / 遠距離宿泊の帰着日</td><td>3,500</td></tr>
                 <tr><td class="lc">宿泊出張手当</td><td>朝食×夕食×</td><td>4,000</td></tr>
                 <tr><td class="lc">宿泊出張手当</td><td>朝食○夕食×</td><td>3,200</td></tr>
                 <tr><td class="lc">宿泊出張手当</td><td>朝食×夕食○</td><td>1,300</td></tr>
@@ -630,14 +646,20 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           </div>
           <p class="hint" style="margin-top:10px"><b>算定ルール（出張費アシスタント）</b></p>
           <ul style="font-size:12px;line-height:1.7;margin:0 0 0 18px;color:#334155">
+            <li>主要訪問先プリセット: 主要10地点（名古屋・京都・大阪・広島・福岡・福島・仙台・盛岡・青森・札幌）を選択すると、距離区分・移動手段・往復運賃・宿泊費目安を自動セットします（手入力で補正可能）。</li>
             <li>宿泊出張: 訪問回数＝ 現地作業h ÷ 週あたり稼働h（切上げ）＝週数。宿泊数＝訪問回数×1回あたり宿泊数。</li>
             <li>日帰り出張: 訪問回数＝ 現地作業h ÷ 8h（切上げ）＝現地作業日数。</li>
-            <li>訪問回数・宿泊数とも予備20%を加算（切上げ）。</li>
-            <li>出張手当: 宿泊時＝宿泊出張手当（食事別）×宿泊数。日帰り時＝中距離1,500円／遠距離3,500円×訪問回数。短距離は手当なし。</li>
+            <li>訪問回数・宿泊数とも予備20%を加算（切上げ）。総移動回数（片道）＝ 往復回数 × 2 × 人数。</li>
+            <li>出張手当:
+              <ul>
+                <li>日帰り時: 中距離1,500円／遠距離3,500円×訪問回数×人数（短距離は手当なし）。</li>
+                <li>宿泊時: 宿泊出張手当（食事区分別: 4,000円等）×宿泊数×人数。</li>
+                <li><b>帰着日遠距離手当 (3,500円)</b>: 遠距離出張時、5業務日ごとに宿泊出張手当4日分、長距離出張手当1日分（3,500円）として自動計算（訪問回数×1日×3,500円×人数）。</li>
+              </ul>
+            </li>
             <li>中距離以上はPC借用費を必ず計上。遠距離は 片道移動時間×2×訪問回数×0.5 を工数に追加する目安として表示（工数は手入力のまま）。</li>
-            <li>距離区分（出張判定図.pdf：東京都内（基点: 東京駅）／名古屋／大阪／幕張の各事業所）: 赤線上の駅＝中距離、青線上の駅＝遠距離、線の無い範囲＝短距離（日帰り圏）。図の範囲外（仙台・福岡など）は遠距離。判定は人が行い、ツールは自動選択しない。</li>
+            <li>距離区分（出張判定図.pdf：東京都内（基点: 東京駅）／名古屋／大阪／幕張の各事業所）: 赤線上の駅＝中距離、青線上の駅＝遠距離、線の無い範囲＝短距離（日帰り圏）。図の範囲外（仙台・福岡など）は遠距離。</li>
             <li>宿泊費（円/泊）: 新幹線で移動しやすい地域（大阪・仙台程度まで）＝作業員2名分の新幹線往復運賃×1.3、それより遠方＝作業員2名分の航空機往復運賃×1.3 を、いずれも5,000円単位で切り上げ。往復交通費を入力すると自動算出（手入力で変更可）。</li>
-            <li>※ 宿泊時に中距離/遠距離手当を併給するか、距離区分ごとの標準出張形態は未確定のため、運用ルールとして要確認（設計課題）。</li>
           </ul>
         </div>
       </div>
@@ -723,8 +745,8 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
           <table style="max-width:700px">
             <thead><tr><th>項目</th><th>内容</th></tr></thead>
             <tbody>
-              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.15 (Shared Parser Edition)</strong></td></tr>
-              <tr><td class="lc">リリース日</td><td style="text-align:left">2026-10</td></tr>
+              <tr><td class="lc">Release Version</td><td style="text-align:left"><strong>v2.5.16 (Shared Parser Edition)</strong></td></tr>
+              <tr><td class="lc">リリース日</td><td style="text-align:left">2026-11</td></tr>
               <tr><td class="lc">準拠マスター資料</td><td style="text-align:left">ストレージ見積関連資料.pptx / 見積もり依頼記入シート_テンプレート.xlsx / 見積りテンプレート.xlsx / 仕様書・別紙テンプレート.doc</td></tr>
               <tr><td class="lc">パイプライン構成</td><td style="text-align:left">ポータル (Excel解析) → ①見積もり依頼記入シート → ②概算見積シート → ③S-LINK / 仕様書・別紙生成</td></tr>
               <tr><td class="lc">管理者</td><td style="text-align:left">Expert Labs Storage (ibmkevin)</td></tr>
@@ -750,6 +772,16 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><strong>v2.5.16</strong></td>
+                <td>2026-11</td>
+                <td>Expert Labs</td>
+                <td><span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:11px">交通費・手当自動計算＆主要10地点プリセット</span></td>
+                <td style="text-align:left;white-space:normal">
+                  <strong>交通費・出張手当の自動計算を強化</strong>: 主要10地点（名古屋・京都・大阪・広島・福岡・福島・仙台・盛岡・青森・札幌）のプリセット（距離区分・移動手段・確認済み参考往復運賃）を選択可能にし、選択時に自動設定（手入力補正可）。<br>
+                  <strong>帰着日遠距離手当 (3,500円)</strong> を自動計算に組み込み（遠距離宿泊時、5業務日ごとに宿泊手当4日分＋帰着日長距離手当1日分として自動算出）。総移動回数（片道）の表示、出張手当内訳（宿泊手当＋帰着日手当）を「その他費用」へ明細反映。
+                </td>
+              </tr>
               <tr>
                 <td><strong>v2.5.15</strong></td>
                 <td>2026-10</td>
@@ -1133,7 +1165,7 @@ td.kosu-month-odd input,td.kosu-month-even input{background:transparent;border-c
 
 <script>
 // ===================== VERSION & CONSTANTS =====================
-const APP_VERSION = 'v2.5.15';
+const APP_VERSION = 'v2.5.16';
 const APP_RELEASE_DATE = '2026-09-16';
 
 // ===================== ADMIN MODE =====================
@@ -1838,9 +1870,25 @@ function rebuildChecklistSection(si) {
 }
 
 // ===================== 出張費アシスタント (R6) =====================
-// ルール原典: 見積りテンプレート.xlsx「交通費等」/ 出張判定図.pdf（距離区分は人が図で判定）
+// ルール原典: 見積りテンプレート.xlsx「交通費等」/ 出張判定図.pdf（主要地点プリセット + 手動補正）
+const TA_PRESETS = [
+  { id: '', name: '（未選択 / 自由入力）', zone: '', trans: 'shinkansen', fare: 0 },
+  { id: 'nagoya', name: '名古屋', zone: 'long', trans: 'shinkansen', fare: 30000 },
+  { id: 'kyoto', name: '京都', zone: 'long', trans: 'shinkansen', fare: 40000 },
+  { id: 'osaka', name: '大阪', zone: 'long', trans: 'shinkansen', fare: 40000 },
+  { id: 'hiroshima', name: '広島', zone: 'long', trans: 'shinkansen', fare: 50000 },
+  { id: 'fukuoka', name: '福岡（博多）', zone: 'long', trans: 'air', fare: 80000 },
+  { id: 'fukushima', name: '福島', zone: 'mid', trans: 'shinkansen', fare: 30000 },
+  { id: 'sendai', name: '仙台', zone: 'long', trans: 'shinkansen', fare: 30000 },
+  { id: 'morioka', name: '盛岡', zone: 'long', trans: 'shinkansen', fare: 40000 },
+  { id: 'aomori', name: '青森', zone: 'long', trans: 'shinkansen', fare: 50000 },
+  { id: 'sapporo', name: '北海道（札幌）', zone: 'long', trans: 'air', fare: 100000 },
+  { id: 'other', name: 'その他（手動入力）', zone: '', trans: 'shinkansen', fare: 0 }
+];
+
 const TA_RULE = {
   allowanceMid: 1500, allowanceLong: 3500,   // 中距離/遠距離 出張手当（日帰り）
+  allowanceReturnLong: 3500,                 // 帰着日長距離手当 (3,500円)
   buffer: 0.20,                               // 移動回数・宿泊回数の予備
   dayHours: 8,                                // 日帰り: 1日の現地作業時間
   travelTimeFactor: 0.5,                      // 遠距離: 移動時間×0.5 を工数に追加する目安
@@ -1849,6 +1897,28 @@ const TA_RULE = {
 let _taHoursManual = false;
 let _taModeManual = false;
 let _taLodgeManual = false;
+
+function taPresetChanged() {
+  const sel = document.getElementById('ta-preset');
+  const pid = sel ? sel.value : '';
+  const p = TA_PRESETS.find(x => x.id === pid);
+  if (!p || !p.id || p.id === 'other') {
+    return;
+  }
+  const officeEl = document.getElementById('ta-office');
+  if (officeEl) officeEl.value = p.name;
+  const zoneEl = document.getElementById('ta-zone');
+  if (zoneEl) zoneEl.value = p.zone;
+  const transEl = document.getElementById('ta-trans');
+  if (transEl) transEl.value = p.trans;
+  const fareEl = document.getElementById('ta-fare');
+  if (fareEl) fareEl.value = p.fare;
+  if (!_taModeManual) {
+    const modeEl = document.getElementById('ta-mode');
+    if (modeEl) modeEl.value = p.zone === 'long' ? 'stay' : 'day';
+  }
+  taFareChanged();
+}
 
 function taOnsiteHoursFromKosu() {
   const n = getMonthLabels().length;
@@ -1880,14 +1950,39 @@ function taCalc() {
   const trips = Math.ceil(baseTrips * (1 + TA_RULE.buffer));
   const baseNights = mode === 'stay' ? baseTrips * npt : 0;
   const nights = Math.ceil(baseNights * (1 + TA_RULE.buffer));
+  const totalMovements = trips * 2 * people;
+
   let allowUnit = 0, allowCnt = 0;
-  if (mode === 'stay') { allowUnit = meal; allowCnt = nights; }
-  else if (zone === 'mid') { allowUnit = TA_RULE.allowanceMid; allowCnt = trips; }
-  else if (zone === 'long') { allowUnit = TA_RULE.allowanceLong; allowCnt = trips; }
+  let returnAllowUnit = 0, returnAllowCnt = 0;
+
+  if (mode === 'stay') {
+    allowUnit = meal;
+    allowCnt = nights;
+    // 遠距離宿泊時: 5業務日ごとに宿泊出張手当4日分、長距離出張手当1日分(3,500円)
+    if (zone === 'long') {
+      returnAllowUnit = TA_RULE.allowanceReturnLong;
+      returnAllowCnt = trips;
+    }
+  } else if (zone === 'mid') {
+    allowUnit = TA_RULE.allowanceMid;
+    allowCnt = trips;
+  } else if (zone === 'long') {
+    allowUnit = TA_RULE.allowanceLong;
+    allowCnt = trips;
+  }
+
   const pc = zone === 'mid' || zone === 'long';
   const extraH = zone === 'long' ? travelH * 2 * trips * TA_RULE.travelTimeFactor : 0;
-  const total = fare * people * trips + lodge * people * nights + allowUnit * people * allowCnt;
-  return {ok: true, zone, mode, people, hours, baseTrips, trips, baseNights, nights, lodge, fare, allowUnit, allowCnt, pc, extraH, total};
+  const stayAllowTotal = allowUnit * allowCnt * people;
+  const returnAllowTotal = returnAllowUnit * returnAllowCnt * people;
+  const allowTotal = stayAllowTotal + returnAllowTotal;
+  const total = fare * people * trips + lodge * people * nights + allowTotal;
+
+  return {
+    ok: true, zone, mode, people, hours, baseTrips, trips, baseNights, nights,
+    totalMovements, lodge, fare, allowUnit, allowCnt, returnAllowUnit, returnAllowCnt,
+    stayAllowTotal, returnAllowTotal, allowTotal, pc, extraH, total
+  };
 }
 
 function taRender() {
@@ -1899,15 +1994,24 @@ function taRender() {
     return;
   }
   const zl = {short: '短距離', mid: '中距離', long: '遠距離'}[r.zone];
-  let h = '<table class="cov-tbl"><thead><tr><th>項目</th><th>算定</th><th>根拠</th></tr></thead><tbody>';
-  h += '<tr><td>訪問回数</td><td><b>' + r.trips + ' 回</b>（' + r.baseTrips + '＋予備20%）</td><td>' + (r.mode === 'stay'
+  let h = '<table class="cov-tbl"><thead><tr><th>項目</th><th>算定結果</th><th>算出根拠</th></tr></thead><tbody>';
+  h += '<tr><td>訪問回数（往復）</td><td><b>' + r.trips + ' 回</b>（' + r.baseTrips + '＋予備20%）</td><td>' + (r.mode === 'stay'
     ? r.hours + 'h ÷ 週' + (document.getElementById('ta-weekh').value) + 'h ＝ ' + r.baseTrips + '週 → 1週1回の訪問'
     : r.hours + 'h ÷ ' + TA_RULE.dayHours + 'h ＝ ' + r.baseTrips + '日 → 日帰り') + '</td></tr>';
-  if (r.mode === 'stay') h += '<tr><td>宿泊数</td><td><b>' + r.nights + ' 泊</b>（' + r.baseNights + '＋予備20%）</td><td>訪問回数 × 1回あたり' + document.getElementById('ta-npt').value + '泊</td></tr>';
-  h += '<tr><td>出張手当</td><td><b>¥' + fmt(r.allowUnit) + ' × ' + r.people + '名 × ' + r.allowCnt + '</b></td><td>' + (r.mode === 'stay' ? '宿泊出張手当（食事別）' : (r.zone === 'short' ? '短距離は手当なし' : zl + '出張手当（日帰り）')) + '</td></tr>';
+  h += '<tr><td>総移動回数（片道）</td><td><b>' + r.totalMovements + ' 回</b></td><td>往復 ' + r.trips + '回 × 2 × ' + r.people + '名</td></tr>';
+  if (r.mode === 'stay') {
+    h += '<tr><td>宿泊数</td><td><b>' + r.nights + ' 泊</b>（' + r.baseNights + '＋予備20%）</td><td>訪問回数 × 1回あたり' + document.getElementById('ta-npt').value + '泊</td></tr>';
+    h += '<tr><td>宿泊出張手当</td><td><b>¥' + fmt(r.allowUnit) + ' × ' + r.people + '名 × ' + r.allowCnt + '泊 ＝ ¥' + fmt(r.stayAllowTotal) + '</b></td><td>宿泊出張手当（食事区分別）</td></tr>';
+    if (r.returnAllowCnt > 0) {
+      h += '<tr><td>帰着日遠距離手当</td><td><b>¥' + fmt(r.returnAllowUnit) + ' × ' + r.people + '名 × ' + r.returnAllowCnt + '回 ＝ ¥' + fmt(r.returnAllowTotal) + '</b></td><td>遠距離宿泊: 5業務日ごとに1日分の長距離手当(¥3,500)</td></tr>';
+    }
+  } else {
+    h += '<tr><td>日帰り出張手当</td><td><b>¥' + fmt(r.allowUnit) + ' × ' + r.people + '名 × ' + r.allowCnt + '回 ＝ ¥' + fmt(r.stayAllowTotal) + '</b></td><td>' + (r.zone === 'short' ? '短距離は手当なし' : zl + '出張手当（日帰り）') + '</td></tr>';
+  }
+  h += '<tr><td>出張手当 合計</td><td><b>¥' + fmt(r.allowTotal) + '</b></td><td>' + (r.mode === 'stay' ? '宿泊手当 ＋ 帰着日手当' : '日帰り手当') + '</td></tr>';
   h += '<tr><td>PC借用費</td><td>' + (r.pc ? '<b>計上必須</b>' : '不要') + '</td><td>中距離以上は必ず見積もる（単価は手入力）</td></tr>';
   if (r.zone === 'long') h += '<tr><td>移動時間の工数目安</td><td>' + r.extraH + ' h</td><td>片道×2×訪問回数×0.5（工数タブへ手入力。自動加算はしません）</td></tr>';
-  h += '<tr><td><b>概算合計（PC借用費除く）</b></td><td colspan="2"><b>¥' + fmt(r.total) + '</b></td></tr></tbody></table>';
+  h += '<tr><td><b>概算合計（PC借用費除く）</b></td><td colspan="2"><b style="font-size:14px;color:#1e3a8a">¥' + fmt(r.total) + '</b> （交通費: ¥' + fmt(r.fare * r.people * r.trips) + ' ＋ 宿泊費: ¥' + fmt(r.lodge * r.people * r.nights) + ' ＋ 手当: ¥' + fmt(r.allowTotal) + '）</td></tr></tbody></table>';
   if (!r.fare) h += '<div style="font-size:12px;color:#b45309;margin-top:4px">※ 往復交通費が未入力です（金額は交通費を含まない概算です）。</div>';
   box.innerHTML = h;
 }
@@ -1942,7 +2046,7 @@ function taFareChanged() {
   const note = document.getElementById('ta-lodge-note');
   if (note) {
     const fare = parseFloat(document.getElementById('ta-fare').value) || 0;
-    const mode = (document.getElementById('ta-trans') || {}).value === 'air' ? '航空機' : '新幹線';
+    const mode = (document.getElementById('ta-trans') || {}).value === 'air' ? '航空便' : '新幹線';
     note.textContent = fare > 0
       ? mode + '往復 ¥' + fmt(fare) + ' × ' + TA_RULE.lodgePersons + '名 × 1.' + (TA_RULE.lodgeUpliftPct / 10) + ' → ' + fmt(TA_RULE.lodgeUnit) + '円単位切上げ ＝ ¥' + fmt(taLodgeFromFare(fare)) + (_taLodgeManual ? '（宿泊費は手入力のため反映していません）' : '')
       : '往復交通費を入力すると自動算出（作業員2名分の往復運賃×1.3を5,000円単位で切上げ）。直接入力で変更できます。';
@@ -2027,7 +2131,46 @@ function taApply() {
   const t0 = byId('tr0'), t1 = byId('tr1'), t2 = byId('tr2'), t3 = byId('tr3');
   if (t0) Object.assign(t0, {place: place, unit: r.fare || '', qty: r.people, cnt: r.trips, src: 'tool'});
   if (t1) Object.assign(t1, {place: place, unit: r.lodge, qty: r.people, cnt: r.nights, src: 'tool'});
-  if (t2) Object.assign(t2, {place: place, unit: r.allowUnit, qty: r.people, cnt: r.allowCnt, src: 'tool'});
+  if (t2) {
+    if (r.mode === 'stay') {
+      Object.assign(t2, {type: '宿泊出張手当（食事別）', place: place, unit: r.allowUnit, qty: r.people, cnt: r.allowCnt, src: 'tool'});
+    } else {
+      Object.assign(t2, {type: zl + '出張手当（日帰り）', place: place, unit: r.allowUnit, qty: r.people, cnt: r.allowCnt, src: 'tool'});
+    }
+  }
+
+  // 帰着日長距離手当行 (tr2_ret)
+  let t2ret = byId('tr2_ret');
+  if (r.mode === 'stay' && r.zone === 'long' && r.returnAllowCnt > 0) {
+    if (!t2ret) {
+      t2ret = {
+        id: 'tr2_ret',
+        type: '帰着日出張手当（長距離）',
+        place: place,
+        unit: r.returnAllowUnit,
+        qty: r.people,
+        cnt: r.returnAllowCnt,
+        hint: '5業務日ごとに1日分の長距離手当(¥3,500)',
+        linkedKosuField: '',
+        src: 'tool'
+      };
+      const idx = travelRows.findIndex(x => x.id === 'tr2');
+      if (idx >= 0) travelRows.splice(idx + 1, 0, t2ret);
+      else travelRows.push(t2ret);
+    } else {
+      Object.assign(t2ret, {
+        type: '帰着日出張手当（長距離）',
+        place: place,
+        unit: r.returnAllowUnit,
+        qty: r.people,
+        cnt: r.returnAllowCnt,
+        src: 'tool'
+      });
+    }
+  } else if (t2ret) {
+    travelRows = travelRows.filter(x => x.id !== 'tr2_ret');
+  }
+
   if (t3 && r.pc) Object.assign(t3, {place: place, qty: r.people, cnt: 1, src: t3.unit ? 'tool' : 'manual'});
   buildTravelTable();
   recalcAll();
